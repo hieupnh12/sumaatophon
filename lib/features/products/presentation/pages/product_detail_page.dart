@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:badges/badges.dart' as badges;
 import 'package:carousel_slider/carousel_slider.dart';
@@ -113,7 +114,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       options: CarouselOptions(
                         height: 400.0,
                         viewportFraction: 1.0,
-                        enableInfiniteScroll: images.length > 1,
+                        enableInfiniteScroll: false,
                         onPageChanged: (index, reason) {
                           setState(() {
                             _currentImageIndex = index;
@@ -123,10 +124,17 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       items: images.map((img) {
                         return Builder(
                           builder: (BuildContext context) {
+                            Widget imageWidget = Image.network(img, fit: BoxFit.cover);
+                            if (img == widget.product.imageUrl) {
+                              imageWidget = Hero(
+                                tag: 'product_image_${widget.product.id}',
+                                child: imageWidget,
+                              );
+                            }
                             return Container(
                               width: MediaQuery.of(context).size.width,
                               decoration: BoxDecoration(color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF5F5F7)),
-                              child: Image.network(img, fit: BoxFit.cover),
+                              child: imageWidget,
                             );
                           },
                         );
@@ -225,7 +233,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           children: widget.product.colors.map((colorHex) {
                             final isSelected = _selectedColor == colorHex;
                             return GestureDetector(
-                              onTap: () => setState(() => _selectedColor = colorHex),
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() => _selectedColor = colorHex);
+                              },
                               child: Container(
                                 margin: const EdgeInsets.only(right: 16),
                                 padding: const EdgeInsets.all(4),
@@ -257,7 +268,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           children: widget.product.ramRomOptions.map((option) {
                             final isSelected = _selectedRamRom == option;
                             return GestureDetector(
-                              onTap: () => setState(() => _selectedRamRom = option),
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() => _selectedRamRom = option);
+                              },
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -391,6 +405,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     flex: 1,
                     child: OutlinedButton(
                       onPressed: () {
+                        HapticFeedback.lightImpact();
                         context.read<CartBloc>().add(AddToCartEvent(widget.product));
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -414,6 +429,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     flex: 2,
                     child: ElevatedButton(
                       onPressed: () {
+                        HapticFeedback.lightImpact();
                         context.read<CartBloc>().add(AddToCartEvent(widget.product));
                         Navigator.push(
                           context,

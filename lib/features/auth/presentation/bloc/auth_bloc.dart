@@ -44,6 +44,8 @@ class ForgotPasswordSubmitted extends AuthEvent {
   List<Object?> get props => [email];
 }
 
+class LogoutRequested extends AuthEvent {}
+
 // --- STATES ---
 abstract class AuthState extends Equatable {
   const AuthState();
@@ -93,6 +95,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<BiometricLoginRequested>(_onBiometricLoginRequested);
     on<RegisterSubmitted>(_onRegisterSubmitted);
     on<ForgotPasswordSubmitted>(_onForgotPasswordSubmitted);
+    on<LogoutRequested>((event, emit) => emit(AuthInitial()));
   }
 
   Future<void> _onLoginSubmitted(LoginSubmitted event, Emitter<AuthState> emit) async {

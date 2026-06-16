@@ -6,6 +6,7 @@ class AppColors {
   static const Color primaryDark = Color(0xFF004499);
   static const Color error = Color(0xFFFF3B30);
   static const Color success = Color(0xFF34C759);
+  static const Color warning = Color(0xFFFF9500);
   
   // Light Theme Colors
   static const Color lightBackground = Color(0xFFFFFFFF);
