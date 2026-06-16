@@ -1,0 +1,338 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/design_system/app_colors.dart';
+import '../../../../core/theme/theme_cubit.dart';
+import '../../../../core/l10n/app_localizations.dart';
+import '../../../../core/theme/language_cubit.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  void _showLanguageSelector() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final currentLang = context.read<LanguageCubit>().state;
+    final languages = {'vi': 'Tiếng Việt', 'en': 'English', 'ja': '日本語'};
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(ctx.tr('select_language'), style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              ...languages.entries.map((entry) {
+                final isSelected = currentLang == entry.key;
+                return ListTile(
+                  title: Text(entry.value, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                  trailing: isSelected ? Icon(Icons.check_circle, color: theme.colorScheme.primary) : null,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    context.read<LanguageCubit>().changeLanguage(entry.key);
+                    Navigator.pop(ctx);
+                  },
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        title: const Text('Tài khoản', style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {},
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, state) {
+          String userName = 'Khách hàng';
+          String email = 'user@phoneshop.com';
+
+          if (state is AuthenticatedState) {
+            userName = state.user.name;
+            email = state.user.email;
+          }
+
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header: Avatar & Info
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 36,
+                      backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      child: Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            userName,
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            email,
+                            style: TextStyle(
+                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.stars_rounded, color: AppColors.warning, size: 14),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Thành viên Vàng',
+                                  style: TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.qr_code_rounded),
+                      onPressed: () {},
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+
+                // Orders Section
+                _buildSectionHeader('Đơn hàng của tôi', 'Xem tất cả'),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildOrderAction(Icons.account_balance_wallet_outlined, 'Chờ thanh toán', isDark),
+                      _buildOrderAction(Icons.local_shipping_outlined, 'Đang giao', isDark),
+                      _buildOrderAction(Icons.star_outline_rounded, 'Đánh giá', isDark),
+                      _buildOrderAction(Icons.sync_rounded, 'Đổi trả', isDark),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Utilities Section
+                const Text('Tiện ích', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      _buildListItem(Icons.local_offer_outlined, 'Kho Voucher', isDark, trailingText: '5 ưu đãi'),
+                      _buildDivider(isDark),
+                      _buildListItem(Icons.location_on_outlined, 'Sổ địa chỉ', isDark),
+                      _buildDivider(isDark),
+                      _buildListItem(Icons.payment_rounded, 'Phương thức thanh toán', isDark),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Settings Section
+                const Text('Cài đặt', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded, color: theme.colorScheme.primary),
+                        ),
+                        title: Text(context.tr('theme'), style: const TextStyle(fontWeight: FontWeight.w500)),
+                        trailing: Switch(
+                          value: isDark,
+                          activeThumbColor: theme.colorScheme.primary,
+                          onChanged: (_) {
+                            HapticFeedback.lightImpact();
+                            context.read<ThemeCubit>().toggleTheme();
+                          },
+                        ),
+                      ),
+                      _buildDivider(isDark),
+                      _buildListItem(
+                        Icons.language_rounded, 
+                        context.tr('language'), 
+                        isDark, 
+                        trailingText: {'vi': 'Tiếng Việt', 'en': 'English', 'ja': '日本語'}[context.watch<LanguageCubit>().state],
+                        onTap: _showLanguageSelector,
+                      ),
+                      _buildDivider(isDark),
+                      _buildListItem(Icons.help_outline_rounded, context.tr('help_center'), isDark),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Logout Button
+                OutlinedButton(
+                  onPressed: () {
+                    // Dispatch logout
+                    context.read<AuthBloc>().add(LogoutRequested());
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: const BorderSide(color: AppColors.error),
+                    foregroundColor: AppColors.error,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(context.tr('logout'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 40),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, String action) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(action, style: const TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+
+  Widget _buildOrderAction(IconData icon, String label, bool isDark) {
+    return Column(
+      children: [
+        Icon(icon, size: 28, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildListItem(IconData icon, String title, bool isDark, {String? trailingText, VoidCallback? onTap}) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: AppColors.primary),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+      trailing: trailingText != null
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(trailingText, style: const TextStyle(color: Colors.grey)),
+                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+              ],
+            )
+          : const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+      onTap: onTap ?? () {},
+    );
+  }
+
+  Widget _buildDivider(bool isDark) {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      indent: 60,
+      endIndent: 16,
+      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+    );
+  }
+}

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
+import '../../../../core/l10n/app_localizations.dart';
 import '../bloc/auth_bloc.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
@@ -155,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Premium mobile experience',
+                                  context.tr('login_subtitle'),
                                   textAlign: TextAlign.center,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -169,9 +170,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   keyboardType: TextInputType.emailAddress,
                                   textInputAction: TextInputAction.next,
                                   enabled: !isLoading,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Email address',
-                                    prefixIcon: Icon(Icons.email_outlined),
+                                  decoration: InputDecoration(
+                                    hintText: context.tr('email_hint'),
+                                    prefixIcon: const Icon(Icons.email_outlined),
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
@@ -192,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   textInputAction: TextInputAction.done,
                                   enabled: !isLoading,
                                   decoration: InputDecoration(
-                                    hintText: 'Password',
+                                    hintText: context.tr('password_hint'),
                                     prefixIcon: const Icon(Icons.lock_outline_rounded),
                                     suffixIcon: IconButton(
                                       icon: Icon(
@@ -238,9 +239,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                       minimumSize: const Size(50, 30),
                                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     ),
-                                    child: const Text(
-                                      'Forgot password?',
-                                      style: TextStyle(fontWeight: FontWeight.w600),
+                                    child: Text(
+                                      context.tr('forgot_password'),
+                                      style: const TextStyle(fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ),
@@ -265,7 +266,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                               strokeWidth: 2.5,
                                             ),
                                           )
-                                        : const Text('Sign In', style: TextStyle(fontSize: 18)),
+                                        : Text(context.tr('login_btn'), style: const TextStyle(fontSize: 18)),
                                   ),
                                 ),
                                 const SizedBox(height: 24),
@@ -294,7 +295,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      'Don\'t have an account?',
+                                      context.tr('no_account'),
                                       style: TextStyle(
                                         color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                                       ),
@@ -310,9 +311,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                                 ),
                                               );
                                             },
-                                      child: const Text(
-                                        'Register',
-                                        style: TextStyle(fontWeight: FontWeight.w700),
+                                      child: Text(
+                                        context.tr('register'),
+                                        style: const TextStyle(fontWeight: FontWeight.w700),
                                       ),
                                     ),
                                   ],

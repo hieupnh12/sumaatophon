@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/design_system/app_colors.dart';
+import '../../../../core/l10n/app_localizations.dart';
 import '../../../checkout/presentation/pages/checkout_page.dart';
 import '../bloc/cart_bloc.dart';
 
@@ -29,7 +31,7 @@ class _CartPageState extends State<CartPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Shopping Cart', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(context.tr('cart'), style: const TextStyle(fontWeight: FontWeight.w700)),
         centerTitle: true,
         actions: [
           IconButton(
@@ -58,19 +60,29 @@ class _CartPageState extends State<CartPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.shopping_cart_outlined, size: 100, color: isDark ? Colors.white24 : Colors.black26),
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.shopping_cart_outlined, size: 80, color: theme.colorScheme.primary),
+                  ),
                   const SizedBox(height: 24),
-                  Text('Your cart is empty', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(context.tr('cart_empty_title'), style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('Looks like you haven\'t added anything yet.', style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
+                  Text(
+                    context.tr('cart_empty_desc'), 
+                    style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, fontSize: 16),
+                  ),
                   const SizedBox(height: 32),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                     ),
-                    child: const Text('Start Shopping', style: TextStyle(fontSize: 16)),
+                    child: Text(context.tr('explore_now'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   )
                 ],
               ),
@@ -102,6 +114,7 @@ class _CartPageState extends State<CartPage> {
                         child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 32),
                       ),
                       onDismissed: (direction) {
+                        HapticFeedback.heavyImpact();
                         context.read<CartBloc>().add(RemoveFromCartEvent(product));
                       },
                       child: Container(
@@ -168,6 +181,7 @@ class _CartPageState extends State<CartPage> {
                                   IconButton(
                                     icon: const Icon(Icons.remove, size: 16),
                                     onPressed: () {
+                                      HapticFeedback.selectionClick();
                                       context.read<CartBloc>().add(UpdateQuantityEvent(product, cartItem.quantity - 1));
                                     },
                                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -180,6 +194,7 @@ class _CartPageState extends State<CartPage> {
                                   IconButton(
                                     icon: const Icon(Icons.add, size: 16),
                                     onPressed: () {
+                                      HapticFeedback.selectionClick();
                                       context.read<CartBloc>().add(UpdateQuantityEvent(product, cartItem.quantity + 1));
                                     },
                                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -223,7 +238,7 @@ class _CartPageState extends State<CartPage> {
                               controller: _promoController,
                               textCapitalization: TextCapitalization.characters,
                               decoration: InputDecoration(
-                                hintText: 'Promo Code (e.g. APPLE10)',
+                                hintText: context.tr('promo_hint'),
                                 filled: true,
                                 fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -287,7 +302,7 @@ class _CartPageState extends State<CartPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Subtotal', style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
+                        Text(context.tr('subtotal'), style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
                         Text(currencyFormatter.format(state.subtotal), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                       ],
                     ),
@@ -297,7 +312,7 @@ class _CartPageState extends State<CartPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Discount', style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
+                        Text(context.tr('discount'), style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
                         Text(
                           state.discountAmount > 0 ? '-${currencyFormatter.format(state.discountAmount)}' : '\$0',
                           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: state.discountAmount > 0 ? AppColors.error : null),
@@ -314,7 +329,7 @@ class _CartPageState extends State<CartPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Total', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                        Text(context.tr('total'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
                         Text(
                           currencyFormatter.format(state.finalPrice),
                           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 24, color: theme.colorScheme.primary),
@@ -339,7 +354,7 @@ class _CartPageState extends State<CartPage> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           elevation: 0,
                         ),
-                        child: const Text('Proceed to Checkout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                        child: Text(context.tr('checkout'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                       ),
                     ),
                   ],
