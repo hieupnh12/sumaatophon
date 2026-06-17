@@ -140,10 +140,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               children: [
                                 // Logo or Brand Name
                                 const SizedBox(height: 40),
-                                Icon(
-                                  Icons.phone_iphone_rounded,
-                                  size: 64,
-                                  color: theme.primaryColor,
+                                Image.asset(
+                                  'assets/images/logo.png',
+                                  width: 80,
+                                  height: 80,
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
