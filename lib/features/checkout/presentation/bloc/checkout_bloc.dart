@@ -47,10 +47,10 @@ class CheckoutState extends Equatable {
   final String? error;
 
   const CheckoutState({
-    this.selectedAddress = '123 Nguyễn Văn Linh, Quận 7, TP. Hồ Chí Minh',
-    this.selectedShippingMethod = 'Giao hàng tiêu chuẩn',
+    this.selectedAddress = '123 Nguyen Van Linh, Quan 7, TP. Ho Chi Minh',
+    this.selectedShippingMethod = 'checkout_shipping_standard',
     this.shippingCost = 5.0, // Scale matching the $999 phones
-    this.selectedPaymentMethod = 'Thanh toán khi nhận hàng (COD)',
+    this.selectedPaymentMethod = 'checkout_payment_cod',
     this.isProcessing = false,
     this.isSuccess = false,
     this.error,
@@ -113,7 +113,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         await Future.delayed(const Duration(seconds: 2));
         emit(state.copyWith(isProcessing: false, isSuccess: true));
       } catch (e) {
-        emit(state.copyWith(isProcessing: false, error: 'Thanh toán thất bại. Vui lòng thử lại.'));
+        emit(state.copyWith(isProcessing: false, error: 'checkout_submit_error'));
       }
     });
   }

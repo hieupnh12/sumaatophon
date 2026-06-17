@@ -5,6 +5,7 @@ import 'package:badges/badges.dart' as badges;
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/design_system/app_colors.dart';
+import '../../../../core/l10n/app_localizations.dart';
 import '../../domain/entities/product.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
 import '../../../cart/presentation/pages/cart_page.dart';
@@ -180,7 +181,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                               const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
                               const SizedBox(width: 4),
                               Text(
-                                '${widget.product.rating} (${widget.product.reviewCount} reviews)',
+                                '${widget.product.rating} (${widget.product.reviewCount} ${context.tr('reviews')})',
                                 style: TextStyle(
                                   color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                                   fontWeight: FontWeight.w600,
@@ -227,7 +228,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
                       // Colors Swatches
                       if (widget.product.colors.isNotEmpty) ...[
-                        Text('Color', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        Text(context.tr('color'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 12),
                         Row(
                           children: widget.product.colors.map((colorHex) {
@@ -260,7 +261,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
                       // RAM/ROM Chips
                       if (widget.product.ramRomOptions.isNotEmpty) ...[
-                        Text('Storage', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        Text(context.tr('storage'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 12,
@@ -299,7 +300,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
                       // Specifications
                       if (widget.product.specifications.isNotEmpty) ...[
-                        Text('Specifications', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        Text(context.tr('specifications'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.all(16),
@@ -338,7 +339,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       const SizedBox(height: 32),
                       
                       // Reviews Area
-                      Text('Reviews', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      Text(context.tr('reviews'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(20),
@@ -367,7 +368,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Based on ${widget.product.reviewCount} reviews',
+                                  '${context.tr('reviews_based_on')}: ${widget.product.reviewCount}',
                                   style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
                                 ),
                               ],
@@ -409,7 +410,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         context.read<CartBloc>().add(AddToCartEvent(widget.product));
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('${widget.product.name} added to cart'),
+                            content: Text('${widget.product.name} ${context.tr('added_to_cart')}'),
                             backgroundColor: AppColors.success,
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -440,7 +441,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
-                      child: const Text('Buy Now', style: TextStyle(fontSize: 16)),
+                      child: Text(context.tr('buy_now'), style: const TextStyle(fontSize: 16)),
                     ),
                   ),
                 ],

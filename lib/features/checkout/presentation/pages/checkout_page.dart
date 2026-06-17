@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/design_system/app_colors.dart';
+import '../../../../core/l10n/app_localizations.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
 import '../bloc/checkout_bloc.dart';
 
@@ -16,7 +17,7 @@ class CheckoutPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Checkout', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(context.tr('checkout_title'), style: const TextStyle(fontWeight: FontWeight.w700)),
         centerTitle: true,
       ),
       body: BlocConsumer<CheckoutBloc, CheckoutState>(
@@ -42,9 +43,9 @@ class CheckoutPage extends StatelessWidget {
                       child: const Icon(Icons.check_circle, color: AppColors.success, size: 60),
                     ),
                     const SizedBox(height: 24),
-                    Text('Order Successful!', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(context.tr('checkout_order_success_title'), style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
-                    const Text('Your order has been placed successfully. You will receive an email confirmation soon.', textAlign: TextAlign.center),
+                    Text(context.tr('checkout_order_success_desc'), textAlign: TextAlign.center),
                     const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,
@@ -57,7 +58,7 @@ class CheckoutPage extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
-                        child: const Text('Back to Home', style: TextStyle(fontSize: 16)),
+                        child: Text(context.tr('checkout_back_home'), style: const TextStyle(fontSize: 16)),
                       ),
                     ),
                   ],
@@ -65,7 +66,7 @@ class CheckoutPage extends StatelessWidget {
               ),
             );
           } else if (state.error != null) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!), backgroundColor: AppColors.error));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.tr(state.error!)), backgroundColor: AppColors.error));
           }
         },
         builder: (context, checkoutState) {
@@ -81,7 +82,7 @@ class CheckoutPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // --- DELIVERY ADDRESS ---
-                        Text('Delivery Address', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(context.tr('checkout_delivery_address'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
                         _buildCard(
                           context: context,
@@ -98,7 +99,7 @@ class CheckoutPage extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('Home', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                                    Text(context.tr('checkout_home'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                                     const SizedBox(height: 4),
                                     Text(
                                       checkoutState.selectedAddress,
@@ -117,7 +118,7 @@ class CheckoutPage extends StatelessWidget {
                         const SizedBox(height: 24),
 
                         // --- SHIPPING METHOD ---
-                        Text('Shipping Method', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(context.tr('checkout_shipping_method'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
                         _buildCard(
                           context: context,
@@ -134,10 +135,10 @@ class CheckoutPage extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(checkoutState.selectedShippingMethod, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                                    Text(context.tr(checkoutState.selectedShippingMethod), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Estimated delivery: 2-3 days',
+                                      '${context.tr('checkout_estimated_delivery')}: ${context.tr('checkout_delivery_2_3_days')}',
                                       style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
                                     ),
                                   ],
@@ -156,7 +157,7 @@ class CheckoutPage extends StatelessWidget {
                         const SizedBox(height: 24),
 
                         // --- PAYMENT METHOD ---
-                        Text('Payment Method', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(context.tr('checkout_payment_method'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
                         _buildCard(
                           context: context,
@@ -173,7 +174,7 @@ class CheckoutPage extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(checkoutState.selectedPaymentMethod, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                                    Text(context.tr(checkoutState.selectedPaymentMethod), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                                     const SizedBox(height: 4),
                                     Text(
                                       '**** **** **** 1234',
@@ -192,7 +193,7 @@ class CheckoutPage extends StatelessWidget {
                         const SizedBox(height: 32),
 
                         // --- ORDER SUMMARY ---
-                        Text('Order Summary', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(context.tr('checkout_order_summary'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.all(20),
@@ -203,13 +204,13 @@ class CheckoutPage extends StatelessWidget {
                           ),
                           child: Column(
                             children: [
-                              _buildSummaryRow('Items (\${cartState.totalItems})', currencyFormatter.format(cartState.subtotal), isDark),
+                              _buildSummaryRow('${context.tr('checkout_items')} (${cartState.totalItems})', currencyFormatter.format(cartState.subtotal), isDark),
                               const SizedBox(height: 12),
                               if (cartState.discountAmount > 0) ...[
-                                _buildSummaryRow('Discount', '-${currencyFormatter.format(cartState.discountAmount)}', isDark, isDiscount: true),
+                                _buildSummaryRow(context.tr('discount'), '-${currencyFormatter.format(cartState.discountAmount)}', isDark, isDiscount: true),
                                 const SizedBox(height: 12),
                               ],
-                              _buildSummaryRow('Shipping', currencyFormatter.format(checkoutState.shippingCost), isDark),
+                              _buildSummaryRow(context.tr('checkout_shipping'), currencyFormatter.format(checkoutState.shippingCost), isDark),
                               const Padding(
                                 padding: EdgeInsets.symmetric(vertical: 16.0),
                                 child: Divider(),
@@ -217,7 +218,7 @@ class CheckoutPage extends StatelessWidget {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text('Total', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                                  Text(context.tr('total'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
                                   Text(
                                     currencyFormatter.format(totalOrder),
                                     style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22, color: theme.colorScheme.primary),
@@ -266,7 +267,7 @@ class CheckoutPage extends StatelessWidget {
                             : Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Text('Confirm Order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                                  Text(context.tr('checkout_confirm_order'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                                   const SizedBox(width: 8),
                                   const Icon(Icons.arrow_forward_rounded, size: 20),
                                 ],
@@ -320,9 +321,9 @@ class CheckoutPage extends StatelessWidget {
 
   void _showAddressSelectionSheet(BuildContext context, CheckoutState state) {
     final addresses = [
-      '123 Nguyễn Văn Linh, Quận 7, TP. Hồ Chí Minh',
-      '456 Lê Lợi, Quận 1, TP. Hồ Chí Minh',
-      '789 Điện Biên Phủ, Quận Bình Thạnh, TP. Hồ Chí Minh',
+      '123 Nguyen Van Linh, Quan 7, TP. Ho Chi Minh',
+      '456 Le Loi, Quan 1, TP. Ho Chi Minh',
+      '789 Dien Bien Phu, Quan Binh Thanh, TP. Ho Chi Minh',
     ];
 
     showModalBottomSheet(
@@ -335,9 +336,9 @@ class CheckoutPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Text('Chọn địa chỉ giao hàng', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(context.tr('checkout_select_address'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 16),
               ...addresses.map((address) => ListTile(
@@ -354,7 +355,7 @@ class CheckoutPage extends StatelessWidget {
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 leading: const Icon(Icons.add_location_alt_outlined, color: AppColors.primary),
-                title: const Text('Thêm địa chỉ mới', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                title: Text(context.tr('checkout_add_new_address'), style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
                 onTap: () {
                   Navigator.pop(ctx);
                   // Push to Add Address Screen
@@ -369,9 +370,9 @@ class CheckoutPage extends StatelessWidget {
 
   void _showShippingMethodSelectionSheet(BuildContext context, CheckoutState state) {
     final methods = [
-      {'name': 'Giao hàng tiêu chuẩn', 'cost': 5.0, 'time': '2-3 ngày'},
-      {'name': 'Giao hàng nhanh (GHN)', 'cost': 10.0, 'time': '1-2 ngày'},
-      {'name': 'Giao hàng hỏa tốc', 'cost': 15.0, 'time': 'Trong ngày'},
+      {'name': 'checkout_shipping_standard', 'cost': 5.0, 'time': 'checkout_delivery_2_3_days'},
+      {'name': 'checkout_shipping_fast', 'cost': 10.0, 'time': 'checkout_delivery_1_2_days'},
+      {'name': 'checkout_shipping_express', 'cost': 15.0, 'time': 'checkout_delivery_same_day'},
     ];
 
     final currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
@@ -386,9 +387,9 @@ class CheckoutPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Text('Chọn phương thức vận chuyển', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(context.tr('checkout_select_shipping'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 16),
               ...methods.map((method) {
@@ -399,8 +400,8 @@ class CheckoutPage extends StatelessWidget {
                 return ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                   leading: const Icon(Icons.local_shipping_outlined),
-                  title: Text(name),
-                  subtitle: Text('Dự kiến: $time'),
+                  title: Text(context.tr(name)),
+                  subtitle: Text('${context.tr('checkout_estimated_delivery')}: ${context.tr(time)}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -424,10 +425,10 @@ class CheckoutPage extends StatelessWidget {
 
   void _showPaymentMethodSelectionSheet(BuildContext context, CheckoutState state) {
     final methods = [
-      {'name': 'Thanh toán khi nhận hàng (COD)', 'icon': Icons.money},
-      {'name': 'Ví MoMo', 'icon': Icons.account_balance_wallet},
-      {'name': 'ZaloPay', 'icon': Icons.account_balance_wallet_outlined},
-      {'name': 'Thẻ tín dụng/Ghi nợ', 'icon': Icons.credit_card},
+      {'name': 'checkout_payment_cod', 'icon': Icons.money},
+      {'name': 'checkout_payment_momo', 'icon': Icons.account_balance_wallet},
+      {'name': 'checkout_payment_zalopay', 'icon': Icons.account_balance_wallet_outlined},
+      {'name': 'checkout_payment_card', 'icon': Icons.credit_card},
     ];
 
     showModalBottomSheet(
@@ -440,9 +441,9 @@ class CheckoutPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Text('Chọn phương thức thanh toán', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(context.tr('checkout_select_payment'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 16),
               ...methods.map((method) {
@@ -452,7 +453,7 @@ class CheckoutPage extends StatelessWidget {
                 return ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                   leading: Icon(icon),
-                  title: Text(name),
+                  title: Text(context.tr(name)),
                   trailing: state.selectedPaymentMethod == name ? const Icon(Icons.check_circle, color: AppColors.primary) : null,
                   onTap: () {
                     context.read<CheckoutBloc>().add(SelectPaymentMethodEvent(name));
