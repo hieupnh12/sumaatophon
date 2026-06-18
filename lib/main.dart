@@ -19,6 +19,10 @@ import 'features/products/data/datasources/product_mock_datasource.dart';
 import 'features/products/data/repositories/product_repository_impl.dart';
 import 'features/products/presentation/bloc/product_bloc.dart';
 import 'features/products/presentation/pages/product_list_page.dart';
+import 'core/database/app_database.dart';
+import 'features/cart/data/datasources/cart_local_datasource.dart';
+import 'features/cart/data/repositories/cart_repository_impl.dart';
+import 'features/cart/domain/repositories/cart_repository.dart';
 import 'features/cart/presentation/bloc/cart_bloc.dart';
 import 'features/cart/presentation/pages/cart_page.dart';
 import 'features/checkout/presentation/bloc/checkout_bloc.dart';
@@ -32,25 +36,31 @@ import 'features/profile/presentation/pages/profile_page.dart';
 
 final sl = GetIt.instance;
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  setupDependencyInjection();
+  await setupDependencyInjection();
   runApp(const PhoneShopApp());
 }
 
-void setupDependencyInjection() {
+Future<void> setupDependencyInjection() async {
+  // Database
+  final appDatabase = AppDatabase();
+  sl.registerLazySingleton(() => appDatabase);
+
   // Datasources
   sl.registerLazySingleton(() => AuthMockDataSource());
   sl.registerLazySingleton(() => ProductMockDataSource());
+  sl.registerLazySingleton(() => CartLocalDatasource(sl()));
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl()));
   sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(sl()));
+  sl.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(sl()));
 
   // Blocs
   sl.registerFactory(() => AuthBloc(authRepository: sl()));
   sl.registerFactory(() => ProductBloc(repository: sl()));
-  sl.registerFactory(() => CartBloc());
+  sl.registerFactory(() => CartBloc(repository: sl()));
   sl.registerFactory(() => CheckoutBloc());
   sl.registerFactory(() => StoreLocatorBloc());
   sl.registerFactory(() => ChatBloc());
@@ -77,7 +87,7 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
       providers: [
         BlocProvider(create: (_) => sl<AuthBloc>()),
         BlocProvider(create: (_) => sl<ProductBloc>()..add(LoadProductsEvent())),
-        BlocProvider(create: (_) => sl<CartBloc>()),
+        BlocProvider(create: (_) => sl<CartBloc>()..add(LoadCartEvent())),
         BlocProvider(create: (_) => sl<CheckoutBloc>()),
         BlocProvider(create: (_) => sl<StoreLocatorBloc>()..add(LoadStoresEvent())),
         BlocProvider(create: (_) => sl<ChatBloc>()),

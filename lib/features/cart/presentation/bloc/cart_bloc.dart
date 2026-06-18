@@ -1,24 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../../products/domain/entities/product.dart';
-
-// --- ENTITIES ---
-class CartItem extends Equatable {
-  final Product product;
-  final int quantity;
-
-  const CartItem({required this.product, this.quantity = 1});
-
-  CartItem copyWith({Product? product, int? quantity}) {
-    return CartItem(
-      product: product ?? this.product,
-      quantity: quantity ?? this.quantity,
-    );
-  }
-
-  @override
-  List<Object?> get props => [product, quantity];
-}
+import '../../domain/entities/cart_item.dart';
+import '../../domain/repositories/cart_repository.dart';
 
 // --- EVENTS ---
 abstract class CartEvent extends Equatable {
@@ -27,6 +11,9 @@ abstract class CartEvent extends Equatable {
   @override
   List<Object?> get props => [];
 }
+
+// Tải giỏ hàng từ SQLite khi app khởi động
+class LoadCartEvent extends CartEvent {}
 
 class AddToCartEvent extends CartEvent {
   final Product product;
@@ -66,23 +53,26 @@ class ApplyPromoCodeEvent extends CartEvent {
 
 class RemovePromoCodeEvent extends CartEvent {}
 
-// --- STATES ---
+// --- STATE ---
 class CartState extends Equatable {
   final List<CartItem> items;
   final String? promoCode;
-  final double discountPercent; // 0.0 to 1.0
+  final double discountPercent;
   final String? promoError;
-  
+  final bool isLoading;
+
   const CartState({
     this.items = const [],
     this.promoCode,
     this.discountPercent = 0.0,
     this.promoError,
+    this.isLoading = false,
   });
 
-  int get totalItems => items.fold(0, (total, current) => total + current.quantity);
-  
-  double get subtotal => items.fold(0, (total, current) => total + (current.product.price * current.quantity));
+  int get totalItems => items.fold(0, (total, item) => total + item.quantity);
+
+  double get subtotal =>
+      items.fold(0, (total, item) => total + (item.product.price * item.quantity));
 
   double get discountAmount => subtotal * discountPercent;
 
@@ -93,23 +83,29 @@ class CartState extends Equatable {
     String? promoCode,
     double? discountPercent,
     String? promoError,
+    bool? isLoading,
     bool clearPromoError = false,
+    bool clearPromoCode = false,
   }) {
     return CartState(
       items: items ?? this.items,
-      promoCode: promoCode ?? this.promoCode,
+      promoCode: clearPromoCode ? null : (promoCode ?? this.promoCode),
       discountPercent: discountPercent ?? this.discountPercent,
       promoError: clearPromoError ? null : (promoError ?? this.promoError),
+      isLoading: isLoading ?? this.isLoading,
     );
   }
 
   @override
-  List<Object?> get props => [items, promoCode, discountPercent, promoError];
+  List<Object?> get props => [items, promoCode, discountPercent, promoError, isLoading];
 }
 
 // --- BLOC ---
 class CartBloc extends Bloc<CartEvent, CartState> {
-  CartBloc() : super(const CartState()) {
+  final CartRepository repository;
+
+  CartBloc({required this.repository}) : super(const CartState()) {
+    on<LoadCartEvent>(_onLoadCart);
     on<AddToCartEvent>(_onAddToCart);
     on<RemoveFromCartEvent>(_onRemoveFromCart);
     on<UpdateQuantityEvent>(_onUpdateQuantity);
@@ -118,74 +114,60 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<RemovePromoCodeEvent>(_onRemovePromoCode);
   }
 
-  void _onAddToCart(AddToCartEvent event, Emitter<CartState> emit) {
-    final List<CartItem> updatedItems = List.from(state.items);
-    final existingIndex = updatedItems.indexWhere((item) => item.product.id == event.product.id);
-
-    if (existingIndex >= 0) {
-      final existingItem = updatedItems[existingIndex];
-      updatedItems[existingIndex] = existingItem.copyWith(quantity: existingItem.quantity + 1);
-    } else {
-      updatedItems.add(CartItem(product: event.product));
-    }
-
-    emit(state.copyWith(items: updatedItems));
+  // Tải giỏ hàng từ SQLite khi app mở lên
+  Future<void> _onLoadCart(LoadCartEvent event, Emitter<CartState> emit) async {
+    emit(state.copyWith(isLoading: true));
+    final items = await repository.getItems();
+    emit(state.copyWith(items: items, isLoading: false));
   }
 
-  void _onRemoveFromCart(RemoveFromCartEvent event, Emitter<CartState> emit) {
-    final List<CartItem> updatedItems = List.from(state.items)
-      ..removeWhere((item) => item.product.id == event.product.id);
-    emit(state.copyWith(items: updatedItems));
+  Future<void> _onAddToCart(AddToCartEvent event, Emitter<CartState> emit) async {
+    await repository.addItem(event.product);
+    final items = await repository.getItems();
+    emit(state.copyWith(items: items));
   }
 
-  void _onUpdateQuantity(UpdateQuantityEvent event, Emitter<CartState> emit) {
-    final List<CartItem> updatedItems = List.from(state.items);
-    final existingIndex = updatedItems.indexWhere((item) => item.product.id == event.product.id);
-
-    if (existingIndex >= 0) {
-      if (event.quantity <= 0) {
-        updatedItems.removeAt(existingIndex);
-      } else {
-        final existingItem = updatedItems[existingIndex];
-        updatedItems[existingIndex] = existingItem.copyWith(quantity: event.quantity);
-      }
-      emit(state.copyWith(items: updatedItems));
-    }
+  Future<void> _onRemoveFromCart(RemoveFromCartEvent event, Emitter<CartState> emit) async {
+    await repository.removeItem(event.product);
+    final items = await repository.getItems();
+    emit(state.copyWith(items: items));
   }
 
-  void _onClearCart(ClearCartEvent event, Emitter<CartState> emit) {
-    emit(const CartState(items: []));
+  Future<void> _onUpdateQuantity(UpdateQuantityEvent event, Emitter<CartState> emit) async {
+    await repository.updateQuantity(event.product, event.quantity);
+    final items = await repository.getItems();
+    emit(state.copyWith(items: items));
+  }
+
+  Future<void> _onClearCart(ClearCartEvent event, Emitter<CartState> emit) async {
+    await repository.clearCart();
+    emit(const CartState());
   }
 
   void _onApplyPromoCode(ApplyPromoCodeEvent event, Emitter<CartState> emit) {
-    // Mock promo code logic
     final code = event.code.trim().toUpperCase();
     if (code == 'APPLE10') {
       emit(state.copyWith(
         promoCode: code,
-        discountPercent: 0.10, // 10% discount
+        discountPercent: 0.10,
         clearPromoError: true,
       ));
     } else if (code == 'SAMSUNG20') {
       emit(state.copyWith(
         promoCode: code,
-        discountPercent: 0.20, // 20% discount
+        discountPercent: 0.20,
         clearPromoError: true,
       ));
     } else {
-      emit(state.copyWith(
-        promoError: 'Invalid or expired promo code.',
-        clearPromoError: false,
-      ));
+      emit(state.copyWith(promoError: 'Invalid or expired promo code.'));
     }
   }
 
   void _onRemovePromoCode(RemovePromoCodeEvent event, Emitter<CartState> emit) {
-    emit(CartState(
-      items: state.items,
-      promoCode: null,
+    emit(state.copyWith(
+      clearPromoCode: true,
       discountPercent: 0.0,
-      promoError: null,
+      clearPromoError: true,
     ));
   }
 }
