@@ -26,7 +26,7 @@ class Product extends Equatable {
     required this.rating,
     required this.reviewCount,
     this.ramRomOptions = const [],
-    this.colors = const ['#000000', '#FFFFFF'], // Default to Black/White hex
+    this.colors = const  ['#000000', '#FFFFFF'], // Default to Black/White hex
     this.specifications = const {},
     this.isNew = false,
   });

@@ -34,7 +34,8 @@ Truoc khi them feature, AI agent bat buoc doc cac file sau neu co lien quan:
 
 Neu feature moi can API:
 
-- Doc `lib/features/products/data/` de xem cach goi remote datasource.
+- Doc `docs/features/backend/AGENT.md` (ket noi MySQL + them API endpoint backend).
+- Doc `lib/features/products/data/` de xem cach goi remote datasource Flutter.
 - Doc `docs/API.md`.
 
 Neu feature moi can SQLite:
@@ -184,6 +185,8 @@ Nen chua:
 
 Flutter khong ket noi truc tiep MySQL.
 
+Doc chi tiet: `docs/features/backend/AGENT.md` (pool MySQL, `.env`, mau endpoint, luong Flutter).
+
 Dung luong dung:
 
 ```text
@@ -206,6 +209,8 @@ ProductBloc
 File nen co:
 
 ```text
+backend/db.js
+backend/server.js
 lib/core/network/api_client.dart
 lib/core/network/api_endpoints.dart
 lib/features/products/data/datasources/product_remote_datasource.dart
