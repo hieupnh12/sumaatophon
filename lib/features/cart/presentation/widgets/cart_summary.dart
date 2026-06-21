@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../../core/design_system/app_colors.dart';
 import '../../../../../core/l10n/app_localizations.dart';
-import '../../../../checkout/presentation/pages/checkout_page.dart';
+import '../../../checkout/presentation/pages/checkout_page.dart';
 import '../bloc/cart_bloc.dart';
 import 'promo_code_box.dart';
 
