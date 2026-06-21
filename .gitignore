@@ -36,3 +36,5 @@ google-services.json
 # Backend secrets & dependencies
 backend/.env
 backend/node_modules/
+
+.dart_tool/
