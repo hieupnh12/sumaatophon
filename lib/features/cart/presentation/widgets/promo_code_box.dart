@@ -45,7 +45,7 @@ class _PromoCodeBoxState extends State<PromoCodeBox> {
                     const Icon(Icons.check_circle, color: AppColors.success, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      "Promo '${state.promoCode}' applied",
+                      context.tr('cart_promo_applied').replaceAll('{code}', state.promoCode!),
                       style: const TextStyle(
                         color: AppColors.success,
                         fontWeight: FontWeight.w600,
@@ -99,7 +99,7 @@ class _PromoCodeBoxState extends State<PromoCodeBox> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Apply'),
+              child: Text(context.tr('apply')),
             ),
           ],
         );
