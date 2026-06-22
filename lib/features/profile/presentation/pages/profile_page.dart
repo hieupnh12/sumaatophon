@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/config/app_feature_flags.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
@@ -285,23 +286,23 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 32),
 
-                // Logout Button
-                OutlinedButton(
-                  onPressed: () {
-                    // Dispatch logout
-                    context.read<AuthBloc>().add(LogoutRequested());
-                  },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: AppColors.error),
-                    foregroundColor: AppColors.error,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                if (AppFeatureFlags.authRequired) ...[
+                  OutlinedButton(
+                    onPressed: () {
+                      context.read<AuthBloc>().add(LogoutRequested());
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: const BorderSide(color: AppColors.error),
+                      foregroundColor: AppColors.error,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
+                    child: Text(context.tr('logout'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
-                  child: Text(context.tr('logout'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 40),
+                  const SizedBox(height: 40),
+                ],
               ],
             ),
           );

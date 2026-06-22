@@ -11,4 +11,11 @@ class ProductRepositoryImpl implements ProductRepository {
   Future<List<Product>> getProducts() {
     return dataSource.getProducts();
   }
+   
+
+  //lấy từ bên product_repository và product_remote_datasource và trả về Product entity
+  @override
+  Future<Product> getProductById(String id) {
+    return dataSource.getProductById(id);
+  }
 }

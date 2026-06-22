@@ -8,7 +8,8 @@ class ProductRemoteDataSource {
   final ApiClient apiClient;
 
   ProductRemoteDataSource(this.apiClient);
-
+   
+  // lấy danh sách sản phẩm từ MySQL (qua backend) → ProductModel → Product entity , trả về List<Product>  và tránh lỗi bất đồng bộ 
   Future<List<Product>> getProducts() async {
     final data = await apiClient.get(ApiEndpoints.products);
 
@@ -20,4 +21,18 @@ class ProductRemoteDataSource {
         .map((item) => ProductModel.fromJson(item as Map<String, dynamic>).toEntity())
         .toList();
   }
+
+   
+  // lấy sản phẩm theo id từ MySQL (qua backend) → ProductModel → Product entity , trả về Product và tránh lỗi bất đồng bộ
+  Future<Product> getProductById(String id) async {
+    final data = await apiClient.get(ApiEndpoints.productById(id));
+    
+    //dòng này là để kiểm tra dữ liệu nhận từ backend có phải là map không
+    if (data is! Map<String, dynamic>) {
+      throw FormatException('Expected map from /products/$id');
+    }
+
+    return ProductModel.fromJson(data).toEntity();
+  }
+
 }
