@@ -12,7 +12,7 @@ class CartRepositoryImpl implements CartRepository {
   Future<List<CartItem>> getItems() => datasource.getItems();
 
   @override
-  Future<void> addItem(Product product) => datasource.addItem(product);
+  Future<bool> addItem(Product product) => datasource.addItem(product);
 
   @override
   Future<void> removeItem(Product product) => datasource.removeItem(product);

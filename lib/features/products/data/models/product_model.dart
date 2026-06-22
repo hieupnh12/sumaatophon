@@ -16,6 +16,7 @@ class ProductModel {
   final List<String> colors;
   final Map<String, String> specifications;
   final bool isNew;
+  final int stockQuantity;
 
   const ProductModel({
     required this.id,
@@ -31,6 +32,7 @@ class ProductModel {
     this.colors = const [],
     this.specifications = const {},
     this.isNew = false,
+    this.stockQuantity = 0,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -48,6 +50,8 @@ class ProductModel {
       colors: _toStringList(json['colors']),
       specifications: _toStringMap(json['specifications']),
       isNew: json['isNew'] as bool? ?? false,
+      // API cũ chưa có field → cho phép thêm tạm; API mới trả 0 = hết hàng thật.
+      stockQuantity: json['stockQuantity'] != null ? _toInt(json['stockQuantity']) : 99,
     );
   }
 
@@ -66,6 +70,7 @@ class ProductModel {
       colors: colors.isNotEmpty ? colors : const ['#000000', '#FFFFFF'],
       specifications: specifications,
       isNew: isNew,
+      stockQuantity: stockQuantity,
     );
   }
 

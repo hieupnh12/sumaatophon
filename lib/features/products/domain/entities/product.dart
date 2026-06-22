@@ -14,6 +14,7 @@ class Product extends Equatable {
   final List<String> colors;
   final Map<String, String> specifications;
   final bool isNew;
+  final int stockQuantity;
 
   const Product({
     required this.id,
@@ -29,6 +30,7 @@ class Product extends Equatable {
     this.colors = const  ['#000000', '#FFFFFF'], // Default to Black/White hex
     this.specifications = const {},
     this.isNew = false,
+    this.stockQuantity = 0,
   });
 
   bool get hasDiscount => originalPrice > price;
@@ -49,5 +51,6 @@ class Product extends Equatable {
         colors,
         specifications,
         isNew,
+        stockQuantity,
       ];
 }

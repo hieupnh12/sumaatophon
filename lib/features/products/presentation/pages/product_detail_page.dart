@@ -408,13 +408,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       onPressed: () {
                         HapticFeedback.lightImpact();
                         context.read<CartBloc>().add(AddToCartEvent(widget.product));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${widget.product.name} ${context.tr('added_to_cart')}'),
-                            backgroundColor: AppColors.success,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
                       },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
