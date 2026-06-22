@@ -5,8 +5,6 @@ import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../bloc/auth_bloc.dart';
-import 'register_page.dart';
-import 'forgot_password_page.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,11 +14,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'admin@phoneshop.com');
-  final _passwordController = TextEditingController(text: 'password123');
-  bool _isPasswordVisible = false;
-
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -33,10 +26,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       duration: const Duration(milliseconds: 1200),
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: const Interval(0.2, 1.0, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
+      ),
     );
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
-      CurvedAnimation(parent: _animationController, curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic)),
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
+      ),
     );
 
     _animationController.forward();
@@ -44,21 +43,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
     _animationController.dispose();
     super.dispose();
   }
 
-  void _onLoginPressed() {
-    if (_formKey.currentState!.validate()) {
-      context.read<AuthBloc>().add(
-            LoginSubmitted(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-            ),
-          );
-    }
+  void _onGoogleLoginPressed() {
+    context.read<AuthBloc>().add(GoogleLoginRequested());
   }
 
   void _onBiometricPressed() {
@@ -96,22 +86,22 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: isDark
-                        ? [const Color(0xFF1A1A1D), AppColors.darkBackground]
-                        : [const Color(0xFFF0F4F8), AppColors.lightBackground],
+                        ? [const Color(0xFF0F0F12), AppColors.darkBackground]
+                        : [const Color(0xFFE8ECEF), AppColors.lightBackground],
                   ),
                 ),
               ),
-              
-              // Decorative Blur Element (Top Right)
+
+              // Glowing blur elements for premium background
               Positioned(
-                top: -100,
-                right: -100,
+                top: -80,
+                right: -80,
                 child: Container(
-                  width: 300,
-                  height: 300,
+                  width: 320,
+                  height: 320,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.primary.withValues(alpha: isDark ? 0.2 : 0.1),
+                    color: AppColors.primary.withValues(alpha: isDark ? 0.25 : 0.15),
                   ),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
@@ -120,16 +110,49 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 ),
               ),
 
+              Positioned(
+                bottom: -100,
+                left: -100,
+                child: Container(
+                  width: 300,
+                  height: 300,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.blue.withValues(alpha: isDark ? 0.15 : 0.08),
+                  ),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 85, sigmaY: 85),
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+              ),
+
               SafeArea(
                 child: Stack(
                   children: [
+                    // Theme Switcher Top Right
+                    Positioned(
+                      top: 16,
+                      right: 16,
+                      child: BlocBuilder<ThemeCubit, ThemeMode>(
+                        builder: (context, themeMode) {
+                          final isDarkTheme = themeMode == ThemeMode.dark ||
+                              (themeMode == ThemeMode.system &&
+                                  MediaQuery.of(context).platformBrightness == Brightness.dark);
+                          return IconButton(
+                            icon: Icon(isDarkTheme ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
+                            onPressed: () {
+                              context.read<ThemeCubit>().toggleTheme();
+                            },
+                          );
+                        },
+                      ),
+                    ),
+
                     Center(
                       child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Form(
-                        key: _formKey,
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 28.0),
                         child: FadeTransition(
                           opacity: _fadeAnimation,
                           child: SlideTransition(
@@ -138,20 +161,20 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                // Logo or Brand Name
-                                const SizedBox(height: 40),
+                                // Brand Section
                                 Image.asset(
                                   'assets/images/logo.png',
-                                  width: 80,
-                                  height: 80,
+                                  width: 90,
+                                  height: 90,
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 20),
                                 Text(
                                   'phoneShop',
                                   textAlign: TextAlign.center,
                                   style: theme.textTheme.headlineMedium?.copyWith(
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: -1,
+                                    fontSize: 32,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -160,196 +183,232 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   textAlign: TextAlign.center,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
-                                const SizedBox(height: 60),
+                                const SizedBox(height: 50),
 
-                                // Email Input
-                                TextFormField(
-                                  controller: _emailController,
-                                  keyboardType: TextInputType.emailAddress,
-                                  textInputAction: TextInputAction.next,
-                                  enabled: !isLoading,
-                                  decoration: InputDecoration(
-                                    hintText: context.tr('email_hint'),
-                                    prefixIcon: const Icon(Icons.email_outlined),
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter your email';
-                                    }
-                                    if (!value.contains('@')) {
-                                      return 'Please enter a valid email';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-
-                                // Password Input
-                                TextFormField(
-                                  controller: _passwordController,
-                                  obscureText: !_isPasswordVisible,
-                                  textInputAction: TextInputAction.done,
-                                  enabled: !isLoading,
-                                  decoration: InputDecoration(
-                                    hintText: context.tr('password_hint'),
-                                    prefixIcon: const Icon(Icons.lock_outline_rounded),
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          _isPasswordVisible = !_isPasswordVisible;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter your password';
-                                    }
-                                    if (value.length < 6) {
-                                      return 'Password must be at least 6 characters';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-
-                                // Forgot Password
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: isLoading
-                                        ? null
-                                        : () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) => const ForgotPasswordScreen(),
-                                              ),
-                                            );
-                                          },
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: theme.primaryColor,
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: const Size(50, 30),
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    child: Text(
-                                      context.tr('forgot_password'),
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
-
-                                // Login Button
-                                SizedBox(
-                                  height: 56,
-                                  child: ElevatedButton(
-                                    onPressed: isLoading ? null : _onLoginPressed,
-                                    style: ElevatedButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                    ),
-                                    child: isLoading
-                                        ? const SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                              strokeWidth: 2.5,
-                                            ),
-                                          )
-                                        : Text(context.tr('login_btn'), style: const TextStyle(fontSize: 18)),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-
-                                // Biometric Login
-                                Center(
-                                  child: IconButton(
-                                    onPressed: isLoading ? null : _onBiometricPressed,
-                                    iconSize: 48,
-                                    color: theme.primaryColor,
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                                      padding: const EdgeInsets.all(16),
-                                      shape: RoundedRectangleBorder(
+                                // Glassmorphism Login Card
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? Colors.white.withValues(alpha: 0.03)
+                                            : Colors.black.withValues(alpha: 0.02),
                                         borderRadius: BorderRadius.circular(24),
+                                        border: Border.all(
+                                          color: isDark
+                                              ? Colors.white.withValues(alpha: 0.08)
+                                              : Colors.black.withValues(alpha: 0.06),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          // Title in card
+                                          Text(
+                                            context.tr('login_title'),
+                                            style: theme.textTheme.titleLarge?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 22,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 32),
+
+                                          // Google Sign-In Button
+                                          SizedBox(
+                                            height: 56,
+                                            width: double.infinity,
+                                            child: ElevatedButton(
+                                              onPressed: isLoading ? null : _onGoogleLoginPressed,
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: isDark ? Colors.white : Colors.white,
+                                                foregroundColor: Colors.black,
+                                                elevation: 2,
+                                                shadowColor: Colors.black.withValues(alpha: 0.2),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  side: BorderSide(
+                                                    color: Colors.grey.shade300,
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                              ),
+                                              child: isLoading
+                                                  ? const SizedBox(
+                                                      width: 24,
+                                                      height: 24,
+                                                      child: CircularProgressIndicator(
+                                                        color: Colors.black87,
+                                                        strokeWidth: 2.5,
+                                                      ),
+                                                    )
+                                                  : Row(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        const GoogleLogo(size: 24),
+                                                        const SizedBox(width: 12),
+                                                        Text(
+                                                          context.tr('login_google_btn'),
+                                                          style: const TextStyle(
+                                                            fontSize: 16,
+                                                            fontWeight: FontWeight.w600,
+                                                            color: Colors.black87,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                            ),
+                                          ),
+
+                                          const SizedBox(height: 32),
+
+                                          // Divider with Or
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Divider(
+                                                  color: isDark ? Colors.white30 : Colors.black26,
+                                                  thickness: 1,
+                                                ),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                                child: Text(
+                                                  'Or',
+                                                  style: TextStyle(
+                                                    color: isDark ? Colors.white54 : Colors.black45,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: Divider(
+                                                  color: isDark ? Colors.white30 : Colors.black26,
+                                                  thickness: 1,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+
+                                          const SizedBox(height: 24),
+
+                                          // Biometric button label
+                                          Text(
+                                            'Login with Fingerprint / Face ID',
+                                            style: TextStyle(
+                                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+
+                                          // Biometric login action
+                                          IconButton(
+                                            onPressed: isLoading ? null : _onBiometricPressed,
+                                            iconSize: 44,
+                                            color: AppColors.primary,
+                                            style: IconButton.styleFrom(
+                                              backgroundColor: isDark
+                                                  ? Colors.white.withValues(alpha: 0.05)
+                                                  : Colors.black.withValues(alpha: 0.04),
+                                              padding: const EdgeInsets.all(12),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(20),
+                                                side: BorderSide(
+                                                  color: isDark ? Colors.white12 : Colors.black12,
+                                                  width: 1,
+                                                ),
+                                              ),
+                                            ),
+                                            icon: const Icon(Icons.fingerprint_rounded),
+                                            tooltip: 'Biometric Login',
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    icon: const Icon(Icons.fingerprint_rounded),
-                                    tooltip: 'Login with Biometrics',
                                   ),
                                 ),
-                                const SizedBox(height: 32),
-
-                                // Register Link
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      context.tr('no_account'),
-                                      style: TextStyle(
-                                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                      ),
-                                    ),
-                                    TextButton(
-                                      onPressed: isLoading
-                                          ? null
-                                          : () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) => const RegisterScreen(),
-                                                ),
-                                              );
-                                            },
-                                      child: Text(
-                                        context.tr('register'),
-                                        style: const TextStyle(fontWeight: FontWeight.w700),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 40),
                               ],
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: BlocBuilder<ThemeCubit, ThemeMode>(
-                    builder: (context, themeMode) {
-                      final isDark = themeMode == ThemeMode.dark || 
-                          (themeMode == ThemeMode.system && MediaQuery.of(context).platformBrightness == Brightness.dark);
-                      return IconButton(
-                        icon: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
-                        onPressed: () {
-                          context.read<ThemeCubit>().toggleTheme();
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    },
-  ),
-);
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// Custom Painter to draw Google 'G' logo
+class GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double width = size.width;
+    final double height = size.height;
+
+    final Paint paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = width * 0.22
+      ..strokeCap = StrokeCap.butt;
+
+    final Rect rect = Rect.fromLTWH(0, 0, width, height);
+
+    // Google Red Arc
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(rect, -2.1, 1.4, false, paint);
+
+    // Google Yellow Arc
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(rect, -3.5, 1.4, false, paint);
+
+    // Google Green Arc
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(rect, 0.7, 1.4, false, paint);
+
+    // Google Blue Arc & Horizontal Bar
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(rect, -0.7, 1.4, false, paint);
+
+    final Paint fillPaint = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..style = PaintingStyle.fill;
+    
+    // Draw horizontal bar of 'G'
+    canvas.drawRect(
+      Rect.fromLTWH(width * 0.5, height * 0.39, width * 0.45, width * 0.22),
+      fillPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class GoogleLogo extends StatelessWidget {
+  final double size;
+  const GoogleLogo({super.key, this.size = 24});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: GoogleLogoPainter(),
+      ),
+    );
   }
 }

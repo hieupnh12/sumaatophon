@@ -6,6 +6,8 @@ import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../../../../core/theme/language_cubit.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import 'account_info_page.dart';
+import '../../../orders/presentation/pages/order_list_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -64,7 +66,7 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
-        title: const Text('Tài khoản', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(context.tr('profile'), style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -75,7 +77,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
-          String userName = 'Khách hàng';
+          String userName = context.tr('profile_guest');
           String email = 'user@phoneshop.com';
 
           if (state is AuthenticatedState) {
@@ -121,14 +123,14 @@ class _ProfilePageState extends State<ProfilePage> {
                               color: AppColors.warning.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.stars_rounded, color: AppColors.warning, size: 14),
-                                SizedBox(width: 4),
+                                const Icon(Icons.stars_rounded, color: AppColors.warning, size: 14),
+                                const SizedBox(width: 4),
                                 Text(
-                                  'Thành viên Vàng',
-                                  style: TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.bold),
+                                  context.tr('profile_gold_member'),
+                                  style: const TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -145,7 +147,16 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 32),
 
                 // Orders Section
-                _buildSectionHeader('Đơn hàng của tôi', 'Xem tất cả'),
+                _buildSectionHeader(
+                  context.tr('profile_orders_title'), 
+                  context.tr('profile_view_all'),
+                  onActionTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const OrderListPage()),
+                    );
+                  },
+                ),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 20),
@@ -163,17 +174,17 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildOrderAction(Icons.account_balance_wallet_outlined, 'Chờ thanh toán', isDark),
-                      _buildOrderAction(Icons.local_shipping_outlined, 'Đang giao', isDark),
-                      _buildOrderAction(Icons.star_outline_rounded, 'Đánh giá', isDark),
-                      _buildOrderAction(Icons.sync_rounded, 'Đổi trả', isDark),
+                      _buildOrderAction(Icons.account_balance_wallet_outlined, context.tr('profile_order_pending'), isDark),
+                      _buildOrderAction(Icons.local_shipping_outlined, context.tr('profile_order_shipping'), isDark),
+                      _buildOrderAction(Icons.star_outline_rounded, context.tr('profile_order_review'), isDark),
+                      _buildOrderAction(Icons.sync_rounded, context.tr('profile_order_return'), isDark),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 // Utilities Section
-                const Text('Tiện ích', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(context.tr('profile_utilities'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
@@ -189,18 +200,42 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   child: Column(
                     children: [
-                      _buildListItem(Icons.local_offer_outlined, 'Kho Voucher', isDark, trailingText: '5 ưu đãi'),
+                      _buildListItem(
+                        Icons.person_outline_rounded, 
+                        context.tr('profile_account_info'), 
+                        isDark, 
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AccountInfoPage()),
+                          );
+                        },
+                      ),
                       _buildDivider(isDark),
-                      _buildListItem(Icons.location_on_outlined, 'Sổ địa chỉ', isDark),
+                      _buildListItem(
+                        Icons.receipt_long_outlined, 
+                        context.tr('profile_transaction_history'), 
+                        isDark,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const OrderListPage()),
+                          );
+                        },
+                      ),
                       _buildDivider(isDark),
-                      _buildListItem(Icons.payment_rounded, 'Phương thức thanh toán', isDark),
+                      _buildListItem(Icons.local_offer_outlined, context.tr('profile_voucher'), isDark, trailingText: '5 ${context.tr('offers_count')}'),
+                      _buildDivider(isDark),
+                      _buildListItem(Icons.location_on_outlined, context.tr('profile_address'), isDark),
+                      _buildDivider(isDark),
+                      _buildListItem(Icons.payment_rounded, context.tr('profile_payment_methods'), isDark),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 // Settings Section
-                const Text('Cài đặt', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(context.tr('profile_settings'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
@@ -275,12 +310,15 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildSectionHeader(String title, String action) {
+  Widget _buildSectionHeader(String title, String action, {VoidCallback? onActionTap}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        Text(action, style: const TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w600)),
+        GestureDetector(
+          onTap: onActionTap,
+          child: Text(action, style: const TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w600)),
+        ),
       ],
     );
   }
