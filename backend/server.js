@@ -106,6 +106,85 @@ app.get('/products', async (_req, res) => {
   }
 });
 
+// POST /auth/google — đăng nhập/đăng ký bằng Google ID token
+app.post('/auth/google', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ message: 'Missing idToken', code: 'MISSING_ID_TOKEN' });
+    }
+
+    // Xác thực Google ID Token qua Google API
+    const verifyUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`;
+    const response = await fetch(verifyUrl);
+    if (!response.ok) {
+      const errorText = await response.text();
+      return res.status(401).json({ message: 'Invalid Google ID token', code: 'INVALID_ID_TOKEN', details: errorText });
+    }
+
+    const payload = await response.json();
+    const googleId = payload.sub;
+    const email = payload.email;
+    const name = payload.name || 'Google User';
+    const avatarUrl = payload.picture || '';
+
+    if (!email) {
+      return res.status(400).json({ message: 'Google account does not have an email', code: 'NO_EMAIL' });
+    }
+
+    // Kiểm tra người dùng đã tồn tại trong MySQL chưa dựa trên email
+    const [customers] = await pool.query('SELECT * FROM customers WHERE email = ?', [email]);
+
+    let customer_id;
+    if (customers.length > 0) {
+      customer_id = customers[0].customer_id;
+      // Kiểm tra xem đã liên kết Google chưa
+      const [auths] = await pool.query('SELECT * FROM customer_auths WHERE customer_id = ? AND provider = ?', [customer_id, 'google']);
+      if (auths.length === 0) {
+        await pool.query(
+          'INSERT INTO customer_auths (customer_id, provider, provider_user_id) VALUES (?, ?, ?)',
+          [customer_id, 'google', googleId]
+        );
+      } else if (auths[0].provider_user_id !== googleId) {
+        await pool.query(
+          'UPDATE customer_auths SET provider_user_id = ? WHERE auth_id = ?',
+          [googleId, auths[0].auth_id]
+        );
+      }
+    } else {
+      // Đăng ký mới customer
+      const [result] = await pool.query(
+        'INSERT INTO customers (full_name, email, create_at, update_at) VALUES (?, ?, NOW(), NOW())',
+        [name, email]
+      );
+      customer_id = result.insertId;
+      // Thêm thông tin liên kết Google
+      await pool.query(
+        'INSERT INTO customer_auths (customer_id, provider, provider_user_id) VALUES (?, ?, ?)',
+        [customer_id, 'google', googleId]
+      );
+    }
+
+    let user = {
+      id: customer_id,
+      email: email,
+      name: customers.length > 0 ? (customers[0].full_name || name) : name,
+      avatar_url: avatarUrl, // Database hiện tại chưa có cột avatar nên tạm thời chỉ trả về cho App hiển thị
+    };
+
+    // Trả về theo định dạng khớp UserEntity của Flutter
+    res.json({
+      id: String(user.id),
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatar_url,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message, code: 'AUTH_GOOGLE_ERROR' });
+  }
+});
+
 app.get('/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');

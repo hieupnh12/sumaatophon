@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/entities/user_entity.dart';
 
@@ -23,6 +24,8 @@ class LoginSubmitted extends AuthEvent {
 }
 
 class BiometricLoginRequested extends AuthEvent {}
+
+class GoogleLoginRequested extends AuthEvent {}
 
 class RegisterSubmitted extends AuthEvent {
   final String name;
@@ -93,9 +96,43 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc({required this.authRepository}) : super(AuthInitial()) {
     on<LoginSubmitted>(_onLoginSubmitted);
     on<BiometricLoginRequested>(_onBiometricLoginRequested);
+    on<GoogleLoginRequested>(_onGoogleLoginRequested);
     on<RegisterSubmitted>(_onRegisterSubmitted);
     on<ForgotPasswordSubmitted>(_onForgotPasswordSubmitted);
     on<LogoutRequested>((event, emit) => emit(AuthInitial()));
+  }
+
+  Future<void> _onGoogleLoginRequested(GoogleLoginRequested event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: ['email', 'profile'],
+        serverClientId: const String.fromEnvironment('WEB_CLIENT_ID', defaultValue: '271448374588-jjece2dljonhoikvcog3nfiborcjjv3o.apps.googleusercontent.com'),
+      );
+
+      // Đăng xuất trước để đảm bảo chọn tài khoản mới
+      await googleSignIn.signOut().catchError((_) => null);
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        emit(const AuthError(message: "Đăng nhập bằng Google bị hủy."));
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        emit(const AuthError(message: "Không lấy được Google ID Token."));
+        return;
+      }
+
+      final user = await authRepository.loginWithGoogle(idToken);
+      emit(AuthenticatedState(user));
+    } catch (e) {
+      final message = e.toString().replaceFirst('Exception: ', '');
+      emit(AuthError(message: "Lỗi Google Sign-In: $message"));
+    }
   }
 
   Future<void> _onLoginSubmitted(LoginSubmitted event, Emitter<AuthState> emit) async {

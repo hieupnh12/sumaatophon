@@ -10,6 +10,7 @@ import 'core/theme/language_cubit.dart';
 import 'core/l10n/app_localizations.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/data/datasources/auth_mock_datasource.dart';
+import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/pages/login_page.dart';
@@ -53,11 +54,12 @@ Future<void> setupDependencyInjection() async {
 
   // Datasources
   sl.registerLazySingleton(() => AuthMockDataSource());
+  sl.registerLazySingleton(() => AuthRemoteDataSource(sl(), sl()));
   sl.registerLazySingleton(() => ProductRemoteDataSource(sl()));
   sl.registerLazySingleton(() => CartLocalDatasource(sl()));
 
   // Repositories
-  sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl()));
+  sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl<AuthRemoteDataSource>()));
   sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(sl()));
   sl.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(sl()));
 

@@ -7,6 +7,7 @@ class ApiEndpoints {
 
   static const String products = '/products';
   static const String health = '/health';
+  static const String googleLogin = '/auth/google';
 
   static String productById(String id) => '/products/$id';
 }
