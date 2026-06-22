@@ -43,6 +43,7 @@ function mapProductRow(row) {
     colors: splitPipe(row.color_names),
     specifications,
     isNew: row.status === 1,
+    stockQuantity: Number(row.stock_quantity ?? 0),
   };
 }
 
@@ -72,7 +73,10 @@ app.get('/products', async (_req, res) => {
         ) AS ram_rom_options,
         GROUP_CONCAT(DISTINCT c.color_name SEPARATOR '|') AS color_names,
         COALESCE(AVG(f.rate), 0) AS avg_rating,
-        COUNT(DISTINCT f.feedback_id) AS review_count
+        COUNT(DISTINCT f.feedback_id) AS review_count,
+        COUNT(DISTINCT CASE
+          WHEN pi.status = 'IN_STOCK' AND pi.order_detail_id IS NULL THEN pi.imei
+        END) AS stock_quantity
       FROM products p
       LEFT JOIN brands b ON p.brand_id = b.brand_id
       LEFT JOIN operating_systems os ON p.operating_system_id = os.operating_system_id
@@ -81,6 +85,7 @@ app.get('/products', async (_req, res) => {
       LEFT JOIN roms ro ON pv.rom_id = ro.rom_id
       LEFT JOIN colors c ON pv.color_id = c.color_id
       LEFT JOIN feedbacks f ON f.product_id = p.product_id
+      LEFT JOIN product_items pi ON pi.product_version_id = pv.product_version_id
       WHERE p.status = 1
       GROUP BY
         p.product_id,

@@ -12,6 +12,7 @@ class CartItemModel {
   final double productRating;
   final int productReviewCount;
   final bool productIsNew;
+  final int productStockQuantity;
   final int quantity;
 
   const CartItemModel({
@@ -24,6 +25,7 @@ class CartItemModel {
     required this.productRating,
     required this.productReviewCount,
     required this.productIsNew,
+    required this.productStockQuantity,
     required this.quantity,
   });
 
@@ -39,6 +41,7 @@ class CartItemModel {
       productRating: map['product_rating'] as double,
       productReviewCount: map['product_review_count'] as int,
       productIsNew: (map['product_is_new'] as int) == 1,
+      productStockQuantity: map['product_stock_quantity'] as int? ?? 0,
       quantity: map['quantity'] as int,
     );
   }
@@ -55,6 +58,7 @@ class CartItemModel {
       'product_rating': productRating,
       'product_review_count': productReviewCount,
       'product_is_new': productIsNew ? 1 : 0,
+      'product_stock_quantity': productStockQuantity,
       'quantity': quantity,
     };
   }
@@ -71,6 +75,7 @@ class CartItemModel {
       productRating: cartItem.product.rating,
       productReviewCount: cartItem.product.reviewCount,
       productIsNew: cartItem.product.isNew,
+      productStockQuantity: cartItem.product.stockQuantity,
       quantity: cartItem.quantity,
     );
   }
@@ -88,6 +93,7 @@ class CartItemModel {
         rating: productRating,
         reviewCount: productReviewCount,
         isNew: productIsNew,
+        stockQuantity: productStockQuantity,
       ),
       quantity: quantity,
     );

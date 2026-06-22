@@ -33,8 +33,10 @@ Khong bao gom:
 ## 4. Hanh vi nghiep vu
 
 - Cung `product.id` thi tang quantity, khong tao duplicate item.
-- Quantity <= 0 thi xoa item.
-- Clear cart dua state ve gio hang rong.
+- Quantity toi thieu la 1; nut `-` bi vo hieu khi quantity = 1 (khong tru ve 0 de xoa).
+- Xoa tung san pham bang nut delete rieng (hoac swipe).
+- Nut `+` tang den khi dat `stockQuantity` (so IMEI IN_STOCK tu MySQL).
+- Clear cart can hoi xac nhan truoc khi xoa.
 - Promo code hop le cap nhat discount.
 - Promo code sai hien error.
 - Khong nen cho checkout neu cart rong.

@@ -21,8 +21,10 @@ class CartLocalDatasource {
     return maps.map((m) => CartItemModel.fromMap(m).toEntity()).toList();
   }
 
-  // Thêm sản phẩm: nếu đã có thì tăng quantity
-  Future<void> addItem(Product product) async {
+  // Thêm sản phẩm: nếu đã có thì tăng quantity (không vượt tồn kho IMEI)
+  Future<bool> addItem(Product product) async {
+    if (product.stockQuantity <= 0) return false;
+
     final db = await _db;
     final existing = await db.query(
       _table,
@@ -32,9 +34,15 @@ class CartLocalDatasource {
 
     if (existing.isNotEmpty) {
       final currentQty = existing.first['quantity'] as int;
+      final maxStock = existing.first['product_stock_quantity'] as int? ?? product.stockQuantity;
+      if (currentQty >= maxStock) return false;
+
       await db.update(
         _table,
-        {'quantity': currentQty + 1},
+        {
+          'quantity': currentQty + 1,
+          'product_stock_quantity': product.stockQuantity,
+        },
         where: 'product_id = ?',
         whereArgs: [product.id],
       );
@@ -42,6 +50,7 @@ class CartLocalDatasource {
       final model = CartItemModel.fromEntity(CartItem(product: product));
       await db.insert(_table, model.toMap());
     }
+    return true;
   }
 
   // Xóa sản phẩm khỏi giỏ
@@ -50,19 +59,25 @@ class CartLocalDatasource {
     await db.delete(_table, where: 'product_id = ?', whereArgs: [product.id]);
   }
 
-  // Cập nhật số lượng; nếu quantity <= 0 thì xóa
+  // Cập nhật số lượng trong khoảng [1, stockQuantity]
   Future<void> updateQuantity(Product product, int quantity) async {
     final db = await _db;
-    if (quantity <= 0) {
-      await removeItem(product);
-    } else {
-      await db.update(
-        _table,
-        {'quantity': quantity},
-        where: 'product_id = ?',
-        whereArgs: [product.id],
-      );
-    }
+    final existing = await db.query(
+      _table,
+      where: 'product_id = ?',
+      whereArgs: [product.id],
+    );
+    if (existing.isEmpty) return;
+
+    final maxStock = existing.first['product_stock_quantity'] as int? ?? product.stockQuantity;
+    final clampedQty = quantity.clamp(1, maxStock);
+
+    await db.update(
+      _table,
+      {'quantity': clampedQty},
+      where: 'product_id = ?',
+      whereArgs: [product.id],
+    );
   }
 
   // Xóa toàn bộ giỏ hàng

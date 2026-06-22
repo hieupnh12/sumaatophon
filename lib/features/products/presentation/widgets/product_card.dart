@@ -204,15 +204,6 @@ class _ProductCardState extends State<ProductCard> {
                           onTap: () {
                             HapticFeedback.lightImpact();
                             context.read<CartBloc>().add(AddToCartEvent(widget.product));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${widget.product.name} added to cart'),
-                                backgroundColor: AppColors.success,
-                                behavior: SnackBarBehavior.floating,
-                                duration: const Duration(seconds: 1),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                            );
                           },
                           borderRadius: BorderRadius.circular(14),
                           child: Container(

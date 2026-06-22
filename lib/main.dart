@@ -107,6 +107,39 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
             darkTheme: AppTheme.darkTheme,
             themeMode: themeMode,
             debugShowCheckedModeBanner: false,
+            builder: (context, child) {
+              return BlocListener<CartBloc, CartState>(
+                listenWhen: (prev, curr) =>
+                    prev.cartMessage != curr.cartMessage ||
+                    prev.addedProductName != curr.addedProductName,
+                listener: (context, state) {
+                  final messenger = ScaffoldMessenger.of(context);
+                  if (state.addedProductName != null) {
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '${state.addedProductName} ${context.tr('added_to_cart')}',
+                        ),
+                        backgroundColor: AppColors.success,
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                    context.read<CartBloc>().add(ClearCartAddedEvent());
+                  } else if (state.cartMessage != null) {
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(context.tr(state.cartMessage!)),
+                        backgroundColor: AppColors.error,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    context.read<CartBloc>().add(ClearCartMessageEvent());
+                  }
+                },
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
             home: BlocBuilder<AuthBloc, AuthState>(
               builder: (context, state) {
                 if (state is AuthenticatedState) {

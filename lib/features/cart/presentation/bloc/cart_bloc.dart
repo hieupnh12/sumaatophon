@@ -53,12 +53,18 @@ class ApplyPromoCodeEvent extends CartEvent {
 
 class RemovePromoCodeEvent extends CartEvent {}
 
+class ClearCartMessageEvent extends CartEvent {}
+
+class ClearCartAddedEvent extends CartEvent {}
+
 // --- STATE ---
 class CartState extends Equatable {
   final List<CartItem> items;
   final String? promoCode;
   final double discountPercent;
   final String? promoError;
+  final String? cartMessage;
+  final String? addedProductName;
   final bool isLoading;
 
   const CartState({
@@ -66,6 +72,8 @@ class CartState extends Equatable {
     this.promoCode,
     this.discountPercent = 0.0,
     this.promoError,
+    this.cartMessage,
+    this.addedProductName,
     this.isLoading = false,
   });
 
@@ -83,21 +91,28 @@ class CartState extends Equatable {
     String? promoCode,
     double? discountPercent,
     String? promoError,
+    String? cartMessage,
+    String? addedProductName,
     bool? isLoading,
     bool clearPromoError = false,
     bool clearPromoCode = false,
+    bool clearCartMessage = false,
+    bool clearAddedProductName = false,
   }) {
     return CartState(
       items: items ?? this.items,
       promoCode: clearPromoCode ? null : (promoCode ?? this.promoCode),
       discountPercent: discountPercent ?? this.discountPercent,
       promoError: clearPromoError ? null : (promoError ?? this.promoError),
+      cartMessage: clearCartMessage ? null : (cartMessage ?? this.cartMessage),
+      addedProductName: clearAddedProductName ? null : (addedProductName ?? this.addedProductName),
       isLoading: isLoading ?? this.isLoading,
     );
   }
 
   @override
-  List<Object?> get props => [items, promoCode, discountPercent, promoError, isLoading];
+  List<Object?> get props =>
+      [items, promoCode, discountPercent, promoError, cartMessage, addedProductName, isLoading];
 }
 
 // --- BLOC ---
@@ -112,36 +127,81 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<ClearCartEvent>(_onClearCart);
     on<ApplyPromoCodeEvent>(_onApplyPromoCode);
     on<RemovePromoCodeEvent>(_onRemovePromoCode);
+    on<ClearCartMessageEvent>((event, emit) => emit(state.copyWith(clearCartMessage: true)));
+    on<ClearCartAddedEvent>((event, emit) => emit(state.copyWith(clearAddedProductName: true)));
   }
 
-  // Tải giỏ hàng từ SQLite khi app mở lên
   Future<void> _onLoadCart(LoadCartEvent event, Emitter<CartState> emit) async {
-    emit(state.copyWith(isLoading: true));
-    final items = await repository.getItems();
-    emit(state.copyWith(items: items, isLoading: false));
+    try {
+      emit(state.copyWith(isLoading: true));
+      final items = await repository.getItems();
+      emit(state.copyWith(items: items, isLoading: false));
+    } catch (_) {
+      emit(state.copyWith(isLoading: false, cartMessage: 'cart_save_error'));
+    }
   }
 
   Future<void> _onAddToCart(AddToCartEvent event, Emitter<CartState> emit) async {
-    await repository.addItem(event.product);
-    final items = await repository.getItems();
-    emit(state.copyWith(items: items));
+    try {
+      final existing = state.items.where((i) => i.product.id == event.product.id).firstOrNull;
+      final maxStock = existing?.product.stockQuantity ?? event.product.stockQuantity;
+
+      if (maxStock <= 0 || (existing != null && existing.quantity >= maxStock)) {
+        emit(state.copyWith(cartMessage: 'cart_max_stock_reached', clearAddedProductName: true));
+        return;
+      }
+
+      final added = await repository.addItem(event.product);
+      if (!added) {
+        emit(state.copyWith(cartMessage: 'cart_max_stock_reached', clearAddedProductName: true));
+        return;
+      }
+
+      final items = await repository.getItems();
+      emit(state.copyWith(
+        items: items,
+        addedProductName: event.product.name,
+        clearCartMessage: true,
+      ));
+    } catch (_) {
+      emit(state.copyWith(cartMessage: 'cart_save_error', clearAddedProductName: true));
+    }
   }
 
   Future<void> _onRemoveFromCart(RemoveFromCartEvent event, Emitter<CartState> emit) async {
-    await repository.removeItem(event.product);
-    final items = await repository.getItems();
-    emit(state.copyWith(items: items));
+    try {
+      await repository.removeItem(event.product);
+      final items = await repository.getItems();
+      emit(state.copyWith(items: items));
+    } catch (_) {
+      emit(state.copyWith(cartMessage: 'cart_save_error'));
+    }
   }
 
   Future<void> _onUpdateQuantity(UpdateQuantityEvent event, Emitter<CartState> emit) async {
-    await repository.updateQuantity(event.product, event.quantity);
-    final items = await repository.getItems();
-    emit(state.copyWith(items: items));
+    try {
+      final maxStock = event.product.stockQuantity;
+      if (event.quantity < 1) return;
+      if (event.quantity > maxStock) {
+        emit(state.copyWith(cartMessage: 'cart_max_stock_reached'));
+        return;
+      }
+
+      await repository.updateQuantity(event.product, event.quantity);
+      final items = await repository.getItems();
+      emit(state.copyWith(items: items, clearCartMessage: true));
+    } catch (_) {
+      emit(state.copyWith(cartMessage: 'cart_save_error'));
+    }
   }
 
   Future<void> _onClearCart(ClearCartEvent event, Emitter<CartState> emit) async {
-    await repository.clearCart();
-    emit(const CartState());
+    try {
+      await repository.clearCart();
+      emit(const CartState());
+    } catch (_) {
+      emit(state.copyWith(cartMessage: 'cart_save_error'));
+    }
   }
 
   void _onApplyPromoCode(ApplyPromoCodeEvent event, Emitter<CartState> emit) {
@@ -159,7 +219,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         clearPromoError: true,
       ));
     } else {
-      emit(state.copyWith(promoError: 'Invalid or expired promo code.'));
+      emit(state.copyWith(promoError: 'promo_invalid'));
     }
   }
 
