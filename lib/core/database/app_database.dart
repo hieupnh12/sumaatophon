@@ -7,7 +7,7 @@ class AppDatabase {
   static Database? _database;
 
   static const String _dbName = 'phoneshop.db';
-  static const int _dbVersion = 2;
+  static const int _dbVersion = 3;
 
   Future<Database> get database async {
     _database ??= await _initDatabase();
@@ -36,6 +36,31 @@ class AppDatabase {
         // Column may already exist after partial migration.
       }
     }
+    if (oldVersion < 3) {
+      await _createProductsCacheTable(db);
+    }
+  }
+
+  Future<void> _createProductsCacheTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS products_cache (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        brand TEXT NOT NULL,
+        price REAL NOT NULL,
+        original_price REAL NOT NULL,
+        image_url TEXT NOT NULL,
+        gallery_images TEXT NOT NULL DEFAULT '[]',
+        rating REAL NOT NULL,
+        review_count INTEGER NOT NULL,
+        ram_rom_options TEXT NOT NULL DEFAULT '[]',
+        colors TEXT NOT NULL DEFAULT '[]',
+        specifications TEXT NOT NULL DEFAULT '{}',
+        is_new INTEGER NOT NULL DEFAULT 0,
+        stock_quantity INTEGER NOT NULL DEFAULT 0,
+        cached_at TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -55,5 +80,7 @@ class AppDatabase {
         quantity INTEGER NOT NULL DEFAULT 1
       )
     ''');
+
+    await _createProductsCacheTable(db);
   }
 }

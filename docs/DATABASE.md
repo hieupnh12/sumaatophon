@@ -96,6 +96,38 @@ productId TEXT PRIMARY KEY
 createdAt TEXT NOT NULL
 ```
 
+## Products Cache
+
+Dung cho offline fallback sau khi da load san pham tu API.
+
+Table:
+
+```text
+products_cache
+```
+
+Columns:
+
+```text
+id TEXT PRIMARY KEY
+name TEXT NOT NULL
+brand TEXT NOT NULL
+price REAL NOT NULL
+original_price REAL NOT NULL
+image_url TEXT NOT NULL
+gallery_images TEXT NOT NULL
+rating REAL NOT NULL
+review_count INTEGER NOT NULL
+ram_rom_options TEXT NOT NULL
+colors TEXT NOT NULL
+specifications TEXT NOT NULL
+is_new INTEGER NOT NULL DEFAULT 0
+stock_quantity INTEGER NOT NULL DEFAULT 0
+cached_at TEXT NOT NULL
+```
+
+Ghi chu: list/map field luu dang JSON string trong SQLite.
+
 ## Migration
 
 Khi thay doi schema:

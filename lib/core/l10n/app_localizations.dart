@@ -44,7 +44,7 @@ class AppLocalizations {
       'added_to_cart': 'Đã thêm vào giỏ hàng',
       'buy_now': 'Mua ngay',
       'color': 'Màu sắc',
-      'storage': 'Dung lượng',
+      'storage': 'Phiên bản',
       'specifications': 'Thông số kỹ thuật',
       'reviews': 'Đánh giá',
       'reviews_based_on': 'Dựa trên số đánh giá',
