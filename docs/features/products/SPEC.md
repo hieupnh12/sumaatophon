@@ -34,6 +34,7 @@ Khong bao gom:
 - Neu load thanh cong, hien thi grid products.
 - Neu dang load, hien thi shimmer/skeleton.
 - Neu loi API, hien thi error state.
+- Neu loi API nhung da co cache SQLite, hien thi du lieu cache (offline).
 - Neu khong co ket qua, hien thi empty state.
 - Add to cart phai gui `AddToCartEvent` vao `CartBloc`.
 
@@ -62,13 +63,25 @@ lib/features/products/domain/entities/product.dart
 lib/features/products/domain/repositories/product_repository.dart
 lib/features/products/data/models/product_model.dart
 lib/features/products/data/datasources/product_remote_datasource.dart
+lib/features/products/data/datasources/product_local_datasource.dart
 lib/features/products/data/repositories/product_repository_impl.dart
 lib/features/products/presentation/bloc/product_bloc.dart
 ```
 
 SQLite:
 
-- Khong dung cho products, tru khi can cache/offline.
+- Dung bang `products_cache` de luu snapshot san pham sau moi lan load API thanh cong.
+- Khi mat mang / API loi, repository doc cache local va van hien thi list/detail neu da tung load truoc do.
+- Lan dau mo app khi offline va chua co cache → van hien thi error state.
+
+Table `products_cache`:
+
+```text
+id TEXT PRIMARY KEY
+name, brand, price, original_price, image_url
+gallery_images, ram_rom_options, colors, specifications (JSON string)
+rating, review_count, is_new, stock_quantity, cached_at
+```
 
 ## 7. Localization keys
 

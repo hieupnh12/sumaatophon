@@ -114,7 +114,8 @@ Test: `http://localhost:3000/products` hoac `http://localhost:3000/health`
 |------|---------|
 | `data/models/product_model.dart` | `fromJson()` + `toEntity()` |
 | `data/datasources/product_remote_datasource.dart` | Goi API, tra `List<Product>` |
-| `data/repositories/product_repository_impl.dart` | Noi repository interface voi remote datasource |
+| `data/datasources/product_local_datasource.dart` | Cache SQLite `products_cache`, doc offline |
+| `data/repositories/product_repository_impl.dart` | API truoc, fallback cache khi loi mang |
 | `data/datasources/product_mock_datasource.dart` | Mock cu — giu de test offline, khong dung trong DI |
 
 ### Flutter — Khong can sua (neu JSON khop)

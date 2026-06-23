@@ -86,7 +86,7 @@ app.get('/products', async (_req, res) => {
       LEFT JOIN colors c ON pv.color_id = c.color_id
       LEFT JOIN feedbacks f ON f.product_id = p.product_id
       LEFT JOIN product_items pi ON pi.product_version_id = pv.product_version_id
-      WHERE p.status = 1
+      WHERE p.stock_quantity > 0
       GROUP BY
         p.product_id,
         p.product_name,
@@ -101,6 +101,9 @@ app.get('/products', async (_req, res) => {
         p.warranty_period,
         b.brand_name,
         os.operating_system_name
+        HAVING COUNT(DISTINCT CASE
+        WHEN pi.status = 'IN_STOCK' AND pi.order_detail_id IS NULL THEN pi.imei
+      END) > 0
       ORDER BY p.product_id DESC
     `);
 

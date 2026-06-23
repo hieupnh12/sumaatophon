@@ -19,6 +19,7 @@ import 'features/onboarding/presentation/pages/onboarding_page.dart';
 import 'core/network/api_client.dart';
 import 'features/products/domain/repositories/product_repository.dart';
 import 'features/products/data/datasources/product_remote_datasource.dart';
+import 'features/products/data/datasources/product_local_datasource.dart';
 import 'features/products/data/repositories/product_repository_impl.dart';
 import 'features/products/presentation/bloc/product_bloc.dart';
 import 'features/products/presentation/pages/product_list_page.dart';
@@ -57,11 +58,12 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton(() => AuthMockDataSource());
   sl.registerLazySingleton(() => AuthRemoteDataSource(sl(), sl()));
   sl.registerLazySingleton(() => ProductRemoteDataSource(sl()));
+  sl.registerLazySingleton(() => ProductLocalDataSource(sl()));
   sl.registerLazySingleton(() => CartLocalDatasource(sl()));
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl<AuthRemoteDataSource>()));
-  sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(sl()));
+  sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(sl(), sl()));
   sl.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(sl()));
 
   // Blocs

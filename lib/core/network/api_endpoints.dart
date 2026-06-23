@@ -5,8 +5,12 @@ class ApiEndpoints {
   // Máy thật (cùng WiFi với PC chạy backend): http://<IP-LAN-PC>:3000
   // IP hiện tại PC dev — đổi lại nếu IP WiFi thay đổi hoặc dùng emulator.
 
-  // static const String baseUrl = 'http://127.0.0.1:3000';
-  static const String baseUrl = 'http://10.0.2.2:3000';
+  // Máy thật + USB (adb reverse tcp:3000 tcp:3000):
+  static const String baseUrl = 'http://127.0.0.1:3000';
+  // Máy thật + cùng WiFi KHÔNG bị cô lập (mạng nhà): http://<IP-PC>:3000
+  // static const String baseUrl = 'http://10.12.49.103:3000';
+  // Android Emulator:
+  // static const String baseUrl = 'http://10.0.2.2:3000';
 
 
 
