@@ -32,6 +32,23 @@ class FilterProductsEvent extends ProductEvent {
   List<Object?> get props => [brand, minPrice, maxPrice];
 }
 
+class LoadProductByIdEvent extends ProductEvent {
+  final String productId;
+  const LoadProductByIdEvent(this.productId);
+   
+   // dòng này gọi từ product_bloc và trả về Product có chứa id đó , dùng để hiển thị chi tiết sản phẩm
+  @override
+  List<Object?> get props => [productId];
+}
+
+
+
+
+
+
+
+
+
 // --- STATES ---
 abstract class ProductState extends Equatable {
   const ProductState();
@@ -62,7 +79,44 @@ class ProductError extends ProductState {
   List<Object?> get props => [message];
 }
 
+
+
+// ProductByIdLoaded là một state để hiển thị chi tiết sản phẩm dùng để cho biết trạng thái loading và error
+class ProductDetailLoading extends ProductState {}
+
+class ProductDetailError extends ProductState {
+  final String message;
+  const ProductDetailError(this.message);
+  @override
+  List<Object?> get props => [message];
+}
+
+class ProductDetailLoaded extends ProductState {
+  final Product product;
+  const ProductDetailLoaded(this.product);
+  @override
+  List<Object?> get props => [product];
+}
+
+
+
+
+
+
+
+
+
+
+
 // --- BLOC ---
+// ProductBloc là một Bloc (Business Logic Component) để quản lý trạng thái và xử lý logic của sản phẩm
+// Nó nhận các event từ ProductEvent và trả về ProductState
+// Nó sử dụng ProductRepository để lấy dữ liệu sản phẩm từ MySQL (qua backend)
+// Nó sử dụng List<Product> để lưu trữ danh sách sản phẩm
+// Nó sử dụng ProductLoaded để hiển thị danh sách sản phẩm
+// Nó sử dụng ProductError để hiển thị lỗi
+// Nó sử dụng ProductLoading để hiển thị trạng thái loading
+// Nó sử dụng ProductInitial để hiển thị trạng thái initial
 class ProductBloc extends Bloc<ProductEvent, ProductState> {
   final ProductRepository repository;
   List<Product> _allProducts = [];
@@ -71,6 +125,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     on<LoadProductsEvent>(_onLoadProducts);
     on<SearchProductsEvent>(_onSearchProducts);
     on<FilterProductsEvent>(_onFilterProducts);
+    on<LoadProductByIdEvent>(_onLoadProductById);
   }
 
   Future<void> _onLoadProducts(LoadProductsEvent event, Emitter<ProductState> emit) async {
@@ -116,4 +171,21 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     
     emit(ProductLoaded(filtered));
   }
+   
+
+  //lấy sản phẩm id của product với event và product state tương ứng ; emitter là hàm dùng để emit state tương ứng 
+  Future<void> _onLoadProductById(
+    LoadProductByIdEvent event,
+    Emitter<ProductState> emit,
+  ) async {
+    emit(ProductDetailLoading());
+    try {
+      final product = await repository.getProductById(event.productId);
+      emit(ProductDetailLoaded(product));
+    } catch (e) {
+      emit(ProductDetailError(e.toString()));
+    }
+  }
+
+
 }

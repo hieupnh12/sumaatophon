@@ -35,16 +35,18 @@ class ProductModel {
     this.stockQuantity = 0,
   });
 
+
+ // từ json (dữ liệu database nhận từ backend) → ProductModel
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
       id: json['id'].toString(),
       name: json['name'] as String? ?? '',
       brand: json['brand'] as String? ?? 'Unknown',
       price: _toDouble(json['price']),
-      originalPrice: _toDouble(json['originalPrice']),
+      originalPrice: _toDouble(json['originalPrice']),   //dòng này là chỉ importprice của product
       imageUrl: json['imageUrl'] as String? ?? '',
       galleryImages: _toStringList(json['galleryImages']),
-      rating: _toDouble(json['rating']),
+      rating: _toDouble(json['rating']),                  // này lấy từ bảng feedbacks
       reviewCount: _toInt(json['reviewCount']),
       ramRomOptions: _toStringList(json['ramRomOptions']),
       colors: _toStringList(json['colors']),
@@ -55,6 +57,8 @@ class ProductModel {
     );
   }
 
+ 
+  // từ ProductModel → Product entity
   Product toEntity() {
     return Product(
       id: id,
@@ -73,7 +77,8 @@ class ProductModel {
       stockQuantity: stockQuantity,
     );
   }
-
+  
+  // hàm helper để chuyển đổi dữ liệu từ json sang double, int, list, map trong dart tránh bị lỗi null , lệch kiểu 
   static double _toDouble(dynamic value) {
     if (value == null) return 0;
     if (value is num) return value.toDouble();

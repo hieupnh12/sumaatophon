@@ -10,11 +10,12 @@ import '../../domain/entities/product.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
 import '../../../cart/presentation/pages/cart_page.dart';
 import '../../../checkout/presentation/pages/checkout_page.dart';
+import '../../presentation/bloc/product_bloc.dart';
 
 class ProductDetailPage extends StatefulWidget {
-  final Product product;
+  final String productId;
 
-  const ProductDetailPage({super.key, required this.product});
+  const ProductDetailPage({super.key, required this.productId});
 
   @override
   State<ProductDetailPage> createState() => _ProductDetailPageState();
@@ -28,33 +29,98 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.product.colors.isNotEmpty) {
-      _selectedColor = widget.product.colors.first;
+    context.read<ProductBloc>().add(LoadProductByIdEvent(widget.productId));
+  }
+
+  Color _resolveDisplayColor(String colorValue) {
+    final value = colorValue.trim();
+    final hex = value.replaceAll('#', '');
+    if (RegExp(r'^[0-9A-Fa-f]{6}$').hasMatch(hex)) {
+      return Color(int.parse('FF$hex', radix: 16));
     }
-    if (widget.product.ramRomOptions.isNotEmpty) {
-      _selectedRamRom = widget.product.ramRomOptions.first;
+    if (RegExp(r'^[0-9A-Fa-f]{8}$').hasMatch(hex)) {
+      return Color(int.parse(hex, radix: 16));
+    }
+
+    switch (value.toLowerCase()) {
+      case 'black':
+        return const Color(0xFF000000);
+      case 'white':
+        return const Color(0xFFFFFFFF);
+      case 'blue':
+        return const Color(0xFF2196F3);
+      case 'red':
+        return const Color(0xFFF44336);
+      case 'green':
+        return const Color(0xFF4CAF50);
+      case 'gold':
+      case 'yellow':
+        return const Color(0xFFFFD700);
+      case 'silver':
+      case 'gray':
+      case 'grey':
+        return const Color(0xFFC0C0C0);
+      case 'pink':
+        return const Color(0xFFE91E63);
+      case 'purple':
+        return const Color(0xFF9C27B0);
+      case 'orange':
+        return const Color(0xFFFF9800);
+      case 'titanium':
+        return const Color(0xFF878681);
+      case 'natural':
+        return const Color(0xFFE3D5C3);
+      default:
+        return Colors.blueGrey;
     }
   }
 
-  Color _colorFromHex(String hexColor) {
-    hexColor = hexColor.replaceAll('#', '');
-    if (hexColor.length == 6) {
-      hexColor = 'FF$hexColor';
-    }
-    return Color(int.parse(hexColor, radix: 16));
-  }
 
+
+
+
+  //phần này là phần hiển thị chi tiết sản phẩm (UI của detail page)
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
-
-    final images = widget.product.galleryImages.isNotEmpty 
-        ? widget.product.galleryImages 
-        : [widget.product.imageUrl];
-
-    return Scaffold(
+     //dùng BlocBuilder để hiển thị chi tiết sản phẩm dùng để cho biết trạng thái loading và error 
+    return BlocBuilder<ProductBloc, ProductState>(
+    //builder ở đây là hàm xây dựng UI từ state tương ứng
+    builder: (context, state) {
+      if (state is ProductDetailLoading) {
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        );
+      }
+      if (state is ProductDetailError) {
+        return Scaffold(
+          appBar: AppBar(),
+          body: Center(child: Text(state.message)),
+        );
+      }
+      if (state is ProductDetailLoaded) {
+        return _buildDetailContent(context, state.product);
+      }
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    },
+  ); 
+  }
+  Widget _buildDetailContent(BuildContext context, Product product) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+  final currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+  final images = product.galleryImages.isNotEmpty
+      ? product.galleryImages
+      : [product.imageUrl];
+  // Khởi tạo màu/RAM lần đầu khi có data
+  if (_selectedColor.isEmpty && product.colors.isNotEmpty) {
+    _selectedColor = product.colors.first;
+  }
+  if (_selectedRamRom.isEmpty && product.ramRomOptions.isNotEmpty) {
+    _selectedRamRom = product.ramRomOptions.first;
+  }
+      return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         leading: IconButton(
@@ -126,9 +192,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         return Builder(
                           builder: (BuildContext context) {
                             Widget imageWidget = Image.network(img, fit: BoxFit.cover);
-                            if (img == widget.product.imageUrl) {
+                            if (img == product.imageUrl) {
                               imageWidget = Hero(
-                                tag: 'product_image_${widget.product.id}',
+                                tag: 'product_image_${product.id}',
                                 child: imageWidget,
                               );
                             }
@@ -173,7 +239,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            widget.product.brand.toUpperCase(),
+                            product.brand.toUpperCase(),
                             style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w700, letterSpacing: 1),
                           ),
                           Row(
@@ -181,7 +247,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                               const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
                               const SizedBox(width: 4),
                               Text(
-                                '${widget.product.rating} (${widget.product.reviewCount} ${context.tr('reviews')})',
+                                '${product.rating} (${product.reviewCount} ${context.tr('reviews')})',
                                 style: TextStyle(
                                   color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                                   fontWeight: FontWeight.w600,
@@ -195,7 +261,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       
                       // Product Name
                       Text(
-                        widget.product.name,
+                        product.name,
                         style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5),
                       ),
                       const SizedBox(height: 16),
@@ -205,15 +271,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            currencyFormatter.format(widget.product.price),
+                            currencyFormatter.format(product.price),
                             style: theme.textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w800, color: theme.colorScheme.primary),
                           ),
                           const SizedBox(width: 12),
-                          if (widget.product.hasDiscount)
+                          if (product.hasDiscount)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 6.0),
                               child: Text(
-                                currencyFormatter.format(widget.product.originalPrice),
+                                currencyFormatter.format(product.originalPrice),
                                 style: TextStyle(
                                   decoration: TextDecoration.lineThrough,
                                   color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -227,11 +293,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       const SizedBox(height: 32),
 
                       // Colors Swatches
-                      if (widget.product.colors.isNotEmpty) ...[
+                      if (product.colors.isNotEmpty) ...[
                         Text(context.tr('color'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 12),
                         Row(
-                          children: widget.product.colors.map((colorHex) {
+                          children: product.colors.map((colorHex) {
                             final isSelected = _selectedColor == colorHex;
                             return GestureDetector(
                               onTap: () {
@@ -250,7 +316,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                 ),
                                 child: CircleAvatar(
                                   radius: 18,
-                                  backgroundColor: _colorFromHex(colorHex),
+                                  backgroundColor: _resolveDisplayColor(colorHex),
                                 ),
                               ),
                             );
@@ -260,13 +326,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       ],
 
                       // RAM/ROM Chips
-                      if (widget.product.ramRomOptions.isNotEmpty) ...[
+                      if (product.ramRomOptions.isNotEmpty) ...[
                         Text(context.tr('storage'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 12,
                           runSpacing: 12,
-                          children: widget.product.ramRomOptions.map((option) {
+                          children: product.ramRomOptions.map((option) {
                             final isSelected = _selectedRamRom == option;
                             return GestureDetector(
                               onTap: () {
@@ -299,7 +365,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       ],
 
                       // Specifications
-                      if (widget.product.specifications.isNotEmpty) ...[
+                      if (product.specifications.isNotEmpty) ...[
                         Text(context.tr('specifications'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 16),
                         Container(
@@ -309,7 +375,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Column(
-                            children: widget.product.specifications.entries.map((entry) {
+                            children: product.specifications.entries.map((entry) {
                               return Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                                 child: Row(
@@ -350,7 +416,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         child: Row(
                           children: [
                             Text(
-                              widget.product.rating.toString(),
+                              product.rating.toString(),
                               style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(width: 16),
@@ -360,7 +426,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                 Row(
                                   children: List.generate(5, (index) {
                                     return Icon(
-                                      index < widget.product.rating.floor() ? Icons.star_rounded : Icons.star_border_rounded,
+                                      index < product.rating.floor() ? Icons.star_rounded : Icons.star_border_rounded,
                                       color: Colors.amber,
                                       size: 24,
                                     );
@@ -368,7 +434,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${context.tr('reviews_based_on')}: ${widget.product.reviewCount}',
+                                  '${context.tr('reviews_based_on')}: ${product.reviewCount}',
                                   style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
                                 ),
                               ],
@@ -407,7 +473,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     child: OutlinedButton(
                       onPressed: () {
                         HapticFeedback.lightImpact();
-                        context.read<CartBloc>().add(AddToCartEvent(widget.product));
+                        context.read<CartBloc>().add(AddToCartEvent(product));
                       },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -424,7 +490,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     child: ElevatedButton(
                       onPressed: () {
                         HapticFeedback.lightImpact();
-                        context.read<CartBloc>().add(AddToCartEvent(widget.product));
+                        context.read<CartBloc>().add(AddToCartEvent(product));
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const CheckoutPage()),

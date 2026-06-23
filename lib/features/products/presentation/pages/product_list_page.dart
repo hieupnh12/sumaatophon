@@ -12,6 +12,8 @@ import '../../../notifications/presentation/pages/notifications_page.dart';
 import '../widgets/product_card.dart';
 import '../widgets/shimmer_product_card.dart';
 import 'product_detail_page.dart';
+import '../../../../main.dart';
+
 
 class ProductListPage extends StatefulWidget {
   final Function()? onOpenCart;
@@ -362,7 +364,8 @@ class _ProductListPageState extends State<ProductListPage> {
                     ),
                   );
                 }
-
+                
+                // phần này trả về liền về cho từng product card , tức là lấy id 
                 return SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   sliver: SliverGrid.builder(
@@ -377,11 +380,16 @@ class _ProductListPageState extends State<ProductListPage> {
                       final product = state.products[index];
                       return ProductCard(
                         product: product,
+
+                       // sử dụng BlocProvider mới để quản lí lít detail , để không bị lẫn lộn với bloc global trong main.dart đang quản list product ==> nếu sài chung thì detail emit của productDetailloading sẽ làm list cũng đổi state  
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => ProductDetailPage(product: product),
+                              builder: (context) => BlocProvider(
+                                create: (_) => sl<ProductBloc>(),
+                                child: ProductDetailPage(productId: product.id),
+                              ),
                             ),
                           );
                         },

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'core/config/app_feature_flags.dart';
 import 'core/design_system/app_theme.dart';
 import 'core/design_system/app_colors.dart';
 import 'core/theme/theme_cubit.dart';
@@ -142,21 +143,23 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
                 child: child ?? const SizedBox.shrink(),
               );
             },
-            home: BlocBuilder<AuthBloc, AuthState>(
-              builder: (context, state) {
-                if (state is AuthenticatedState) {
-                  return const AppMainPage();
-                }
-                if (_showOnboarding) {
-                  return OnboardingPage(onFinish: () {
-                    setState(() {
-                      _showOnboarding = false;
-                    });
-                  });
-                }
-                return const LoginScreen();
-              },
-            ),
+            home: AppFeatureFlags.authRequired
+                ? BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, state) {
+                      if (state is AuthenticatedState) {
+                        return const AppMainPage();
+                      }
+                      if (_showOnboarding) {
+                        return OnboardingPage(onFinish: () {
+                          setState(() {
+                            _showOnboarding = false;
+                          });
+                        });
+                      }
+                      return const LoginScreen();
+                    },
+                  )
+                : const AppMainPage(),
           );
         },
       ),
