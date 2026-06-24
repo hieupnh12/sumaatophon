@@ -1,4 +1,3 @@
-import '../../../products/domain/entities/product.dart';
 import '../repositories/cart_repository.dart';
 
 class UpdateCartQuantity {
@@ -6,7 +5,7 @@ class UpdateCartQuantity {
 
   UpdateCartQuantity(this.repository);
 
-  void call(Product product, int quantity) {
-    repository.updateQuantity(product, quantity);
+  Future<void> call(String productVersionId, int quantity) {
+    return repository.updateQuantity(productVersionId, quantity);
   }
 }

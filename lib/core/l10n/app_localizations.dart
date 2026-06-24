@@ -71,6 +71,9 @@ class AppLocalizations {
       'cart_save_error': 'Không lưu được giỏ hàng. Hãy khởi động lại app.',
       'cart_promo_applied': 'Đã áp dụng mã \'{code}\'',
       'promo_invalid': 'Mã giảm giá không hợp lệ hoặc đã hết hạn.',
+      'product_version_stock': 'Còn {count} máy trong kho',
+      'product_version_out_of_stock': 'Phiên bản này đã hết hàng',
+      'product_version_unavailable': 'Vui lòng chọn màu và dung lượng',
 
       // Checkout
       'checkout_title': 'Thanh toán',
@@ -212,6 +215,9 @@ class AppLocalizations {
       'cart_save_error': 'Could not save cart. Please restart the app.',
       'cart_promo_applied': 'Promo \'{code}\' applied',
       'promo_invalid': 'Invalid or expired promo code.',
+      'product_version_stock': '{count} units in stock',
+      'product_version_out_of_stock': 'This variant is out of stock',
+      'product_version_unavailable': 'Please select color and storage',
 
       // Checkout
       'checkout_title': 'Checkout',
@@ -353,6 +359,9 @@ class AppLocalizations {
       'cart_save_error': 'カートを保存できません。アプリを再起動してください。',
       'cart_promo_applied': 'プロモコード \'{code}\' を適用しました',
       'promo_invalid': 'プロモコードが無効または期限切れです。',
+      'product_version_stock': '在庫 {count} 台',
+      'product_version_out_of_stock': 'このバリエーションは在庫切れです',
+      'product_version_unavailable': 'カラーと容量を選択してください',
 
       // Checkout
       'checkout_title': 'チェックアウト',

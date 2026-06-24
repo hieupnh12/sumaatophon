@@ -1,4 +1,3 @@
-import '../../../products/domain/entities/product.dart';
 import '../repositories/cart_repository.dart';
 
 class RemoveFromCart {
@@ -6,7 +5,7 @@ class RemoveFromCart {
 
   RemoveFromCart(this.repository);
 
-  void call(Product product) {
-    repository.removeItem(product);
+  Future<void> call(String productVersionId) {
+    return repository.removeItem(productVersionId);
   }
 }

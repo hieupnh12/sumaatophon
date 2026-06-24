@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_version.dart';
+import 'product_version_model.dart';
 
 /// Chuyển JSON từ backend → [Product] entity.
 /// Backend đã JOIN products + brands + product_versions + ram/rom/color.
@@ -19,6 +21,7 @@ class ProductModel {
   final Map<String, String> specifications;
   final bool isNew;
   final int stockQuantity;
+  final List<ProductVersion> versions;
 
   factory ProductModel.fromEntity(Product entity) {
     return ProductModel(
@@ -36,6 +39,7 @@ class ProductModel {
       specifications: entity.specifications,
       isNew: entity.isNew,
       stockQuantity: entity.stockQuantity,
+      versions: entity.versions,
     );
   }
 
@@ -55,6 +59,7 @@ class ProductModel {
       specifications: _decodeStringMap(map['specifications']),
       isNew: (map['is_new'] as int? ?? 0) == 1,
       stockQuantity: _toInt(map['stock_quantity']),
+      versions: const [],
     );
   }
 
@@ -93,30 +98,36 @@ class ProductModel {
     this.specifications = const {},
     this.isNew = false,
     this.stockQuantity = 0,
+    this.versions = const [],
   });
 
- // từ json (dữ liệu database nhận từ backend) → ProductModel
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    final rawVersions = json['versions'];
+    final parsedVersions = rawVersions is List
+        ? rawVersions
+            .whereType<Map>()
+            .map((item) => ProductVersionModel.fromJson(Map<String, dynamic>.from(item)).toEntity())
+            .toList()
+        : const <ProductVersion>[];
+
     return ProductModel(
       id: json['id'].toString(),
       name: json['name'] as String? ?? '',
       brand: json['brand'] as String? ?? 'Unknown',
       price: _toDouble(json['price']),
-      originalPrice: _toDouble(json['originalPrice']),   //dòng này là chỉ importprice của product
+      originalPrice: _toDouble(json['originalPrice']),
       imageUrl: json['imageUrl'] as String? ?? '',
       galleryImages: _toStringList(json['galleryImages']),
-      rating: _toDouble(json['rating']),                  // này lấy từ bảng feedbacks
+      rating: _toDouble(json['rating']),
       reviewCount: _toInt(json['reviewCount']),
       ramRomOptions: _toStringList(json['ramRomOptions']),
       colors: _toStringList(json['colors']),
       specifications: _toStringMap(json['specifications']),
       isNew: json['isNew'] as bool? ?? false,
-      // API cũ chưa có field → cho phép thêm tạm; API mới trả 0 = hết hàng thật.
       stockQuantity: json['stockQuantity'] != null ? _toInt(json['stockQuantity']) : 99,
+      versions: parsedVersions,
     );
   }
-
- 
   // từ ProductModel → Product entity
   Product toEntity() {
     return Product(
@@ -134,6 +145,7 @@ class ProductModel {
       specifications: specifications,
       isNew: isNew,
       stockQuantity: stockQuantity,
+      versions: versions,
     );
   }
   

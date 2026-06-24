@@ -12,3 +12,5 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+# Keystore debug dùng chung cho team (cùng SHA-1 trên Google Console).
+!app/debug.keystore

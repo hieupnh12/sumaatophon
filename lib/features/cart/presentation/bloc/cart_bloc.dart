@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../../products/domain/entities/product.dart';
+import '../../../products/domain/entities/product_version.dart';
 import '../../domain/entities/cart_item.dart';
 import '../../domain/repositories/cart_repository.dart';
 
@@ -17,28 +18,31 @@ class LoadCartEvent extends CartEvent {}
 
 class AddToCartEvent extends CartEvent {
   final Product product;
-  const AddToCartEvent(this.product);
+  final ProductVersion version;
+
+  const AddToCartEvent(this.product, this.version);
 
   @override
-  List<Object?> get props => [product];
+  List<Object?> get props => [product, version];
 }
 
 class RemoveFromCartEvent extends CartEvent {
-  final Product product;
-  const RemoveFromCartEvent(this.product);
+  final String productVersionId;
+
+  const RemoveFromCartEvent(this.productVersionId);
 
   @override
-  List<Object?> get props => [product];
+  List<Object?> get props => [productVersionId];
 }
 
 class UpdateQuantityEvent extends CartEvent {
-  final Product product;
+  final String productVersionId;
   final int quantity;
 
-  const UpdateQuantityEvent(this.product, this.quantity);
+  const UpdateQuantityEvent(this.productVersionId, this.quantity);
 
   @override
-  List<Object?> get props => [product, quantity];
+  List<Object?> get props => [productVersionId, quantity];
 }
 
 class ClearCartEvent extends CartEvent {}
@@ -80,7 +84,7 @@ class CartState extends Equatable {
   int get totalItems => items.fold(0, (total, item) => total + item.quantity);
 
   double get subtotal =>
-      items.fold(0, (total, item) => total + (item.product.price * item.quantity));
+      items.fold(0, (total, item) => total + (item.unitPrice * item.quantity));
 
   double get discountAmount => subtotal * discountPercent;
 
@@ -143,15 +147,16 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
   Future<void> _onAddToCart(AddToCartEvent event, Emitter<CartState> emit) async {
     try {
-      final existing = state.items.where((i) => i.product.id == event.product.id).firstOrNull;
-      final maxStock = existing?.product.stockQuantity ?? event.product.stockQuantity;
+      final existing =
+          state.items.where((i) => i.version.id == event.version.id).firstOrNull;
+      final maxStock = event.version.stockQuantity;
 
       if (maxStock <= 0 || (existing != null && existing.quantity >= maxStock)) {
         emit(state.copyWith(cartMessage: 'cart_max_stock_reached', clearAddedProductName: true));
         return;
       }
 
-      final added = await repository.addItem(event.product);
+      final added = await repository.addItem(event.product, event.version);
       if (!added) {
         emit(state.copyWith(cartMessage: 'cart_max_stock_reached', clearAddedProductName: true));
         return;
@@ -160,7 +165,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       final items = await repository.getItems();
       emit(state.copyWith(
         items: items,
-        addedProductName: event.product.name,
+        addedProductName: '${event.product.name} (${event.version.displayLabel})',
         clearCartMessage: true,
       ));
     } catch (_) {
@@ -170,7 +175,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
   Future<void> _onRemoveFromCart(RemoveFromCartEvent event, Emitter<CartState> emit) async {
     try {
-      await repository.removeItem(event.product);
+      await repository.removeItem(event.productVersionId);
       final items = await repository.getItems();
       emit(state.copyWith(items: items));
     } catch (_) {
@@ -180,14 +185,18 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
   Future<void> _onUpdateQuantity(UpdateQuantityEvent event, Emitter<CartState> emit) async {
     try {
-      final maxStock = event.product.stockQuantity;
+      final existing =
+          state.items.where((i) => i.version.id == event.productVersionId).firstOrNull;
+      if (existing == null) return;
+
+      final maxStock = existing.maxQuantity;
       if (event.quantity < 1) return;
       if (event.quantity > maxStock) {
         emit(state.copyWith(cartMessage: 'cart_max_stock_reached'));
         return;
       }
 
-      await repository.updateQuantity(event.product, event.quantity);
+      await repository.updateQuantity(event.productVersionId, event.quantity);
       final items = await repository.getItems();
       emit(state.copyWith(items: items, clearCartMessage: true));
     } catch (_) {
