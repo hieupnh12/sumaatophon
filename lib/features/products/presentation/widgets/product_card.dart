@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../domain/entities/product.dart';
-import '../../../cart/presentation/bloc/cart_bloc.dart';
 
 class ProductCard extends StatefulWidget {
   final Product product;
@@ -165,65 +162,29 @@ class _ProductCardState extends State<ProductCard> {
                     ),
                     const SizedBox(height: 12),
                     
-                    // Price & Action Button
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    // Price
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Pricing
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (widget.product.hasDiscount)
-                              Text(
-                                currencyFormatter.format(widget.product.originalPrice),
-                                style: TextStyle(
-                                  decoration: TextDecoration.lineThrough,
-                                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              )
-                            else
-                              const SizedBox(height: 16),
-                            
-                            Text(
-                              currencyFormatter.format(widget.product.price),
-                              style: TextStyle(
-                                color: isDark ? AppColors.darkText : AppColors.lightText,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 17,
-                                letterSpacing: -0.5,
-                              ),
+                        if (widget.product.hasDiscount)
+                          Text(
+                            currencyFormatter.format(widget.product.originalPrice),
+                            style: TextStyle(
+                              decoration: TextDecoration.lineThrough,
+                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ],
-                        ),
-                        
-                        // Add to Cart Button
-                        InkWell(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            context.read<CartBloc>().add(AddToCartEvent(widget.product));
-                          },
-                          borderRadius: BorderRadius.circular(14),
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primary,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                )
-                              ]
-                            ),
-                            child: const Icon(
-                              Icons.add_shopping_cart_rounded,
-                              size: 18,
-                              color: Colors.white,
-                            ),
+                          )
+                        else
+                          const SizedBox(height: 16),
+                        Text(
+                          currencyFormatter.format(widget.product.price),
+                          style: TextStyle(
+                            color: isDark ? AppColors.darkText : AppColors.lightText,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 17,
+                            letterSpacing: -0.5,
                           ),
                         ),
                       ],

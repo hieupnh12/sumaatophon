@@ -1,4 +1,5 @@
 import '../../../products/domain/entities/product.dart';
+import '../../../products/domain/entities/product_version.dart';
 import '../repositories/cart_repository.dart';
 
 class AddToCart {
@@ -6,7 +7,7 @@ class AddToCart {
 
   AddToCart(this.repository);
 
-  void call(Product product) {
-    repository.addItem(product);
+  Future<bool> call(Product product, ProductVersion version) {
+    return repository.addItem(product, version);
   }
 }

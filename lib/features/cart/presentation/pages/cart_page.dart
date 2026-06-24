@@ -14,42 +14,6 @@ class CartPage extends StatefulWidget {
 }
 
 class _CartPageState extends State<CartPage> {
-  Future<void> _confirmClearCart() async {
-    final theme = Theme.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          context.tr('cart_clear_confirm_title'),
-          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          context.tr('cart_clear_confirm_message'),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.brightness == Brightness.dark
-                ? AppColors.darkTextSecondary
-                : AppColors.lightTextSecondary,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(context.tr('cart_clear_confirm_no')),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(context.tr('cart_clear_confirm_yes')),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      context.read<CartBloc>().add(ClearCartEvent());
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -59,19 +23,6 @@ class _CartPageState extends State<CartPage> {
       appBar: AppBar(
         title: Text(context.tr('cart'), style: const TextStyle(fontWeight: FontWeight.w700)),
         centerTitle: true,
-        actions: [
-          BlocBuilder<CartBloc, CartState>(
-            buildWhen: (prev, curr) => prev.items.length != curr.items.length,
-            builder: (context, state) {
-              if (state.items.isEmpty) return const SizedBox.shrink();
-              return IconButton(
-                icon: const Icon(Icons.delete_outline_rounded),
-                tooltip: context.tr('cart_clear'),
-                onPressed: _confirmClearCart,
-              );
-            },
-          ),
-        ],
       ),
       body: BlocConsumer<CartBloc, CartState>(
         listener: (context, state) {
@@ -141,9 +92,9 @@ class _CartPageState extends State<CartPage> {
             children: [
               Expanded(
                 child: ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   itemCount: state.items.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 16),
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) => CartItemTile(cartItem: state.items[index]),
                 ),
               ),

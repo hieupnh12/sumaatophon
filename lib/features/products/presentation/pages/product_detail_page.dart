@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_version.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
 import '../../../cart/presentation/pages/cart_page.dart';
 import '../../../checkout/presentation/pages/checkout_page.dart';
@@ -75,6 +76,28 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     }
   }
 
+  ProductVersion? _selectedVersion(Product product) {
+    if (product.versions.isEmpty) return null;
+    return product.findVersion(color: _selectedColor, ramRom: _selectedRamRom);
+  }
+
+  void _addSelectedToCart(BuildContext context, Product product) {
+    final version = _selectedVersion(product);
+    if (version == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('product_version_unavailable'))),
+      );
+      return;
+    }
+    if (!version.inStock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('product_version_out_of_stock'))),
+      );
+      return;
+    }
+    context.read<CartBloc>().add(AddToCartEvent(product, version));
+  }
+
 
 
 
@@ -120,6 +143,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   if (_selectedRamRom.isEmpty && product.ramRomOptions.isNotEmpty) {
     _selectedRamRom = product.ramRomOptions.first;
   }
+
+  final selectedVersion = _selectedVersion(product);
+  final displayPrice = selectedVersion?.price ?? product.price;
+  final canAddToCart = selectedVersion != null && selectedVersion.inStock;
       return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -271,7 +298,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            currencyFormatter.format(product.price),
+                            currencyFormatter.format(displayPrice),
                             style: theme.textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w800, color: theme.colorScheme.primary),
                           ),
                           const SizedBox(width: 12),
@@ -471,10 +498,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   Expanded(
                     flex: 1,
                     child: OutlinedButton(
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        context.read<CartBloc>().add(AddToCartEvent(product));
-                      },
+                      onPressed: canAddToCart
+                          ? () {
+                              HapticFeedback.lightImpact();
+                              _addSelectedToCart(context, product);
+                            }
+                          : null,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         side: BorderSide(color: theme.colorScheme.primary, width: 2),
@@ -488,14 +517,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        context.read<CartBloc>().add(AddToCartEvent(product));
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const CheckoutPage()),
-                        );
-                      },
+                      onPressed: canAddToCart
+                          ? () {
+                              HapticFeedback.lightImpact();
+                              _addSelectedToCart(context, product);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const CheckoutPage()),
+                              );
+                            }
+                          : null,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

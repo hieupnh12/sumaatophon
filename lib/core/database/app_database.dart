@@ -7,7 +7,7 @@ class AppDatabase {
   static Database? _database;
 
   static const String _dbName = 'phoneshop.db';
-  static const int _dbVersion = 3;
+  static const int _dbVersion = 4;
 
   Future<Database> get database async {
     _database ??= await _initDatabase();
@@ -39,6 +39,34 @@ class AppDatabase {
     if (oldVersion < 3) {
       await _createProductsCacheTable(db);
     }
+    if (oldVersion < 4) {
+      await db.execute('DROP TABLE IF EXISTS cart_items');
+      await _createCartItemsTable(db);
+    }
+  }
+
+  Future<void> _createCartItemsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE cart_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_version_id TEXT NOT NULL UNIQUE,
+        product_id TEXT NOT NULL,
+        product_name TEXT NOT NULL,
+        product_brand TEXT NOT NULL,
+        product_price REAL NOT NULL,
+        product_original_price REAL NOT NULL,
+        product_image_url TEXT NOT NULL,
+        product_rating REAL NOT NULL,
+        product_review_count INTEGER NOT NULL,
+        product_is_new INTEGER NOT NULL DEFAULT 0,
+        version_color TEXT NOT NULL DEFAULT '',
+        version_ram TEXT NOT NULL DEFAULT '',
+        version_rom TEXT NOT NULL DEFAULT '',
+        version_price REAL NOT NULL,
+        version_stock_quantity INTEGER NOT NULL DEFAULT 0,
+        quantity INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
   }
 
   Future<void> _createProductsCacheTable(Database db) async {
@@ -64,23 +92,7 @@ class AppDatabase {
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE cart_items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        product_id TEXT NOT NULL UNIQUE,
-        product_name TEXT NOT NULL,
-        product_brand TEXT NOT NULL,
-        product_price REAL NOT NULL,
-        product_original_price REAL NOT NULL,
-        product_image_url TEXT NOT NULL,
-        product_rating REAL NOT NULL,
-        product_review_count INTEGER NOT NULL,
-        product_is_new INTEGER NOT NULL DEFAULT 0,
-        product_stock_quantity INTEGER NOT NULL DEFAULT 0,
-        quantity INTEGER NOT NULL DEFAULT 1
-      )
-    ''');
-
+    await _createCartItemsTable(db);
     await _createProductsCacheTable(db);
   }
 }

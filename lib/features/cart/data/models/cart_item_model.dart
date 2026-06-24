@@ -1,8 +1,9 @@
 import '../../domain/entities/cart_item.dart';
 import '../../../products/domain/entities/product.dart';
+import '../../../products/domain/entities/product_version.dart';
 
-// Model chịu trách nhiệm chuyển đổi giữa CartItem và SQLite Map.
 class CartItemModel {
+  final String productVersionId;
   final String productId;
   final String productName;
   final String productBrand;
@@ -12,10 +13,15 @@ class CartItemModel {
   final double productRating;
   final int productReviewCount;
   final bool productIsNew;
-  final int productStockQuantity;
+  final String versionColor;
+  final String versionRam;
+  final String versionRom;
+  final double versionPrice;
+  final int versionStockQuantity;
   final int quantity;
 
   const CartItemModel({
+    required this.productVersionId,
     required this.productId,
     required this.productName,
     required this.productBrand,
@@ -25,30 +31,38 @@ class CartItemModel {
     required this.productRating,
     required this.productReviewCount,
     required this.productIsNew,
-    required this.productStockQuantity,
+    required this.versionColor,
+    required this.versionRam,
+    required this.versionRom,
+    required this.versionPrice,
+    required this.versionStockQuantity,
     required this.quantity,
   });
 
-  // Đọc từ SQLite (Map → Model)
   factory CartItemModel.fromMap(Map<String, dynamic> map) {
     return CartItemModel(
+      productVersionId: map['product_version_id'] as String,
       productId: map['product_id'] as String,
       productName: map['product_name'] as String,
       productBrand: map['product_brand'] as String,
-      productPrice: map['product_price'] as double,
-      productOriginalPrice: map['product_original_price'] as double,
+      productPrice: (map['product_price'] as num).toDouble(),
+      productOriginalPrice: (map['product_original_price'] as num).toDouble(),
       productImageUrl: map['product_image_url'] as String,
-      productRating: map['product_rating'] as double,
+      productRating: (map['product_rating'] as num).toDouble(),
       productReviewCount: map['product_review_count'] as int,
       productIsNew: (map['product_is_new'] as int) == 1,
-      productStockQuantity: map['product_stock_quantity'] as int? ?? 0,
+      versionColor: map['version_color'] as String? ?? '',
+      versionRam: map['version_ram'] as String? ?? '',
+      versionRom: map['version_rom'] as String? ?? '',
+      versionPrice: (map['version_price'] as num).toDouble(),
+      versionStockQuantity: map['version_stock_quantity'] as int? ?? 0,
       quantity: map['quantity'] as int,
     );
   }
 
-  // Ghi vào SQLite (Model → Map)
   Map<String, dynamic> toMap() {
     return {
+      'product_version_id': productVersionId,
       'product_id': productId,
       'product_name': productName,
       'product_brand': productBrand,
@@ -58,14 +72,18 @@ class CartItemModel {
       'product_rating': productRating,
       'product_review_count': productReviewCount,
       'product_is_new': productIsNew ? 1 : 0,
-      'product_stock_quantity': productStockQuantity,
+      'version_color': versionColor,
+      'version_ram': versionRam,
+      'version_rom': versionRom,
+      'version_price': versionPrice,
+      'version_stock_quantity': versionStockQuantity,
       'quantity': quantity,
     };
   }
 
-  // Chuyển từ domain entity → model (để lưu DB)
   factory CartItemModel.fromEntity(CartItem cartItem) {
     return CartItemModel(
+      productVersionId: cartItem.version.id,
       productId: cartItem.product.id,
       productName: cartItem.product.name,
       productBrand: cartItem.product.brand,
@@ -75,12 +93,15 @@ class CartItemModel {
       productRating: cartItem.product.rating,
       productReviewCount: cartItem.product.reviewCount,
       productIsNew: cartItem.product.isNew,
-      productStockQuantity: cartItem.product.stockQuantity,
+      versionColor: cartItem.version.color,
+      versionRam: cartItem.version.ram,
+      versionRom: cartItem.version.rom,
+      versionPrice: cartItem.version.price,
+      versionStockQuantity: cartItem.version.stockQuantity,
       quantity: cartItem.quantity,
     );
   }
 
-  // Chuyển từ model → domain entity (để BLoC dùng)
   CartItem toEntity() {
     return CartItem(
       product: Product(
@@ -93,7 +114,15 @@ class CartItemModel {
         rating: productRating,
         reviewCount: productReviewCount,
         isNew: productIsNew,
-        stockQuantity: productStockQuantity,
+        stockQuantity: versionStockQuantity,
+      ),
+      version: ProductVersion(
+        id: productVersionId,
+        color: versionColor,
+        ram: versionRam,
+        rom: versionRom,
+        price: versionPrice,
+        stockQuantity: versionStockQuantity,
       ),
       quantity: quantity,
     );

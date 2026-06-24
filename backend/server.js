@@ -44,7 +44,56 @@ function mapProductRow(row) {
     specifications,
     isNew: row.status === 1,
     stockQuantity: Number(row.stock_quantity ?? 0),
+    versions: [],
   };
+}
+
+function mapProductVersionRow(row) {
+  const ram = row.ram_size ? String(row.ram_size).trim() : '';
+  const rom = row.rom_size ? String(row.rom_size).trim() : '';
+  const ramRom = [ram, rom].filter(Boolean).join('/');
+
+  return {
+    id: String(row.product_version_id),
+    color: row.color_name ? String(row.color_name).trim() : '',
+    ram,
+    rom,
+    ramRom,
+    price: Number(row.export_price ?? 0),
+    stockQuantity: Number(row.stock_quantity ?? 0),
+  };
+}
+
+async function fetchProductVersions(productId) {
+  const [rows] = await pool.query(
+    `
+      SELECT
+        pv.product_version_id,
+        pv.export_price,
+        r.ram_size,
+        ro.rom_size,
+        c.color_name,
+        COUNT(DISTINCT CASE
+          WHEN pi.status = 'IN_STOCK' AND pi.order_detail_id IS NULL THEN pi.imei
+        END) AS stock_quantity
+      FROM product_versions pv
+      LEFT JOIN rams r ON pv.ram_id = r.ram_id
+      LEFT JOIN roms ro ON pv.rom_id = ro.rom_id
+      LEFT JOIN colors c ON pv.color_id = c.color_id
+      LEFT JOIN product_items pi ON pi.product_version_id = pv.product_version_id
+      WHERE pv.product_id = ? AND pv.status = 1
+      GROUP BY
+        pv.product_version_id,
+        pv.export_price,
+        r.ram_size,
+        ro.rom_size,
+        c.color_name
+      ORDER BY pv.product_version_id
+    `,
+    [productId],
+  );
+
+  return rows.map(mapProductVersionRow);
 }
 
 // GET /products — danh sách sản phẩm cho tab Shop
@@ -188,7 +237,9 @@ app.get('/products/:id', async (req, res) => {
       return res.status(404).json({ message: 'Product not found', code: 'PRODUCT_NOT_FOUND' });
     }
 
-    res.json(mapProductRow(rows[0]));
+    const product = mapProductRow(rows[0]);
+    product.versions = await fetchProductVersions(productId);
+    res.json(product);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message, code: 'PRODUCTS_LIST_ERROR' });

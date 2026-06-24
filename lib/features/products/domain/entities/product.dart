@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'product_version.dart';
 
 class Product extends Equatable {
   final String id;
@@ -15,6 +16,7 @@ class Product extends Equatable {
   final Map<String, String> specifications;
   final bool isNew;
   final int stockQuantity;
+  final List<ProductVersion> versions;
 
   const Product({
     required this.id,
@@ -31,7 +33,17 @@ class Product extends Equatable {
     this.specifications = const {},
     this.isNew = false,
     this.stockQuantity = 0,
+    this.versions = const [],
   });
+
+  ProductVersion? findVersion({required String color, required String ramRom}) {
+    for (final version in versions) {
+      if (version.color == color && version.ramRom == ramRom) {
+        return version;
+      }
+    }
+    return null;
+  }
 
   bool get hasDiscount => originalPrice > price;
   int get discountPercentage => hasDiscount ? ((originalPrice - price) / originalPrice * 100).round() : 0;
@@ -52,5 +64,6 @@ class Product extends Equatable {
         specifications,
         isNew,
         stockQuantity,
+        versions,
       ];
 }

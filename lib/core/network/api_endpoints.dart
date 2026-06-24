@@ -10,8 +10,6 @@ class ApiEndpoints {
   // Máy thật + cùng WiFi KHÔNG bị cô lập (mạng nhà): http://<IP-PC>:3000
   // static const String baseUrl = 'http://10.12.49.103:3000';
   // Android Emulator:
-  // static const String baseUrl = 'http://10.0.2.2:3000';
-
 
 
 
