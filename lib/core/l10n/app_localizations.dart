@@ -58,6 +58,8 @@ class AppLocalizations {
       'product_video': 'Video',
       'product_highlights': 'Tính năng nổi bật',
       'product_coming_soon': 'Tính năng sắp ra mắt',
+      'product_reviews_empty': 'Chưa có đánh giá nào cho sản phẩm này.',
+      'product_review_guest': 'Khách hàng',
 
       // Cart
       'cart_empty_title': 'Giỏ hàng trống',
@@ -208,6 +210,8 @@ class AppLocalizations {
       'product_video': 'Video',
       'product_highlights': 'Highlights',
       'product_coming_soon': 'Coming soon',
+      'product_reviews_empty': 'No reviews for this product yet.',
+      'product_review_guest': 'Customer',
 
       // Cart
       'cart_empty_title': 'Cart is empty',
@@ -358,6 +362,8 @@ class AppLocalizations {
       'product_video': '動画',
       'product_highlights': '特徴',
       'product_coming_soon': '近日公開',
+      'product_reviews_empty': 'この商品のレビューはまだありません。',
+      'product_review_guest': 'お客様',
 
       // Cart
       'cart_empty_title': 'カートは空です',

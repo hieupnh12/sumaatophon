@@ -12,6 +12,8 @@ import '../../../cart/presentation/bloc/cart_bloc.dart';
 import '../../../cart/presentation/pages/cart_page.dart';
 import '../../../checkout/presentation/pages/checkout_page.dart';
 import '../../presentation/bloc/product_bloc.dart';
+import '../widgets/product_review_tile.dart';
+import '../widgets/product_color_option_tile.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final String productId;
@@ -28,7 +30,6 @@ class ProductDetailPage extends StatefulWidget {
 }
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
-  int _currentImageIndex = 0;
   String _selectedColor = '';
   String _selectedRamRom = '';
   final ScrollController _scrollController = ScrollController();
@@ -44,49 +45,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
-  }
-
-  Color _resolveDisplayColor(String colorValue) {
-    final value = colorValue.trim();
-    final hex = value.replaceAll('#', '');
-    if (RegExp(r'^[0-9A-Fa-f]{6}$').hasMatch(hex)) {
-      return Color(int.parse('FF$hex', radix: 16));
-    }
-    if (RegExp(r'^[0-9A-Fa-f]{8}$').hasMatch(hex)) {
-      return Color(int.parse(hex, radix: 16));
-    }
-
-    switch (value.toLowerCase()) {
-      case 'black':
-        return const Color(0xFF000000);
-      case 'white':
-        return const Color(0xFFFFFFFF);
-      case 'blue':
-        return const Color(0xFF2196F3);
-      case 'red':
-        return const Color(0xFFF44336);
-      case 'green':
-        return const Color(0xFF4CAF50);
-      case 'gold':
-      case 'yellow':
-        return const Color(0xFFFFD700);
-      case 'silver':
-      case 'gray':
-      case 'grey':
-        return const Color(0xFFC0C0C0);
-      case 'pink':
-        return const Color(0xFFE91E63);
-      case 'purple':
-        return const Color(0xFF9C27B0);
-      case 'orange':
-        return const Color(0xFFFF9800);
-      case 'titanium':
-        return const Color(0xFF878681);
-      case 'natural':
-        return const Color(0xFFE3D5C3);
-      default:
-        return Colors.blueGrey;
-    }
   }
 
   void _scrollToSpecs() {
@@ -183,7 +141,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   ProductVersion _selectedVersion(Product product) {
-    final matched = product.findVersion(
+    final matched = product.resolveVersion(
       color: _selectedColor,
       ramRom: _selectedRamRom,
     );
@@ -199,6 +157,27 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       price: product.price,
       stockQuantity: product.stockQuantity,
     );
+  }
+
+  void _ensureSelection(Product product) {
+    final availableColors = product.distinctColors;
+    if (_selectedColor.isEmpty && availableColors.isNotEmpty) {
+      _selectedColor = availableColors.first;
+    }
+    if (_selectedRamRom.isEmpty && product.ramRomOptions.isNotEmpty) {
+      _selectedRamRom = product.ramRomOptions.first;
+    }
+
+    final matched = product.findVersion(
+      color: _selectedColor,
+      ramRom: _selectedRamRom,
+    );
+    if (matched == null) {
+      final colorVersion = product.findVersionForColor(_selectedColor);
+      if (colorVersion != null && colorVersion.ramRom.isNotEmpty) {
+        _selectedRamRom = colorVersion.ramRom;
+      }
+    }
   }
 
   @override
@@ -226,16 +205,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
-    final images = product.galleryImages.isNotEmpty
-        ? product.galleryImages
-        : [product.imageUrl];
+    _ensureSelection(product);
+    final availableColors = product.distinctColors;
 
-    if (_selectedColor.isEmpty && product.colors.isNotEmpty) {
-      _selectedColor = product.colors.first;
-    }
-    if (_selectedRamRom.isEmpty && product.ramRomOptions.isNotEmpty) {
-      _selectedRamRom = product.ramRomOptions.first;
-    }
+    final selectedVersion = _selectedVersion(product);
+    final allImages = product.allGalleryImages;
+    final galleryIndex = product.galleryIndexForColor(
+      color: _selectedColor,
+      ramRom: _selectedRamRom,
+    );
 
     final surfaceColor = isDark ? AppColors.darkBackground : const Color(0xFFFCF9F8);
     final outlineVariant = isDark
@@ -293,63 +271,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeroImage(imageUrl: images[_currentImageIndex], isDark: isDark),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 56,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    children: [
-                      _ThumbnailTile(
-                        isSelected: false,
-                        borderColor: outlineVariant,
-                        onTap: _showComingSoon,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.play_circle_outline, size: 18, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                            Text(context.tr('product_video'), style: const TextStyle(fontSize: 8)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      _ThumbnailTile(
-                        isSelected: false,
-                        borderColor: outlineVariant,
-                        onTap: _showComingSoon,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.star_outline, size: 18, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 2),
-                              child: Text(
-                                context.tr('product_highlights'),
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                style: const TextStyle(fontSize: 7, height: 1.1),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      ...images.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final img = entry.value;
-                        final isSelected = _currentImageIndex == index;
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 12),
-                          child: _ThumbnailTile(
-                            isSelected: isSelected,
-                            borderColor: isSelected ? AppColors.error : outlineVariant,
-                            onTap: () => setState(() => _currentImageIndex = index),
-                            child: Image.network(img, fit: BoxFit.contain),
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
+                _ProductImageGallery(
+                  key: ValueKey('gallery_${widget.productId}_$allImages'),
+                  images: allImages,
+                  selectedIndex: galleryIndex,
+                  productId: widget.productId,
+                  isDark: isDark,
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
@@ -409,7 +336,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        currencyFormatter.format(product.price),
+                        currencyFormatter.format(selectedVersion.price),
                         style: TextStyle(
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.w700,
@@ -470,40 +397,42 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      if (product.colors.isNotEmpty) ...[
+                      if (availableColors.isNotEmpty) ...[
                         Text(
                           context.tr('color'),
                           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          children: product.colors.map((colorHex) {
-                            final isSelected = _selectedColor == colorHex;
-                            return GestureDetector(
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                setState(() => _selectedColor = colorHex);
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 16),
-                                width: 40,
-                                height: 40,
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isSelected ? theme.colorScheme.primary : Colors.transparent,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: CircleAvatar(
-                                  backgroundColor: _resolveDisplayColor(colorHex),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 24),
+                        ...availableColors.map((colorName) {
+                          final isSelected = _selectedColor == colorName;
+                          final colorVersion = product.findVersionForColor(colorName);
+                          final colorRamRom = colorVersion?.ramRom ?? _selectedRamRom;
+                          final colorImage = product.thumbnailForColor(
+                            color: colorName,
+                            ramRom: colorRamRom,
+                          );
+                          final colorPrice = product.priceForVersion(
+                            color: colorName,
+                            ramRom: colorRamRom,
+                          );
+                          return ProductColorOptionTile(
+                            colorName: colorName,
+                            imageUrl: colorImage,
+                            priceLabel: currencyFormatter.format(colorPrice),
+                            isSelected: isSelected,
+                            isDark: isDark,
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() {
+                                _selectedColor = colorName;
+                                if (colorVersion != null && colorVersion.ramRom.isNotEmpty) {
+                                  _selectedRamRom = colorVersion.ramRom;
+                                }
+                              });
+                            },
+                          );
+                        }),
+                        const SizedBox(height: 14),
                       ],
                       if (product.ramRomOptions.isNotEmpty) ...[
                         Text(
@@ -671,6 +600,29 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
+                      if (product.feedbacks.isNotEmpty)
+                        ...product.feedbacks.map(
+                          (feedback) => ProductReviewTile(feedback: feedback),
+                        )
+                      else if (product.reviewCount == 0)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.darkCard : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: outlineVariant),
+                          ),
+                          child: Text(
+                            context.tr('product_reviews_empty'),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDark ? AppColors.darkTextSecondary : const Color(0xFF414753),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
@@ -761,17 +713,273 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 }
 
-class _ThumbnailTile extends StatelessWidget {
+class _ProductImageGallery extends StatefulWidget {
+  final List<String> images;
+  final int selectedIndex;
+  final String productId;
+  final bool isDark;
+
+  const _ProductImageGallery({
+    super.key,
+    required this.images,
+    required this.selectedIndex,
+    required this.productId,
+    required this.isDark,
+  });
+
+  @override
+  State<_ProductImageGallery> createState() => _ProductImageGalleryState();
+}
+
+class _ProductImageGalleryState extends State<_ProductImageGallery> {
+  static const double _thumbSize = 72;
+  static const double _thumbGap = 8;
+
+  int _currentIndex = 0;
+  late final ScrollController _thumbController;
+
+  @override
+  void initState() {
+    super.initState();
+    _thumbController = ScrollController();
+    _currentIndex = widget.selectedIndex.clamp(
+      0,
+      widget.images.isEmpty ? 0 : widget.images.length - 1,
+    );
+  }
+
+  @override
+  void dispose() {
+    _thumbController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProductImageGallery oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.images.isEmpty) return;
+
+    final maxIndex = widget.images.length - 1;
+    final targetIndex = widget.selectedIndex.clamp(0, maxIndex);
+
+    if (oldWidget.selectedIndex != widget.selectedIndex ||
+        oldWidget.images != widget.images) {
+      if (_currentIndex != targetIndex) {
+        setState(() => _currentIndex = targetIndex);
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollThumbnailIntoView(targetIndex);
+      });
+    }
+  }
+
+  void _selectImage(int index) {
+    setState(() => _currentIndex = index);
+    _scrollThumbnailIntoView(index);
+  }
+
+  void _goToPreviousImage() {
+    if (_currentIndex > 0) {
+      _selectImage(_currentIndex - 1);
+    }
+  }
+
+  void _goToNextImage() {
+    if (_currentIndex < widget.images.length - 1) {
+      _selectImage(_currentIndex + 1);
+    }
+  }
+
+  void _scrollThumbnailIntoView(int index) {
+    if (!_thumbController.hasClients) return;
+
+    final itemExtent = _thumbSize + _thumbGap;
+    final viewportWidth = _thumbController.position.viewportDimension;
+    final target = (index * itemExtent) - ((viewportWidth - _thumbSize) / 2);
+
+    _thumbController.animateTo(
+      target.clamp(0.0, _thumbController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final images = widget.images;
+    if (images.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: Container(
+              color: widget.isDark ? AppColors.darkSurface : const Color(0xFFF8F9FA),
+              alignment: Alignment.center,
+              child: const Icon(Icons.image_not_supported, size: 64),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final currentImage = images[_currentIndex.clamp(0, images.length - 1)];
+    final outlineVariant = widget.isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.3)
+        : const Color(0xFFC1C6D5).withValues(alpha: 0.3);
+    final showNavButtons = images.length > 1;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: Container(
+                color: widget.isDark ? AppColors.darkSurface : const Color(0xFFF8F9FA),
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Hero(
+                    tag: 'product_image_${widget.productId}',
+                    createRectTween: (begin, end) =>
+                        MaterialRectCenterArcTween(begin: begin, end: end),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Image.network(
+                        currentImage,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.image_not_supported, size: 64),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (showNavButtons) ...[
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                _GalleryNavButton(
+                  icon: Icons.chevron_left_rounded,
+                  onTap: _currentIndex > 0 ? _goToPreviousImage : null,
+                  isDark: widget.isDark,
+                ),
+                Expanded(
+                  child: SizedBox(
+                    height: _thumbSize,
+                    child: ListView.separated(
+                      controller: _thumbController,
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      itemCount: images.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: _thumbGap),
+                      itemBuilder: (context, index) {
+                        final isSelected = _currentIndex == index;
+                        return _GalleryThumbnail(
+                          imageUrl: images[index],
+                          isSelected: isSelected,
+                          size: _thumbSize,
+                          borderColor: isSelected
+                              ? theme.colorScheme.primary
+                              : outlineVariant,
+                          onTap: () => _selectImage(index),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                _GalleryNavButton(
+                  icon: Icons.chevron_right_rounded,
+                  onTap: _currentIndex < images.length - 1 ? _goToNextImage : null,
+                  isDark: widget.isDark,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _GalleryNavButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final bool isDark;
+
+  const _GalleryNavButton({
+    required this.icon,
+    required this.onTap,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    final iconColor = enabled
+        ? (isDark ? AppColors.darkTextSecondary : const Color(0xFF414753))
+        : (isDark ? AppColors.darkTextSecondary.withValues(alpha: 0.35) : const Color(0xFFBDBDBD));
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isDark ? AppColors.darkCard : Colors.white,
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder.withValues(alpha: enabled ? 0.4 : 0.2)
+                  : Color(enabled ? 0xFFE0E0E0 : 0xFFEEEEEE),
+            ),
+            boxShadow: enabled
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Icon(
+            icon,
+            size: 22,
+            color: iconColor,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GalleryThumbnail extends StatelessWidget {
+  final String imageUrl;
   final bool isSelected;
+  final double size;
   final Color borderColor;
   final VoidCallback onTap;
-  final Widget child;
 
-  const _ThumbnailTile({
+  const _GalleryThumbnail({
+    required this.imageUrl,
     required this.isSelected,
+    required this.size,
     required this.borderColor,
     required this.onTap,
-    required this.child,
   });
 
   @override
@@ -779,20 +987,25 @@ class _ThumbnailTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 56,
-        height: 56,
+        width: size,
+        height: size,
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: borderColor,
             width: isSelected ? 2 : 1,
           ),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: child,
+          borderRadius: BorderRadius.circular(6),
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) =>
+                const Icon(Icons.image_not_supported, size: 20),
+          ),
         ),
       ),
     );

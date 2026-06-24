@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_feedback.dart';
 import '../../domain/entities/product_version.dart';
+import 'product_feedback_model.dart';
 import 'product_version_model.dart';
 
 /// Chuyển JSON từ backend → [Product] entity.
@@ -22,6 +24,7 @@ class ProductModel {
   final bool isNew;
   final int stockQuantity;
   final List<ProductVersion> versions;
+  final List<ProductFeedback> feedbacks;
 
   factory ProductModel.fromEntity(Product entity) {
     return ProductModel(
@@ -40,6 +43,7 @@ class ProductModel {
       isNew: entity.isNew,
       stockQuantity: entity.stockQuantity,
       versions: entity.versions,
+      feedbacks: entity.feedbacks,
     );
   }
 
@@ -60,6 +64,7 @@ class ProductModel {
       isNew: (map['is_new'] as int? ?? 0) == 1,
       stockQuantity: _toInt(map['stock_quantity']),
       versions: const [],
+      feedbacks: const [],
     );
   }
 
@@ -99,16 +104,25 @@ class ProductModel {
     this.isNew = false,
     this.stockQuantity = 0,
     this.versions = const [],
+    this.feedbacks = const [],
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     final rawVersions = json['versions'];
+    final rawFeedbacks = json['feedbacks'];
     final parsedVersions = rawVersions is List
         ? rawVersions
             .whereType<Map>()
             .map((item) => ProductVersionModel.fromJson(Map<String, dynamic>.from(item)).toEntity())
             .toList()
         : const <ProductVersion>[];
+
+    final parsedFeedbacks = rawFeedbacks is List
+        ? rawFeedbacks
+            .whereType<Map>()
+            .map((item) => ProductFeedbackModel.fromJson(Map<String, dynamic>.from(item)).toEntity())
+            .toList()
+        : const <ProductFeedback>[];
 
     return ProductModel(
       id: json['id'].toString(),
@@ -126,6 +140,7 @@ class ProductModel {
       isNew: json['isNew'] as bool? ?? false,
       stockQuantity: json['stockQuantity'] != null ? _toInt(json['stockQuantity']) : 99,
       versions: parsedVersions,
+      feedbacks: parsedFeedbacks,
     );
   }
   // từ ProductModel → Product entity
@@ -146,6 +161,7 @@ class ProductModel {
       isNew: isNew,
       stockQuantity: stockQuantity,
       versions: versions,
+      feedbacks: feedbacks,
     );
   }
   
