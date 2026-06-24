@@ -14,7 +14,6 @@ import '../widgets/shimmer_product_card.dart';
 import 'product_detail_page.dart';
 import '../../../../main.dart';
 
-
 class ProductListPage extends StatefulWidget {
   final Function()? onOpenCart;
 
@@ -34,7 +33,7 @@ class _ProductListPageState extends State<ProductListPage> {
   String _selectedRam = '8GB';
   String _selectedRom = '256GB';
 
-  final List<String> _brands = ['All', 'Apple', 'Samsung', 'Google', 'Xiaomi'];
+  final List<String> _brands = ['All', 'Apple', 'Samsung', 'Google', 'Xiaomi', 'Sony'];
 
   @override
   void dispose() {
@@ -63,29 +62,48 @@ class _ProductListPageState extends State<ProductListPage> {
   Widget _buildAdvancedFilter(ThemeData theme, bool isDark) {
     final rams = ['4GB', '8GB', '12GB', '16GB'];
     final roms = ['128GB', '256GB', '512GB', '1TB'];
+    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.outlineVariant;
 
     return AnimatedSize(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
       child: _isFilterExpanded
           ? Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkCard : AppColors.lightCard,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                color: cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: borderColor.withValues(alpha: 0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(context.tr('price_range'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  Text(
+                    context.tr('price_range'),
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('${(_currentMinPrice / 1000000).toStringAsFixed(1)} ${context.tr('million')}', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12)),
-                      Text('${(_currentMaxPrice / 1000000).toStringAsFixed(1)} ${context.tr('million')}', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+                      Text(
+                        '${(_currentMinPrice / 1000000).toStringAsFixed(1)} ${context.tr('million')}',
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        '${(_currentMaxPrice / 1000000).toStringAsFixed(1)} ${context.tr('million')}',
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                   RangeSlider(
@@ -94,7 +112,7 @@ class _ProductListPageState extends State<ProductListPage> {
                     max: 50000000,
                     divisions: 50,
                     activeColor: theme.colorScheme.primary,
-                    inactiveColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    inactiveColor: isDark ? AppColors.darkBorder : AppColors.outlineVariant,
                     onChanged: (RangeValues values) {
                       setState(() {
                         _currentMinPrice = values.start;
@@ -110,21 +128,11 @@ class _ProductListPageState extends State<ProductListPage> {
                     runSpacing: 8,
                     children: rams.map((ram) {
                       final isSelected = _selectedRam == ram;
-                      return ChoiceChip(
-                        label: Text(ram, style: const TextStyle(fontSize: 12)),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) setState(() => _selectedRam = ram);
-                        },
-                        selectedColor: theme.colorScheme.primary,
-                        backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : (isDark ? AppColors.darkText : AppColors.lightText),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                        showCheckmark: false,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        side: BorderSide.none,
+                      return _FilterChip(
+                        label: ram,
+                        isSelected: isSelected,
+                        isDark: isDark,
+                        onTap: () => setState(() => _selectedRam = ram),
                       );
                     }).toList(),
                   ),
@@ -136,21 +144,11 @@ class _ProductListPageState extends State<ProductListPage> {
                     runSpacing: 8,
                     children: roms.map((rom) {
                       final isSelected = _selectedRom == rom;
-                      return ChoiceChip(
-                        label: Text(rom, style: const TextStyle(fontSize: 12)),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) setState(() => _selectedRom = rom);
-                        },
-                        selectedColor: theme.colorScheme.primary,
-                        backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : (isDark ? AppColors.darkText : AppColors.lightText),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                        showCheckmark: false,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        side: BorderSide.none,
+                      return _FilterChip(
+                        label: rom,
+                        isSelected: isSelected,
+                        isDark: isDark,
+                        onTap: () => setState(() => _selectedRom = rom),
                       );
                     }).toList(),
                   ),
@@ -161,35 +159,105 @@ class _ProductListPageState extends State<ProductListPage> {
     );
   }
 
+  Widget _buildBrandChip(String brand, bool isSelected, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _onBrandSelected(brand),
+          borderRadius: BorderRadius.circular(999),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primaryDeep
+                  : (isDark ? AppColors.darkSurface : AppColors.lightSurfaceHigh),
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primaryDeep.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Text(
+              brand,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: isSelected
+                    ? Colors.white
+                    : (isDark ? AppColors.darkTextSecondary : AppColors.onSurfaceVariant),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkBackground : AppColors.lightBackground;
+    final surfaceLow = isDark ? AppColors.darkSurface : AppColors.lightSurface;
 
     return Scaffold(
+      backgroundColor: bgColor,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // Sliver App Bar
           SliverAppBar(
-            floating: true,
-            title: const Text('phoneShop', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.5)),
-            centerTitle: false,
+            pinned: true,
+            floating: false,
+            backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightBackground,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            titleSpacing: 0,
+            title: Row(
+              children: [
+                Icon(
+                  Icons.menu_rounded,
+                  color: isDark ? AppColors.darkText : AppColors.lightText,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'phoneShop',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 24,
+                    color: isDark ? AppColors.primary : AppColors.primaryDeep,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
             actions: [
               BlocBuilder<ThemeCubit, ThemeMode>(
                 builder: (context, themeMode) {
-                  final isDark = themeMode == ThemeMode.dark || 
-                      (themeMode == ThemeMode.system && MediaQuery.of(context).platformBrightness == Brightness.dark);
+                  final isDarkMode = themeMode == ThemeMode.dark ||
+                      (themeMode == ThemeMode.system &&
+                          MediaQuery.of(context).platformBrightness == Brightness.dark);
                   return IconButton(
-                    icon: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
-                    onPressed: () {
-                      context.read<ThemeCubit>().toggleTheme();
-                    },
+                    icon: Icon(
+                      isDarkMode ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                      color: isDark ? AppColors.darkText : AppColors.lightText,
+                    ),
+                    onPressed: () => context.read<ThemeCubit>().toggleTheme(),
                   );
                 },
               ),
               IconButton(
-                icon: const Icon(Icons.notifications_none_rounded),
+                icon: Icon(
+                  Icons.notifications_none_rounded,
+                  color: isDark ? AppColors.darkText : AppColors.lightText,
+                ),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -199,48 +267,75 @@ class _ProductListPageState extends State<ProductListPage> {
               ),
               BlocBuilder<CartBloc, CartState>(
                 builder: (context, cartState) {
-                  return IconButton(
-                    icon: badges.Badge(
-                      showBadge: cartState.totalItems > 0,
-                      badgeContent: Text(
-                        '${cartState.totalItems}',
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: IconButton(
+                      icon: badges.Badge(
+                        showBadge: cartState.totalItems > 0,
+                        position: badges.BadgePosition.topEnd(top: 2, end: 2),
+                        badgeContent: Text(
+                          '${cartState.totalItems}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        badgeStyle: const badges.BadgeStyle(
+                          badgeColor: AppColors.error,
+                          padding: EdgeInsets.all(4),
+                        ),
+                        child: Icon(
+                          Icons.shopping_cart_outlined,
+                          color: isDark ? AppColors.darkText : AppColors.lightText,
+                        ),
                       ),
-                      badgeStyle: const badges.BadgeStyle(
-                        badgeColor: AppColors.error,
-                        padding: EdgeInsets.all(4),
-                      ),
-                      child: const Icon(Icons.shopping_bag_outlined),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const CartPage()),
+                        );
+                      },
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const CartPage()),
-                      );
-                    },
                   );
                 },
               ),
-              const SizedBox(width: 8),
             ],
           ),
-
-          // Search Bar & Filter & Brands
           SliverToBoxAdapter(
             child: Column(
               children: [
-                // Search Bar & Filter Icon
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Row(
                     children: [
                       Expanded(
                         child: TextField(
                           controller: _searchController,
                           onChanged: _onSearchChanged,
+                          style: TextStyle(
+                            color: isDark ? AppColors.darkText : AppColors.lightText,
+                          ),
                           decoration: InputDecoration(
                             hintText: context.tr('search_hint'),
-                            prefixIcon: const Icon(Icons.search),
+                            hintStyle: TextStyle(
+                              color: (isDark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.onSurfaceVariant)
+                                  .withValues(alpha: 0.6),
+                            ),
+                            filled: true,
+                            fillColor: surfaceLow,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.onSurfaceVariant,
+                            ),
                             suffixIcon: _searchController.text.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear, size: 20),
@@ -251,74 +346,75 @@ class _ProductListPageState extends State<ProductListPage> {
                                     },
                                   )
                                 : null,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: AppColors.outlineVariant.withValues(alpha: 0.5),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: AppColors.outlineVariant.withValues(alpha: 0.5),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: AppColors.primaryDeep,
+                                width: 1.5,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      InkWell(
-                        onTap: _toggleFilter,
-                        borderRadius: BorderRadius.circular(16),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          height: 54,
-                          width: 54,
-                          decoration: BoxDecoration(
-                            color: _isFilterExpanded ? theme.colorScheme.primary.withValues(alpha: 0.1) : theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Icon(
-                            _isFilterExpanded ? Icons.close_rounded : Icons.tune_rounded, 
-                            color: _isFilterExpanded ? theme.colorScheme.primary : Colors.white
+                      Material(
+                        color: _isFilterExpanded
+                            ? AppColors.primaryDeep.withValues(alpha: 0.12)
+                            : AppColors.primaryDeep,
+                        borderRadius: BorderRadius.circular(12),
+                        elevation: _isFilterExpanded ? 0 : 4,
+                        shadowColor: AppColors.primaryDeep.withValues(alpha: 0.3),
+                        child: InkWell(
+                          onTap: _toggleFilter,
+                          borderRadius: BorderRadius.circular(12),
+                          child: SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Icon(
+                              _isFilterExpanded ? Icons.close_rounded : Icons.tune_rounded,
+                              color: _isFilterExpanded
+                                  ? AppColors.primaryDeep
+                                  : Colors.white,
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-
                 _buildAdvancedFilter(theme, isDark),
-
-                // Brand Filters
+                const SizedBox(height: 16),
                 SizedBox(
-                  height: 50,
-                  child: ListView.builder(
+                  height: 40,
+                  child: ListView(
                     scrollDirection: Axis.horizontal,
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    itemCount: _brands.length,
-                    itemBuilder: (context, index) {
-                      final brand = _brands[index];
-                      final isSelected = _selectedBrand == brand;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: ChoiceChip(
-                          label: Text(
-                            brand,
-                            style: TextStyle(
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? Colors.white : (isDark ? AppColors.darkText : AppColors.lightText),
-                            ),
-                          ),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            if (selected) _onBrandSelected(brand);
-                          },
-                          selectedColor: theme.colorScheme.primary,
-                          backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          showCheckmark: false,
-                          side: BorderSide.none,
-                        ),
-                      );
-                    },
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: _brands
+                        .map((brand) => _buildBrandChip(
+                              brand,
+                              _selectedBrand == brand,
+                              isDark,
+                            ))
+                        .toList(),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
               ],
             ),
           ),
-
-          // Product Grid
           BlocBuilder<ProductBloc, ProductState>(
             builder: (context, state) {
               if (state is ProductLoading) {
@@ -327,11 +423,11 @@ class _ProductListPageState extends State<ProductListPage> {
                   sliver: SliverGrid.builder(
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      childAspectRatio: 0.62,
+                      childAspectRatio: 0.58,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
                     ),
-                    itemCount: 6, // Show 6 skeleton items
+                    itemCount: 6,
                     itemBuilder: (context, index) => const ShimmerProductCard(),
                   ),
                 );
@@ -353,25 +449,38 @@ class _ProductListPageState extends State<ProductListPage> {
                               color: theme.colorScheme.primary.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.search_off_rounded, size: 80, color: theme.colorScheme.primary),
+                            child: Icon(
+                              Icons.search_off_rounded,
+                              size: 80,
+                              color: theme.colorScheme.primary,
+                            ),
                           ),
                           const SizedBox(height: 24),
-                          Text(context.tr('not_found_title'), style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                          Text(
+                            context.tr('not_found_title'),
+                            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                          ),
                           const SizedBox(height: 8),
-                          Text(context.tr('not_found_desc'), style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
+                          Text(
+                            context.tr('not_found_desc'),
+                            style: TextStyle(
+                              color: isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.onSurfaceVariant,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   );
                 }
-                
-                // phần này trả về liền về cho từng product card , tức là lấy id 
+
                 return SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   sliver: SliverGrid.builder(
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      childAspectRatio: 0.62,
+                      childAspectRatio: 0.58,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
                     ),
@@ -380,8 +489,6 @@ class _ProductListPageState extends State<ProductListPage> {
                       final product = state.products[index];
                       return ProductCard(
                         product: product,
-
-                       // sử dụng BlocProvider mới để quản lí lít detail , để không bị lẫn lộn với bloc global trong main.dart đang quản list product ==> nếu sài chung thì detail emit của productDetailloading sẽ làm list cũng đổi state  
                         onTap: () {
                           Navigator.push(
                             context,
@@ -401,10 +508,53 @@ class _ProductListPageState extends State<ProductListPage> {
               return const SliverToBoxAdapter(child: SizedBox.shrink());
             },
           ),
-          
-          // Extra space at bottom for scrolling past bottom nav
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primaryDeep
+                : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected
+                  ? Colors.white
+                  : (isDark ? AppColors.darkText : AppColors.lightText),
+            ),
+          ),
+        ),
       ),
     );
   }

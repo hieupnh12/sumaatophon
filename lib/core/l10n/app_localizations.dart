@@ -49,6 +49,15 @@ class AppLocalizations {
       'reviews': 'Đánh giá',
       'reviews_based_on': 'Dựa trên số đánh giá',
       'description': 'Mô tả sản phẩm',
+      'product_detail_favorite': 'Yêu thích',
+      'product_detail_qa': 'Hỏi đáp',
+      'product_detail_specs_short': 'Thông số',
+      'product_detail_compare': 'So sánh',
+      'product_detail_video': 'Video',
+      'product_detail_highlights': 'Tính năng nổi bật',
+      'product_installment_badge': 'Trả góp 0%',
+      'product_detail_coming_soon': 'Tính năng sắp ra mắt',
+      'product_rating_count': 'đánh giá',
 
       // Cart
       'cart_empty_title': 'Giỏ hàng trống',
@@ -104,7 +113,7 @@ class AppLocalizations {
 
       // Navigation
       'shop': 'Cửa hàng',
-      'stores': 'Hệ thống',
+      'stores': 'Địa chỉ ',
       'concierge': 'Hỗ trợ',
       'notifications': 'Thông báo',
 
@@ -190,6 +199,15 @@ class AppLocalizations {
       'reviews': 'Reviews',
       'reviews_based_on': 'Based on reviews',
       'description': 'Product Description',
+      'product_detail_favorite': 'Favorite',
+      'product_detail_qa': 'Q&A',
+      'product_detail_specs_short': 'Specs',
+      'product_detail_compare': 'Compare',
+      'product_detail_video': 'Video',
+      'product_detail_highlights': 'Highlights',
+      'product_installment_badge': '0% Installment',
+      'product_detail_coming_soon': 'Coming soon',
+      'product_rating_count': 'reviews',
 
       // Cart
       'cart_empty_title': 'Cart is empty',
@@ -331,6 +349,15 @@ class AppLocalizations {
       'reviews': 'レビュー',
       'reviews_based_on': 'レビューに基づく',
       'description': '商品説明',
+      'product_detail_favorite': 'お気に入り',
+      'product_detail_qa': 'Q&A',
+      'product_detail_specs_short': '仕様',
+      'product_detail_compare': '比較',
+      'product_detail_video': '動画',
+      'product_detail_highlights': '主な機能',
+      'product_installment_badge': '分割払い0%',
+      'product_detail_coming_soon': '近日公開',
+      'product_rating_count': '件のレビュー',
 
       // Cart
       'cart_empty_title': 'カートは空です',
