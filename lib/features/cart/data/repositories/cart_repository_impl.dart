@@ -1,4 +1,5 @@
 import '../../../products/domain/entities/product.dart';
+import '../../../products/domain/entities/product_version.dart';
 import '../../domain/entities/cart_item.dart';
 import '../../domain/repositories/cart_repository.dart';
 import '../datasources/cart_local_datasource.dart';
@@ -12,14 +13,16 @@ class CartRepositoryImpl implements CartRepository {
   Future<List<CartItem>> getItems() => datasource.getItems();
 
   @override
-  Future<bool> addItem(Product product) => datasource.addItem(product);
+  Future<bool> addItem(Product product, ProductVersion version) =>
+      datasource.addItem(product, version);
 
   @override
-  Future<void> removeItem(Product product) => datasource.removeItem(product);
+  Future<void> removeItem(String productVersionId) =>
+      datasource.removeItem(productVersionId);
 
   @override
-  Future<void> updateQuantity(Product product, int quantity) =>
-      datasource.updateQuantity(product, quantity);
+  Future<void> updateQuantity(String productVersionId, int quantity) =>
+      datasource.updateQuantity(productVersionId, quantity);
 
   @override
   Future<void> clearCart() => datasource.clearCart();

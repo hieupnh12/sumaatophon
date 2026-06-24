@@ -29,11 +29,11 @@ class _ProductCardState extends State<ProductCard> {
     final isDark = theme.brightness == Brightness.dark;
     final currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
-    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
-    final imageBg = isDark ? AppColors.darkSurface : AppColors.lightSurface;
+    final cardBg = isDark ? AppColors.darkCard : Colors.white;
+    final imageBg = isDark ? const Color(0xFF2A2A2C) : const Color(0xFFF6F3F2);
     final borderColor = isDark
         ? AppColors.darkBorder.withValues(alpha: 0.3)
-        : AppColors.outlineVariant.withValues(alpha: 0.3);
+        : const Color(0xFFC1C6D5).withValues(alpha: 0.3);
 
     return GestureDetector(
       onTapDown: (_) => setState(() => _isPressed = true),
@@ -47,7 +47,7 @@ class _ProductCardState extends State<ProductCard> {
         duration: const Duration(milliseconds: 120),
         child: Container(
           decoration: BoxDecoration(
-            color: cardColor,
+            color: cardBg,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: borderColor),
             boxShadow: [
@@ -59,7 +59,6 @@ class _ProductCardState extends State<ProductCard> {
                 ),
             ],
           ),
-          clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -67,18 +66,25 @@ class _ProductCardState extends State<ProductCard> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    ColoredBox(color: imageBg),
-                    Padding(
+                    Container(
+                      decoration: BoxDecoration(
+                        color: imageBg,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                      ),
                       padding: const EdgeInsets.all(12),
                       child: Hero(
                         tag: 'product_image_${widget.product.id}',
-                        child: Image.network(
-                          widget.product.imageUrl,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) => Icon(
-                            Icons.image_not_supported_outlined,
-                            color: isDark ? Colors.white54 : AppColors.onSurfaceVariant,
-                            size: 40,
+                        createRectTween: (begin, end) => MaterialRectCenterArcTween(begin: begin, end: end),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Image.network(
+                            widget.product.imageUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              Icons.image_not_supported_outlined,
+                              color: isDark ? Colors.white54 : Colors.black26,
+                              size: 40,
+                            ),
                           ),
                         ),
                       ),
@@ -89,28 +95,29 @@ class _ProductCardState extends State<ProductCard> {
                         left: 8,
                         child: _Badge(
                           label: 'NEW',
-                          background: AppColors.primary,
-                          foreground: Colors.white,
+                          bg: AppColors.primary,
+                          fg: Colors.white,
                         ),
                       ),
                     if (widget.product.hasDiscount)
                       Positioned(
                         top: 8,
-                        left: widget.product.isNew ? 52 : 8,
+                        left: 8,
                         child: _Badge(
                           label: '-${widget.product.discountPercentage}%',
-                          background: AppColors.error,
-                          foreground: Colors.white,
+                          bg: AppColors.error,
+                          fg: Colors.white,
                         ),
                       ),
-                    if (!widget.product.hasDiscount && widget.product.price >= 10000000)
+                    if (!widget.product.isNew && !widget.product.hasDiscount)
                       Positioned(
                         top: 8,
                         right: 8,
                         child: _Badge(
-                          label: context.tr('product_installment_badge'),
-                          background: AppColors.tertiaryContainer,
-                          foreground: AppColors.onTertiaryContainer,
+                          label: context.tr('product_installment'),
+                          bg: const Color(0xFF896100),
+                          fg: const Color(0xFFFFE5BC),
+                          fontSize: 9,
                         ),
                       ),
                   ],
@@ -124,12 +131,11 @@ class _ProductCardState extends State<ProductCard> {
                   children: [
                     Text(
                       widget.product.brand.toUpperCase(),
-                      style: const TextStyle(
-                        color: AppColors.primaryDeep,
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w700,
                         fontSize: 10,
                         letterSpacing: 0.8,
-                        height: 1.1,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -137,36 +143,42 @@ class _ProductCardState extends State<ProductCard> {
                       widget.product.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(
+                      style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                         height: 1.2,
-                        color: isDark ? AppColors.darkText : AppColors.lightText,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    if (widget.product.hasDiscount)
-                      Text(
-                        currencyFormatter.format(widget.product.originalPrice),
-                        style: TextStyle(
-                          decoration: TextDecoration.lineThrough,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : AppColors.onSurfaceVariant,
-                          fontSize: 11,
-                          height: 1.1,
-                        ),
-                      ),
-                    Text(
-                      currencyFormatter.format(widget.product.price),
-                      style: const TextStyle(
-                        color: AppColors.primaryDeep,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                        height: 1.1,
                       ),
                     ),
                     const SizedBox(height: 6),
+                    SizedBox(
+                      height: widget.product.hasDiscount ? 34 : 22,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (widget.product.hasDiscount)
+                            Text(
+                              currencyFormatter.format(widget.product.originalPrice),
+                              style: TextStyle(
+                                decoration: TextDecoration.lineThrough,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                fontSize: 11,
+                                height: 1.1,
+                              ),
+                            ),
+                          Text(
+                            currencyFormatter.format(widget.product.price),
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -174,36 +186,32 @@ class _ProductCardState extends State<ProductCard> {
                           children: [
                             const Icon(
                               Icons.star_rounded,
-                              color: AppColors.tertiaryFixedDim,
-                              size: 16,
+                              color: Color(0xFFFFBA20),
+                              size: 15,
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 3),
                             Text(
                               widget.product.rating.toStringAsFixed(1),
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w500,
-                                color: isDark
-                                    ? AppColors.darkTextSecondary
-                                    : AppColors.onSurfaceVariant,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                               ),
                             ),
                           ],
                         ),
                         InkWell(
                           onTap: () {
-                            HapticFeedback.selectionClick();
+                            HapticFeedback.lightImpact();
                             setState(() => _isFavorite = !_isFavorite);
                           },
                           borderRadius: BorderRadius.circular(20),
                           child: Icon(
                             _isFavorite ? Icons.favorite : Icons.favorite_border,
-                            size: 22,
+                            size: 20,
                             color: _isFavorite
                                 ? AppColors.error
-                                : (isDark
-                                    ? AppColors.darkTextSecondary
-                                    : AppColors.onSurfaceVariant),
+                                : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
                           ),
                         ),
                       ],
@@ -221,13 +229,15 @@ class _ProductCardState extends State<ProductCard> {
 
 class _Badge extends StatelessWidget {
   final String label;
-  final Color background;
-  final Color foreground;
+  final Color bg;
+  final Color fg;
+  final double fontSize;
 
   const _Badge({
     required this.label,
-    required this.background,
-    required this.foreground,
+    required this.bg,
+    required this.fg,
+    this.fontSize = 10,
   });
 
   @override
@@ -235,14 +245,14 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: background,
+        color: bg,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: foreground,
-          fontSize: 10,
+          color: fg,
+          fontSize: fontSize,
           fontWeight: FontWeight.w700,
         ),
       ),

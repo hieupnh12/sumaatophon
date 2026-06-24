@@ -2,9 +2,9 @@ import 'package:sqflite/sqflite.dart';
 import '../../../../core/database/app_database.dart';
 import '../../domain/entities/cart_item.dart';
 import '../../../products/domain/entities/product.dart';
+import '../../../products/domain/entities/product_version.dart';
 import '../models/cart_item_model.dart';
 
-// Datasource thao tác trực tiếp với bảng cart_items trong SQLite.
 class CartLocalDatasource {
   final AppDatabase appDatabase;
 
@@ -14,73 +14,75 @@ class CartLocalDatasource {
 
   Future<Database> get _db async => appDatabase.database;
 
-  // Lấy toàn bộ giỏ hàng
   Future<List<CartItem>> getItems() async {
     final db = await _db;
     final maps = await db.query(_table);
     return maps.map((m) => CartItemModel.fromMap(m).toEntity()).toList();
   }
 
-  // Thêm sản phẩm: nếu đã có thì tăng quantity (không vượt tồn kho IMEI)
-  Future<bool> addItem(Product product) async {
-    if (product.stockQuantity <= 0) return false;
+  Future<bool> addItem(Product product, ProductVersion version) async {
+    if (version.stockQuantity <= 0) return false;
 
     final db = await _db;
     final existing = await db.query(
       _table,
-      where: 'product_id = ?',
-      whereArgs: [product.id],
+      where: 'product_version_id = ?',
+      whereArgs: [version.id],
     );
 
     if (existing.isNotEmpty) {
       final currentQty = existing.first['quantity'] as int;
-      final maxStock = existing.first['product_stock_quantity'] as int? ?? product.stockQuantity;
+      final maxStock = existing.first['version_stock_quantity'] as int? ?? version.stockQuantity;
       if (currentQty >= maxStock) return false;
 
       await db.update(
         _table,
         {
           'quantity': currentQty + 1,
-          'product_stock_quantity': product.stockQuantity,
+          'version_stock_quantity': version.stockQuantity,
+          'version_price': version.price,
         },
-        where: 'product_id = ?',
-        whereArgs: [product.id],
+        where: 'product_version_id = ?',
+        whereArgs: [version.id],
       );
     } else {
-      final model = CartItemModel.fromEntity(CartItem(product: product));
+      final model = CartItemModel.fromEntity(
+        CartItem(product: product, version: version),
+      );
       await db.insert(_table, model.toMap());
     }
     return true;
   }
 
-  // Xóa sản phẩm khỏi giỏ
-  Future<void> removeItem(Product product) async {
+  Future<void> removeItem(String productVersionId) async {
     final db = await _db;
-    await db.delete(_table, where: 'product_id = ?', whereArgs: [product.id]);
+    await db.delete(
+      _table,
+      where: 'product_version_id = ?',
+      whereArgs: [productVersionId],
+    );
   }
 
-  // Cập nhật số lượng trong khoảng [1, stockQuantity]
-  Future<void> updateQuantity(Product product, int quantity) async {
+  Future<void> updateQuantity(String productVersionId, int quantity) async {
     final db = await _db;
     final existing = await db.query(
       _table,
-      where: 'product_id = ?',
-      whereArgs: [product.id],
+      where: 'product_version_id = ?',
+      whereArgs: [productVersionId],
     );
     if (existing.isEmpty) return;
 
-    final maxStock = existing.first['product_stock_quantity'] as int? ?? product.stockQuantity;
+    final maxStock = existing.first['version_stock_quantity'] as int? ?? 0;
     final clampedQty = quantity.clamp(1, maxStock);
 
     await db.update(
       _table,
       {'quantity': clampedQty},
-      where: 'product_id = ?',
-      whereArgs: [product.id],
+      where: 'product_version_id = ?',
+      whereArgs: [productVersionId],
     );
   }
 
-  // Xóa toàn bộ giỏ hàng
   Future<void> clearCart() async {
     final db = await _db;
     await db.delete(_table);
