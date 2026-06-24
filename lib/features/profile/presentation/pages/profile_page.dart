@@ -78,11 +78,20 @@ class _ProfilePageState extends State<ProfilePage> {
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
           String userName = context.tr('profile_guest');
-          String email = 'user@phoneshop.com';
+          String email = '';
+          bool isGuest = false;
 
           if (state is AuthenticatedState) {
-            userName = state.user.name;
-            email = state.user.email;
+            if (state.user.id == 'guest') {
+              isGuest = true;
+            } else {
+              userName = state.user.name;
+              email = state.user.email;
+            }
+          }
+
+          if (isGuest) {
+            return _buildGuestBody(context, theme, isDark);
           }
 
           return SingleChildScrollView(
@@ -97,7 +106,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     CircleAvatar(
                       radius: 36,
                       backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      child: Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
+                      backgroundImage: (!isGuest && state is AuthenticatedState && state.user.avatarUrl != null && state.user.avatarUrl!.isNotEmpty)
+                          ? NetworkImage(state.user.avatarUrl!)
+                          : null,
+                      child: (!isGuest && state is AuthenticatedState && state.user.avatarUrl != null && state.user.avatarUrl!.isNotEmpty)
+                          ? null
+                          : Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -108,14 +122,16 @@ class _ProfilePageState extends State<ProfilePage> {
                             userName,
                             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            email,
-                            style: TextStyle(
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                              fontSize: 14,
+                          if (email.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              email,
+                              style: TextStyle(
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                fontSize: 14,
+                              ),
                             ),
-                          ),
+                          ],
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -288,8 +304,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 // Logout Button
                 OutlinedButton(
                   onPressed: () {
-                    // Dispatch logout
-                    context.read<AuthBloc>().add(LogoutRequested());
+                    _showLogoutConfirmDialog(context, isDark);
                   },
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -307,6 +322,237 @@ class _ProfilePageState extends State<ProfilePage> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildGuestBody(BuildContext context, ThemeData theme, bool isDark) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header section with gradient
+          Container(
+            padding: const EdgeInsets.only(top: 24, left: 24, right: 24, bottom: 40),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFFE8F5E9),
+                  isDark ? AppColors.darkBackground : AppColors.lightBackground,
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundColor: Colors.grey.shade300,
+                  child: const Icon(Icons.person, size: 50, color: Colors.white),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Text(
+                    'Quý khách',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
+                    ],
+                  ),
+                  child: const Icon(Icons.notifications_none_rounded, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+
+          // Content section
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                // Banner
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    'assets/images/guest_banner.png',
+                    width: double.infinity,
+                    height: 120,
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, stack) => Container(
+                      height: 120,
+                      color: Colors.grey.shade200,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.image, color: Colors.grey),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // 3D Illustration
+                Image.asset(
+                  'assets/images/guest_illustration.png',
+                  height: 180,
+                  fit: BoxFit.contain,
+                  errorBuilder: (ctx, err, stack) => const Icon(Icons.card_giftcard, size: 100, color: Colors.grey),
+                ),
+                const SizedBox(height: 32),
+
+                // Features list
+                _buildGuestFeatureItem('Theo dõi đơn hàng mọi lúc, nhận cập nhật tức thì', isDark),
+                _buildGuestFeatureItem('Tích điểm & nhận ưu đãi dành riêng cho bạn', isDark),
+                _buildGuestFeatureItem('Xem thông tin bảo hành nhanh chóng, chính xác', isDark),
+                _buildGuestFeatureItem('Tra cứu lịch sử giao dịch đầy đủ, rõ ràng', isDark),
+
+                const SizedBox(height: 48),
+
+                // Login Button
+                ElevatedButton(
+                  onPressed: () {
+                    context.read<AuthBloc>().add(LogoutRequested()); // Clear guest and redirect to login
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                  child: const Text('Đăng nhập ngay!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuestFeatureItem(String text, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 4.0),
+            child: Icon(Icons.play_arrow_rounded, color: AppColors.primary, size: 16),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? Colors.white70 : Colors.black87,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutConfirmDialog(BuildContext context, bool isDark) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Align(
+                  alignment: Alignment.topRight,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: const Icon(Icons.close_rounded, color: Colors.grey),
+                  ),
+                ),
+                Image.asset(
+                  'assets/images/logout_mascot.png',
+                  height: 120,
+                  errorBuilder: (ctx, err, stack) => const Icon(Icons.help_outline_rounded, size: 80, color: Colors.grey),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Đăng xuất',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Bạn có chắc chắn không? Tài khoản của bạn sẽ không nhận được đặc quyền riêng dành cho thành viên.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: isDark ? Colors.white60 : Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.error,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text('Đóng', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          context.read<AuthBloc>().add(LogoutRequested());
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: const BorderSide(color: AppColors.error),
+                          foregroundColor: AppColors.error,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text('Đăng xuất', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

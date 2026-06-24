@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'core/design_system/app_theme.dart';
 import 'core/design_system/app_colors.dart';
 import 'core/theme/theme_cubit.dart';
@@ -14,6 +15,7 @@ import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/pages/login_page.dart';
+import 'features/auth/presentation/pages/link_phone_page.dart';
 import 'features/onboarding/presentation/pages/onboarding_page.dart';
 import 'core/network/api_client.dart';
 import 'features/products/domain/repositories/product_repository.dart';
@@ -40,6 +42,7 @@ final sl = GetIt.instance;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   await setupDependencyInjection();
   runApp(const PhoneShopApp());
 }
