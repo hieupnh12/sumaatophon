@@ -1,10 +1,13 @@
 import 'dart:ui';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pinput/pinput.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../bloc/auth_bloc.dart';
+import 'link_phone_page.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +20,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
+
+  bool _showOtpStep = false;
+  Timer? _validityTimer;
+  Timer? _resendTimer;
+  int _validitySeconds = 300;
+  int _resendSeconds = 60;
 
   @override
   void initState() {
@@ -44,30 +56,145 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   void dispose() {
     _animationController.dispose();
+    _phoneController.dispose();
+    _otpController.dispose();
+    _validityTimer?.cancel();
+    _resendTimer?.cancel();
     super.dispose();
+  }
+
+  void _startTimers() {
+    setState(() {
+      _validitySeconds = 300;
+      _resendSeconds = 60;
+    });
+
+    _validityTimer?.cancel();
+    _resendTimer?.cancel();
+
+    _validityTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_validitySeconds > 0) {
+        setState(() => _validitySeconds--);
+      } else {
+        timer.cancel();
+      }
+    });
+
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_resendSeconds > 0) {
+        setState(() => _resendSeconds--);
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  void _stopTimers() {
+    _validityTimer?.cancel();
+    _resendTimer?.cancel();
+  }
+
+  String _formatTime(int totalSeconds) {
+    int minutes = totalSeconds ~/ 60;
+    int seconds = totalSeconds % 60;
+    if (minutes > 0) {
+      return '$minutes phút $seconds giây';
+    }
+    return '$seconds giây';
+  }
+
+  void _onContinuePressed() {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('login_phone_hint')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+    context.read<AuthBloc>().add(OtpRequested(phone: phone));
+  }
+
+  void _onOtpCompleted(String otp) {
+    final phone = _phoneController.text.trim();
+    context.read<AuthBloc>().add(OtpLoginSubmitted(phone: phone, otp: otp));
+  }
+
+  void _onChangePhonePressed() {
+    setState(() {
+      _showOtpStep = false;
+      _otpController.clear();
+    });
+    _stopTimers();
+  }
+
+  void _onResendOtpPressed() {
+    if (_resendSeconds == 0) {
+      final phone = _phoneController.text.trim();
+      context.read<AuthBloc>().add(OtpRequested(phone: phone));
+    }
   }
 
   void _onGoogleLoginPressed() {
     context.read<AuthBloc>().add(GoogleLoginRequested());
   }
 
-  void _onBiometricPressed() {
-    context.read<AuthBloc>().add(BiometricLoginRequested());
-  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final defaultPinTheme = PinTheme(
+      width: 50,
+      height: 56,
+      textStyle: TextStyle(
+        fontSize: 22,
+        color: isDark ? Colors.white : Colors.black87,
+        fontWeight: FontWeight.w600,
+      ),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+        border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+
     return Scaffold(
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthError) {
+            String errorMsg = state.message;
+            if (errorMsg.toLowerCase().contains('otp') || errorMsg.toLowerCase().contains('code')) {
+              errorMsg = context.tr('otp_invalid_error');
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(errorMsg),
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          } else if (state is AuthRequirePhoneLink) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const LinkPhonePage()));
+          } else if (state is AuthOtpSent) {
+            if (!_showOtpStep) {
+              setState(() => _showOtpStep = true);
+            }
+            _startTimers();
+            if (state.mockOtp != null) {
+              _otpController.text = state.mockOtp!;
+              Future.delayed(const Duration(milliseconds: 300), () {
+                _onOtpCompleted(state.mockOtp!);
+              });
+            }
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
-                backgroundColor: AppColors.error,
+                backgroundColor: AppColors.success,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -92,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 ),
               ),
 
-              // Glowing blur elements for premium background
+              // Glowing blur elements
               Positioned(
                 top: -80,
                 right: -80,
@@ -130,7 +257,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               SafeArea(
                 child: Stack(
                   children: [
-                    // Theme Switcher Top Right
+                    // Theme Switcher
                     Positioned(
                       top: 16,
                       right: 16,
@@ -146,6 +273,28 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             },
                           );
                         },
+                      ),
+                    ),
+
+                    // Skip Button Bottom Right
+                    Positioned(
+                      bottom: 16,
+                      right: 16,
+                      child: TextButton(
+                        onPressed: () {
+                          context.read<AuthBloc>().add(GuestLoginRequested());
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Text('Bỏ qua'),
+                            SizedBox(width: 4),
+                            Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                          ],
+                        ),
                       ),
                     ),
 
@@ -177,16 +326,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     fontSize: 32,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  context.tr('login_subtitle'),
-                                  textAlign: TextAlign.center,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 50),
+                                const SizedBox(height: 40),
 
                                 // Glassmorphism Login Card
                                 ClipRRect(
@@ -207,129 +347,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                           width: 1.5,
                                         ),
                                       ),
-                                      child: Column(
-                                        children: [
-                                          // Title in card
-                                          Text(
-                                            context.tr('login_title'),
-                                            style: theme.textTheme.titleLarge?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 22,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 32),
-
-                                          // Google Sign-In Button
-                                          SizedBox(
-                                            height: 56,
-                                            width: double.infinity,
-                                            child: ElevatedButton(
-                                              onPressed: isLoading ? null : _onGoogleLoginPressed,
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: isDark ? Colors.white : Colors.white,
-                                                foregroundColor: Colors.black,
-                                                elevation: 2,
-                                                shadowColor: Colors.black.withValues(alpha: 0.2),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(16),
-                                                  side: BorderSide(
-                                                    color: Colors.grey.shade300,
-                                                    width: 1,
-                                                  ),
-                                                ),
-                                              ),
-                                              child: isLoading
-                                                  ? const SizedBox(
-                                                      width: 24,
-                                                      height: 24,
-                                                      child: CircularProgressIndicator(
-                                                        color: Colors.black87,
-                                                        strokeWidth: 2.5,
-                                                      ),
-                                                    )
-                                                  : Row(
-                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                      children: [
-                                                        const GoogleLogo(size: 24),
-                                                        const SizedBox(width: 12),
-                                                        Text(
-                                                          context.tr('login_google_btn'),
-                                                          style: const TextStyle(
-                                                            fontSize: 16,
-                                                            fontWeight: FontWeight.w600,
-                                                            color: Colors.black87,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                            ),
-                                          ),
-
-                                          const SizedBox(height: 32),
-
-                                          // Divider with Or
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Divider(
-                                                  color: isDark ? Colors.white30 : Colors.black26,
-                                                  thickness: 1,
-                                                ),
-                                              ),
-                                              Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                                child: Text(
-                                                  'Or',
-                                                  style: TextStyle(
-                                                    color: isDark ? Colors.white54 : Colors.black45,
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ),
-                                              Expanded(
-                                                child: Divider(
-                                                  color: isDark ? Colors.white30 : Colors.black26,
-                                                  thickness: 1,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-
-                                          const SizedBox(height: 24),
-
-                                          // Biometric button label
-                                          Text(
-                                            'Login with Fingerprint / Face ID',
-                                            style: TextStyle(
-                                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 12),
-
-                                          // Biometric login action
-                                          IconButton(
-                                            onPressed: isLoading ? null : _onBiometricPressed,
-                                            iconSize: 44,
-                                            color: AppColors.primary,
-                                            style: IconButton.styleFrom(
-                                              backgroundColor: isDark
-                                                  ? Colors.white.withValues(alpha: 0.05)
-                                                  : Colors.black.withValues(alpha: 0.04),
-                                              padding: const EdgeInsets.all(12),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(20),
-                                                side: BorderSide(
-                                                  color: isDark ? Colors.white12 : Colors.black12,
-                                                  width: 1,
-                                                ),
-                                              ),
-                                            ),
-                                            icon: const Icon(Icons.fingerprint_rounded),
-                                            tooltip: 'Biometric Login',
-                                          ),
-                                        ],
+                                      child: AnimatedSwitcher(
+                                        duration: const Duration(milliseconds: 300),
+                                        child: _showOtpStep
+                                            ? _buildOtpStep(context, theme, isDark, isLoading, defaultPinTheme)
+                                            : _buildPhoneStep(context, theme, isDark, isLoading),
                                       ),
                                     ),
                                   ),
@@ -348,6 +370,296 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           );
         },
       ),
+    );
+  }
+
+  Widget _buildPhoneStep(BuildContext context, ThemeData theme, bool isDark, bool isLoading) {
+    return Column(
+      key: const ValueKey('PhoneStep'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.tr('login_title'),
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          context.tr('login_benefits_desc'),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        TextFormField(
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black87,
+            fontSize: 16,
+          ),
+          decoration: InputDecoration(
+            hintText: context.tr('login_phone_hint'),
+            hintStyle: TextStyle(
+              color: isDark ? Colors.white54 : Colors.black45,
+            ),
+            filled: true,
+            fillColor: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.03),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: isDark ? Colors.white12 : Colors.black12,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        SizedBox(
+          height: 56,
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: isLoading ? null : _onContinuePressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? Colors.white : const Color(0xFF16161A),
+              foregroundColor: isDark ? Colors.black : Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: isLoading
+                ? SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: isDark ? Colors.black : Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : Text(
+                    context.tr('login_continue_btn'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+
+        // Social Login Section
+        Row(
+          children: [
+            Expanded(
+              child: Divider(
+                color: isDark ? Colors.white30 : Colors.black26,
+                thickness: 1,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                'Hoặc',
+                style: TextStyle(
+                  color: isDark ? Colors.white54 : Colors.black45,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Divider(
+                color: isDark ? Colors.white30 : Colors.black26,
+                thickness: 1,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        // Google Sign-In Button
+        SizedBox(
+          height: 56,
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: isLoading ? null : _onGoogleLoginPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? Colors.white : Colors.white,
+              foregroundColor: Colors.black,
+              elevation: 2,
+              shadowColor: Colors.black.withValues(alpha: 0.2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: Colors.grey.shade300,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const GoogleLogo(size: 24),
+                const SizedBox(width: 12),
+                Text(
+                  context.tr('login_google_btn'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOtpStep(BuildContext context, ThemeData theme, bool isDark, bool isLoading, PinTheme defaultPinTheme) {
+    return Column(
+      key: const ValueKey('OtpStep'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            InkWell(
+              onTap: _onChangePhonePressed,
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8, top: 4, bottom: 4),
+                child: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: isDark ? Colors.white : Colors.black87),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                context.tr('otp_title'),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        RichText(
+          text: TextSpan(
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              height: 1.5,
+            ),
+            children: [
+              TextSpan(text: '${context.tr('otp_sent_to')}\n'),
+              TextSpan(
+                text: '${_phoneController.text.trim()}, ',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              TextSpan(text: '${context.tr('otp_valid_for')} '),
+              TextSpan(
+                text: _formatTime(_validitySeconds),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        InkWell(
+          onTap: _onChangePhonePressed,
+          borderRadius: BorderRadius.circular(4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.edit, size: 14, color: AppColors.warning),
+              const SizedBox(width: 4),
+              Text(
+                context.tr('otp_change_phone'),
+                style: const TextStyle(
+                  color: AppColors.warning,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // OTP Input
+        Center(
+          child: Pinput(
+            length: 6,
+            controller: _otpController,
+            defaultPinTheme: defaultPinTheme,
+            focusedPinTheme: defaultPinTheme.copyWith(
+              decoration: defaultPinTheme.decoration!.copyWith(
+                border: Border.all(color: AppColors.primary, width: 2),
+              ),
+            ),
+            submittedPinTheme: defaultPinTheme,
+            onCompleted: _onOtpCompleted,
+            enabled: !isLoading,
+            autofocus: true,
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Resend Text
+        Center(
+          child: InkWell(
+            onTap: _onResendOtpPressed,
+            borderRadius: BorderRadius.circular(4),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    context.tr('otp_resend_code'),
+                    style: TextStyle(
+                      color: _resendSeconds == 0 
+                          ? (isDark ? Colors.white : Colors.black87) 
+                          : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                      fontWeight: _resendSeconds == 0 ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                  if (_resendSeconds > 0) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_resendSeconds giây',
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

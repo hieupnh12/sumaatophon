@@ -26,6 +26,9 @@ dependencies:
   http: ^1.2.0   # hoặc dio: ^5.x  #app Flutter gửi/nhận dữ liệu từ backend server. , tức là dùng cho API
   google_sign_in: ^6.2.1
   flutter_slidable: ^4.0.3
+  pinput: ^6.0.2
+  firebase_core: ^4.11.0
+  firebase_auth: ^6.5.4
 
 
 
