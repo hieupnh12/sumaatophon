@@ -29,6 +29,7 @@ class AppLocalizations {
       'otp_change_phone': 'Đổi số điện thoại',
       'otp_resend_code': 'Gửi lại mã xác thực cho tôi',
       'otp_invalid_error': 'Xác thực không thành công, mã otp không đúng',
+      'login_phone_invalid': 'Số điện thoại không hợp lệ',
       'email_hint': 'Địa chỉ email',
       'phone_hint': 'Số điện thoại',
       'password_hint': 'Mật khẩu',
@@ -39,6 +40,12 @@ class AppLocalizations {
       'forgot_password': 'Quên mật khẩu?',
       'no_account': 'Chưa có tài khoản?',
       'register': 'Đăng ký',
+      'link_phone_title': 'Liên kết Số điện thoại',
+      'link_phone_desc': 'Tài khoản Google này là tài khoản mới. Vui lòng liên kết Số điện thoại để hoàn tất đăng ký.',
+      'phone_already_linked_title': 'Số điện thoại đã liên kết',
+      'phone_already_linked_desc': 'Số điện thoại này đã liên kết với tài khoản khác. Bạn có muốn thay thế bằng tài khoản hiện tại không?',
+      'confirm': 'Đồng ý',
+      'cancel': 'Hủy',
 
       // Home / Product List
       'search_hint': 'Tìm kiếm điện thoại, hãng...',
@@ -185,6 +192,7 @@ class AppLocalizations {
       'otp_change_phone': 'Change phone number',
       'otp_resend_code': 'Resend verification code for me',
       'otp_invalid_error': 'Verification failed, invalid otp',
+      'login_phone_invalid': 'Invalid phone number',
       'email_hint': 'Email address',
       'phone_hint': 'Phone number',
       'password_hint': 'Password',
@@ -195,6 +203,12 @@ class AppLocalizations {
       'forgot_password': 'Forgot password?',
       'no_account': 'Don\'t have an account?',
       'register': 'Register',
+      'link_phone_title': 'Link Phone Number',
+      'link_phone_desc': 'This Google account is new. Please link your phone number to complete registration.',
+      'phone_already_linked_title': 'Phone Number Already Linked',
+      'phone_already_linked_desc': 'This phone number is already linked to another account. Do you want to replace it with the current account?',
+      'confirm': 'Confirm',
+      'cancel': 'Cancel',
 
       // Home / Product List
       'search_hint': 'Search phones, brands...',
@@ -341,6 +355,7 @@ class AppLocalizations {
       'otp_change_phone': '電話番号を変更',
       'otp_resend_code': '認証コードを再送する',
       'otp_invalid_error': '認証に失敗しました。無効なOTPです',
+      'login_phone_invalid': '無効な電話番号',
       'email_hint': 'メールアドレス',
       'phone_hint': '電話番号',
       'password_hint': 'パスワード',
@@ -351,6 +366,12 @@ class AppLocalizations {
       'forgot_password': 'パスワードをお忘れですか?',
       'no_account': 'アカウントをお持ちでないですか?',
       'register': '登録',
+      'link_phone_title': '電話番号を連携',
+      'link_phone_desc': 'このGoogleアカウントは新規です。登録を完了するには電話番号を連携してください。',
+      'phone_already_linked_title': '電話番号はすでに連携されています',
+      'phone_already_linked_desc': 'この電話番号はすでに別のアカウントに連携されています。現在のアカウントに置き換えますか？',
+      'confirm': '確認',
+      'cancel': 'キャンセル',
 
       // Home / Product List
       'search_hint': 'スマートフォン、ブランドを検索...',

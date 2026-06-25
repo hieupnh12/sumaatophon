@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinput/pinput.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
+import '../../../../core/l10n/app_localizations.dart';
 import '../bloc/auth_bloc.dart';
 import 'dart:async';
 
@@ -23,6 +24,8 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
   final TextEditingController _otpController = TextEditingController();
 
   bool _showOtpStep = false;
+  String? _otpError;
+  final FocusNode _otpFocusNode = FocusNode();
   Timer? _validityTimer;
   Timer? _resendTimer;
   int _validitySeconds = 300;
@@ -50,6 +53,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
     _animationController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
+    _otpFocusNode.dispose();
     _validityTimer?.cancel();
     _resendTimer?.cancel();
     super.dispose();
@@ -95,6 +99,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
     setState(() {
       _showOtpStep = false;
       _otpController.clear();
+      _otpError = null;
     });
     _validityTimer?.cancel();
     _resendTimer?.cancel();
@@ -145,7 +150,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
                     color: AppColors.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Center(
+                  child: const Center(
                     child: Icon(
                       Icons.mobile_friendly_rounded,
                       size: 50,
@@ -155,26 +160,15 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  "Số điện thoại đã liên kết",
+                  context.tr('phone_already_linked_title'),
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                Text.rich(
-                  TextSpan(
-                    text: "Số điện thoại ",
-                    children: [
-                      TextSpan(
-                        text: phone,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const TextSpan(
-                        text: " đã liên kết với tài khoản khác. Bạn có muốn thay thế bằng tài khoản hiện tại không?",
-                      ),
-                    ],
-                  ),
+                Text(
+                  context.tr('phone_already_linked_desc'),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: isDark ? Colors.white70 : Colors.black87,
                     height: 1.5,
@@ -193,7 +187,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
                           side: BorderSide(color: isDark ? Colors.white24 : Colors.black26),
                         ),
                         child: Text(
-                          "Huỷ bỏ",
+                          context.tr('cancel'),
                           style: TextStyle(
                             color: isDark ? Colors.white : Colors.black87,
                             fontWeight: FontWeight.w600,
@@ -215,9 +209,9 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          "Đồng ý",
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        child: Text(
+                          context.tr('confirm'),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
@@ -255,11 +249,22 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthError) {
-             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-               content: Text(state.message),
-               backgroundColor: AppColors.error,
-               behavior: SnackBarBehavior.floating,
-             ));
+            String errorMsg = state.message;
+            if ((errorMsg.toLowerCase().contains('otp') || errorMsg.toLowerCase().contains('code')) && _showOtpStep) {
+              // Handle OTP error specifically
+              setState(() {
+                _otpError = context.tr('otp_invalid_error');
+                _otpController.clear();
+              });
+              _otpFocusNode.requestFocus();
+            }
+            
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(errorMsg),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ));
           } else if (state is AuthRequirePhoneConflictResolution) {
              _showConflictDialog(state.phone, state.otp);
           } else if (state is AuthOtpSent) {
@@ -401,12 +406,12 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Liên kết Số điện thoại",
+          context.tr('link_phone_title'),
           style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 22),
         ),
         const SizedBox(height: 8),
         Text(
-          "Tài khoản Google này là tài khoản mới. Vui lòng liên kết Số điện thoại để hoàn tất đăng ký.",
+          context.tr('link_phone_desc'),
           style: theme.textTheme.bodyMedium?.copyWith(
             color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
             letterSpacing: 0.2,
@@ -419,7 +424,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
           keyboardType: TextInputType.phone,
           style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 16),
           decoration: InputDecoration(
-            hintText: "Nhập số điện thoại",
+            hintText: context.tr('login_phone_hint'),
             hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black45),
             filled: true,
             fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
@@ -455,7 +460,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
                     width: 24, height: 24,
                     child: CircularProgressIndicator(color: isDark ? Colors.black : Colors.white, strokeWidth: 2.5),
                   )
-                : const Text("Nhận mã OTP", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                : Text(context.tr('get_otp'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ),
       ],
@@ -471,7 +476,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
           children: [
             Expanded(
               child: Text(
-                "Xác thực OTP",
+                context.tr('otp_title'),
                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 22),
               ),
             ),
@@ -484,7 +489,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
               color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, height: 1.5,
             ),
             children: [
-              const TextSpan(text: 'Mã OTP đã được gửi đến\n'),
+              TextSpan(text: '${context.tr('otp_sent_to')}\n'),
               TextSpan(text: '${_phoneController.text.trim()}, ', style: const TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
@@ -493,12 +498,12 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
         InkWell(
           onTap: _onChangePhonePressed,
           borderRadius: BorderRadius.circular(4),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.edit, size: 14, color: AppColors.warning),
-              SizedBox(width: 4),
-              Text("Đổi số điện thoại", style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.w600, fontSize: 14)),
+              const Icon(Icons.edit, size: 14, color: AppColors.warning),
+              const SizedBox(width: 4),
+              Text(context.tr('otp_change_phone'), style: const TextStyle(color: AppColors.warning, fontWeight: FontWeight.w600, fontSize: 14)),
             ],
           ),
         ),
@@ -509,9 +514,22 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
           child: Pinput(
             length: 6,
             controller: _otpController,
+            focusNode: _otpFocusNode,
+            errorText: _otpError,
+            forceErrorState: _otpError != null,
+            onChanged: (val) {
+              if (val.isNotEmpty && _otpError != null) {
+                setState(() => _otpError = null);
+              }
+            },
             defaultPinTheme: defaultPinTheme,
             focusedPinTheme: defaultPinTheme.copyWith(
               decoration: defaultPinTheme.decoration!.copyWith(border: Border.all(color: AppColors.primary, width: 2)),
+            ),
+            errorPinTheme: defaultPinTheme.copyWith(
+              decoration: defaultPinTheme.decoration!.copyWith(
+                border: Border.all(color: AppColors.error, width: 2),
+              ),
             ),
             submittedPinTheme: defaultPinTheme,
             onCompleted: _onOtpCompleted,
@@ -532,7 +550,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    "Gửi lại mã OTP",
+                    context.tr('otp_resend_code'),
                     style: TextStyle(
                       color: _resendSeconds == 0 
                           ? (isDark ? Colors.white : Colors.black87) 

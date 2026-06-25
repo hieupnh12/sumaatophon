@@ -10,7 +10,7 @@ class ApiEndpoints {
   // Tự động nhận diện thiết bị để dùng đúng IP Localhost
   static String get baseUrl {
     if (kIsWeb) return 'http://localhost:3000';
-    if (Platform.isAndroid) return 'http://127.0.0.1:3000'; // Máy thật + USB (adb reverse tcp:3000 tcp:3000)
+    if (Platform.isAndroid) return 'http://10.0.2.2:3000'; // Máy ảo Android
     return 'http://127.0.0.1:3000'; // iOS Simulator hoặc Desktop
   }
 

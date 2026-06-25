@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/config/app_feature_flags.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../../../../core/theme/language_cubit.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/pages/login_page.dart';
 import 'account_info_page.dart';
 import '../../../orders/presentation/pages/order_list_page.dart';
 
@@ -80,15 +80,12 @@ class _ProfilePageState extends State<ProfilePage> {
         builder: (context, state) {
           String userName = context.tr('profile_guest');
           String email = '';
-          bool isGuest = false;
+          bool isGuest = true;
 
-          if (state is AuthenticatedState) {
-            if (state.user.id == 'guest') {
-              isGuest = true;
-            } else {
-              userName = state.user.name;
-              email = state.user.email;
-            }
+          if (state is AuthenticatedState && state.user.id != 'guest') {
+            isGuest = false;
+            userName = state.user.name;
+            email = state.user.email;
           }
 
           if (isGuest) {
@@ -205,7 +202,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
@@ -215,8 +211,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ],
                   ),
-                  child: Column(
-                    children: [
+                  child: Material(
+                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    borderRadius: BorderRadius.circular(20),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
                       _buildListItem(
                         Icons.person_outline_rounded, 
                         context.tr('profile_account_info'), 
@@ -249,6 +249,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                 ),
+                ),
                 const SizedBox(height: 24),
 
                 // Settings Section
@@ -256,7 +257,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
@@ -266,8 +266,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ],
                   ),
-                  child: Column(
-                    children: [
+                  child: Material(
+                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    borderRadius: BorderRadius.circular(20),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
                       ListTile(
                         leading: Container(
                           padding: const EdgeInsets.all(8),
@@ -300,9 +304,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                 ),
+                ),
                 const SizedBox(height: 32),
 
-                if (AppFeatureFlags.authRequired) ...[
                   // Logout Button
                   OutlinedButton(
                     onPressed: () {
@@ -314,11 +318,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       foregroundColor: AppColors.error,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                     child: Text(context.tr('logout'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 40),
-                ],
               ],
             ),
           );
@@ -418,7 +422,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 // Login Button
                 ElevatedButton(
                   onPressed: () {
-                    context.read<AuthBloc>().add(LogoutRequested()); // Clear guest and redirect to login
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,

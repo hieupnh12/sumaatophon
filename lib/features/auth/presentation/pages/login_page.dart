@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinput/pinput.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../bloc/auth_bloc.dart';
 import 'link_phone_page.dart';
+import '../../../../main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,6 +27,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final TextEditingController _otpController = TextEditingController();
 
   bool _showOtpStep = false;
+  String? _otpError;
+  final FocusNode _otpFocusNode = FocusNode();
   Timer? _validityTimer;
   Timer? _resendTimer;
   int _validitySeconds = 300;
@@ -58,6 +62,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _animationController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
+    _otpFocusNode.dispose();
     _validityTimer?.cancel();
     _resendTimer?.cancel();
     super.dispose();
@@ -104,8 +109,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   void _onContinuePressed() {
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty) {
+    final phoneDisplay = _phoneController.text.trim();
+    if (phoneDisplay.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.tr('login_phone_hint')),
@@ -114,6 +119,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       );
       return;
     }
+
+    final phone = phoneDisplay.replaceAll(' ', '');
+    final phoneRegex = RegExp(r'^(0[3|5|7|8|9])+([0-9]{8})$');
+    if (!phoneRegex.hasMatch(phone)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('login_phone_invalid')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     context.read<AuthBloc>().add(OtpRequested(phone: phone));
   }
 
@@ -167,8 +185,22 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         listener: (context, state) {
           if (state is AuthError) {
             String errorMsg = state.message;
-            if (errorMsg.toLowerCase().contains('otp') || errorMsg.toLowerCase().contains('code')) {
+            if (errorMsg.contains('Connection refused') || errorMsg.contains('SocketException') || errorMsg.contains('TimeoutException')) {
+              errorMsg = "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.";
+              if (_showOtpStep) {
+                setState(() {
+                  _otpError = errorMsg;
+                  _otpController.clear();
+                });
+                _otpFocusNode.requestFocus();
+              }
+            } else if ((errorMsg.toLowerCase().contains('otp') || errorMsg.toLowerCase().contains('code')) && _showOtpStep) {
               errorMsg = context.tr('otp_invalid_error');
+              setState(() {
+                _otpError = errorMsg;
+                _otpController.clear();
+              });
+              _otpFocusNode.requestFocus();
             }
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -177,6 +209,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
+            );
+          } else if (state is AuthenticatedState) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => AppMainPage()),
+              (route) => false,
             );
           } else if (state is AuthRequirePhoneLink) {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const LinkPhonePage()));
@@ -398,6 +436,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         TextFormField(
           controller: _phoneController,
           keyboardType: TextInputType.phone,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            _PhoneNumberFormatter(),
+          ],
           style: TextStyle(
             color: isDark ? Colors.white : Colors.black87,
             fontSize: 16,
@@ -610,10 +652,23 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           child: Pinput(
             length: 6,
             controller: _otpController,
+            focusNode: _otpFocusNode,
+            errorText: _otpError,
+            forceErrorState: _otpError != null,
+            onChanged: (val) {
+              if (val.isNotEmpty && _otpError != null) {
+                setState(() => _otpError = null);
+              }
+            },
             defaultPinTheme: defaultPinTheme,
             focusedPinTheme: defaultPinTheme.copyWith(
               decoration: defaultPinTheme.decoration!.copyWith(
                 border: Border.all(color: AppColors.primary, width: 2),
+              ),
+            ),
+            errorPinTheme: defaultPinTheme.copyWith(
+              decoration: defaultPinTheme.decoration!.copyWith(
+                border: Border.all(color: AppColors.error, width: 2),
               ),
             ),
             submittedPinTheme: defaultPinTheme,
@@ -707,6 +762,29 @@ class GoogleLogoPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _PhoneNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text.replaceAll(RegExp(r'\D'), '');
+    String formatted = '';
+    for (int i = 0; i < text.length; i++) {
+      if (i == 4 || i == 7) {
+        formatted += ' ';
+      }
+      formatted += text[i];
+    }
+    
+    if (formatted.length > 12) {
+      return oldValue;
+    }
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
 }
 
 class GoogleLogo extends StatelessWidget {

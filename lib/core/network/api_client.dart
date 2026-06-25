@@ -31,7 +31,7 @@ class ApiClient {
       uri,
       headers: _headers,
       body: body != null ? jsonEncode(body) : null,
-    );
+    ).timeout(const Duration(seconds: 15));
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body);
     }

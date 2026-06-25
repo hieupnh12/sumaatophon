@@ -309,8 +309,12 @@ app.post('/auth/request-otp', async (req, res) => {
 // POST /auth/verify-otp — Đăng nhập SĐT thuần túy
 app.post('/auth/verify-otp', async (req, res) => {
   const { phone, otp } = req.body;
+  console.log(`[Verify OTP] Received phone: ${phone}, otp: ${otp}`);
   const cached = otpCache.get(phone);
-  if (!cached || cached.otp !== otp || cached.expires < Date.now()) return res.status(400).json({message: 'Mã OTP không hợp lệ hoặc đã hết hạn.', code: 'INVALID_OTP'});
+  if (!cached || cached.otp !== otp || cached.expires < Date.now()) {
+    console.log(`[Verify OTP] Failed! Cached:`, cached);
+    return res.status(400).json({message: 'Mã OTP không hợp lệ hoặc đã hết hạn.', code: 'INVALID_OTP'});
+  }
   
   const [customers] = await pool.query('SELECT * FROM customers WHERE phone_number = ?', [phone]);
   let customer_id;
