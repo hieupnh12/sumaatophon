@@ -35,6 +35,7 @@ google-services.json
 
 # Backend secrets & dependencies
 backend/.env
+backend/firebase-service-account.json
 backend/node_modules/
 
 .dart_tool/

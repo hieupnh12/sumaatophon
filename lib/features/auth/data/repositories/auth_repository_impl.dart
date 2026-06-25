@@ -18,7 +18,46 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<UserEntity> loginWithGoogle(String idToken) {
-    return dataSource.loginWithGoogle(idToken);
+  Future<UserEntity> syncAuth(String idToken) {
+    return dataSource.syncAuth(idToken);
+  }
+
+  @override
+  Future<String?> requestOtp(String phone) {
+    return dataSource.requestOtp(phone);
+  }
+
+  @override
+  Future<UserEntity> verifyOtp(String phone, String otp) {
+    return dataSource.verifyOtp(phone, otp);
+  }
+
+  @override
+  Future<UserEntity> linkPhone(String phone, String otp, {bool force = false}) async {
+    final userModel = await dataSource.linkPhone(phone, otp, force: force);
+    return userModel;
+  }
+
+  @override
+  Future<UserEntity> updateProfile({
+    required String customerId,
+    required String name,
+    String? gender,
+    String? dob,
+    String? address,
+  }) async {
+    final userModel = await dataSource.updateProfile(
+      customerId: customerId,
+      name: name,
+      gender: gender,
+      dob: dob,
+      address: address,
+    );
+    return userModel;
+  }
+
+  @override
+  Future<void> logout() async {
+    // Không cần thực hiện logic nếu không có dataSource.logout()
   }
 }
