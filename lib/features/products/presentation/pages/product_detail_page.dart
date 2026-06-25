@@ -161,6 +161,46 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   void _ensureSelection(Product product) {
     final availableColors = product.distinctColors;
+
+    if (product.versions.isNotEmpty) {
+      final inStockVersion = product.firstInStockVersion;
+      final currentInStock = product.isVersionInStock(
+        color: _selectedColor,
+        ramRom: _selectedRamRom,
+      );
+
+      if (!currentInStock) {
+        if (inStockVersion != null) {
+          _selectedColor = inStockVersion.color;
+          _selectedRamRom = inStockVersion.ramRom;
+        } else if (product.versions.isNotEmpty) {
+          _selectedColor = product.versions.first.color;
+          _selectedRamRom = product.versions.first.ramRom;
+        }
+      }
+
+      if (_selectedColor.isEmpty && availableColors.isNotEmpty) {
+        final firstAvailableColor = availableColors.firstWhere(
+          (color) => !product.isColorFullyOutOfStock(color),
+          orElse: () => availableColors.first,
+        );
+        _selectedColor = firstAvailableColor;
+      }
+
+      final ramRomOptions = product.ramRomOptionsForColor(_selectedColor);
+      if (_selectedRamRom.isEmpty && ramRomOptions.isNotEmpty) {
+        final firstInStockRamRom = ramRomOptions.firstWhere(
+          (option) => product.isVersionInStock(
+            color: _selectedColor,
+            ramRom: option,
+          ),
+          orElse: () => ramRomOptions.first,
+        );
+        _selectedRamRom = firstInStockRamRom;
+      }
+      return;
+    }
+
     if (_selectedColor.isEmpty && availableColors.isNotEmpty) {
       _selectedColor = availableColors.first;
     }
@@ -207,8 +247,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
     _ensureSelection(product);
     final availableColors = product.distinctColors;
+    final ramRomOptions = product.versions.isNotEmpty
+        ? product.ramRomOptionsForColor(_selectedColor)
+        : product.ramRomOptions;
 
     final selectedVersion = _selectedVersion(product);
+    final canPurchase = selectedVersion.inStock;
     final allImages = product.allGalleryImages;
     final galleryIndex = product.galleryIndexForColor(
       color: _selectedColor,
@@ -354,6 +398,24 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           ),
                         ),
                       ],
+                      if (!canPurchase) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            context.tr('product_version_out_of_stock'),
+                            style: const TextStyle(
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -405,6 +467,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         const SizedBox(height: 12),
                         ...availableColors.map((colorName) {
                           final isSelected = _selectedColor == colorName;
+                          final isOutOfStock = product.isColorFullyOutOfStock(colorName);
                           final colorVersion = product.findVersionForColor(colorName);
                           final colorRamRom = colorVersion?.ramRom ?? _selectedRamRom;
                           final colorImage = product.thumbnailForColor(
@@ -421,11 +484,28 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             priceLabel: currencyFormatter.format(colorPrice),
                             isSelected: isSelected,
                             isDark: isDark,
+                            enabled: !isOutOfStock,
+                            statusLabel: isOutOfStock
+                                ? context.tr('product_version_out_of_stock')
+                                : null,
                             onTap: () {
+                              if (isOutOfStock) return;
                               HapticFeedback.selectionClick();
                               setState(() {
                                 _selectedColor = colorName;
-                                if (colorVersion != null && colorVersion.ramRom.isNotEmpty) {
+                                final options =
+                                    product.ramRomOptionsForColor(colorName);
+                                if (options.isNotEmpty) {
+                                  final firstInStock = options.firstWhere(
+                                    (option) => product.isVersionInStock(
+                                      color: colorName,
+                                      ramRom: option,
+                                    ),
+                                    orElse: () => options.first,
+                                  );
+                                  _selectedRamRom = firstInStock;
+                                } else if (colorVersion != null &&
+                                    colorVersion.ramRom.isNotEmpty) {
                                   _selectedRamRom = colorVersion.ramRom;
                                 }
                               });
@@ -434,7 +514,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         }),
                         const SizedBox(height: 14),
                       ],
-                      if (product.ramRomOptions.isNotEmpty) ...[
+                      if (ramRomOptions.isNotEmpty) ...[
                         Text(
                           context.tr('storage'),
                           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
@@ -443,35 +523,65 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         Wrap(
                           spacing: 12,
                           runSpacing: 12,
-                          children: product.ramRomOptions.map((option) {
+                          children: ramRomOptions.map((option) {
                             final isSelected = _selectedRamRom == option;
+                            final isOutOfStock = !product.isVersionInStock(
+                              color: _selectedColor,
+                              ramRom: option,
+                            );
                             return GestureDetector(
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                setState(() => _selectedRamRom = option);
-                              },
-                              child: AnimatedContainer(
+                              onTap: isOutOfStock
+                                  ? null
+                                  : () {
+                                      HapticFeedback.selectionClick();
+                                      setState(() => _selectedRamRom = option);
+                                    },
+                              child: AnimatedOpacity(
                                 duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? AppColors.primary
-                                      : (isDark ? AppColors.darkSurface : surfaceColor),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
+                                opacity: isOutOfStock ? 0.55 : 1,
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                  decoration: BoxDecoration(
                                     color: isSelected
                                         ? AppColors.primary
-                                        : outlineVariant,
+                                        : (isDark ? AppColors.darkSurface : surfaceColor),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : outlineVariant,
+                                    ),
                                   ),
-                                ),
-                                child: Text(
-                                  option,
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : (isDark ? AppColors.darkTextSecondary : const Color(0xFF414753)),
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        option,
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? Colors.white
+                                              : (isDark
+                                                  ? AppColors.darkTextSecondary
+                                                  : const Color(0xFF414753)),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      if (isOutOfStock) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          context.tr('product_version_out_of_stock'),
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? Colors.white70
+                                                : AppColors.error,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
                               ),
@@ -657,11 +767,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     width: 56,
                     height: 56,
                     child: OutlinedButton(
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        final version = _selectedVersion(product);
-                        context.read<CartBloc>().add(AddToCartEvent(product, version));
-                      },
+                      onPressed: canPurchase
+                          ? () {
+                              HapticFeedback.lightImpact();
+                              final version = _selectedVersion(product);
+                              context.read<CartBloc>().add(AddToCartEvent(product, version));
+                            }
+                          : null,
                       style: OutlinedButton.styleFrom(
                         padding: EdgeInsets.zero,
                         side: BorderSide(color: theme.colorScheme.primary, width: 2),
@@ -676,15 +788,17 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     child: SizedBox(
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: () {
-                          HapticFeedback.lightImpact();
-                          final version = _selectedVersion(product);
-                          context.read<CartBloc>().add(AddToCartEvent(product, version));
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const CheckoutPage()),
-                          );
-                        },
+                        onPressed: canPurchase
+                            ? () {
+                                HapticFeedback.lightImpact();
+                                final version = _selectedVersion(product);
+                                context.read<CartBloc>().add(AddToCartEvent(product, version));
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const CheckoutPage()),
+                                );
+                              }
+                            : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: theme.colorScheme.primary,
                           foregroundColor: Colors.white,

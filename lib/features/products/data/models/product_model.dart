@@ -124,6 +124,13 @@ class ProductModel {
             .toList()
         : const <ProductFeedback>[];
 
+    final ramRomOptions = parsedVersions.isNotEmpty
+        ? _uniqueRamRomFromVersions(parsedVersions)
+        : _toStringList(json['ramRomOptions']);
+    final colors = parsedVersions.isNotEmpty
+        ? _uniqueColorsFromVersions(parsedVersions)
+        : _toStringList(json['colors']);
+
     return ProductModel(
       id: json['id'].toString(),
       name: json['name'] as String? ?? '',
@@ -134,8 +141,8 @@ class ProductModel {
       galleryImages: _toStringList(json['galleryImages']),
       rating: _toDouble(json['rating']),
       reviewCount: _toInt(json['reviewCount']),
-      ramRomOptions: _toStringList(json['ramRomOptions']),
-      colors: _toStringList(json['colors']),
+      ramRomOptions: ramRomOptions,
+      colors: colors,
       specifications: _toStringMap(json['specifications']),
       isNew: json['isNew'] as bool? ?? false,
       stockQuantity: json['stockQuantity'] != null ? _toInt(json['stockQuantity']) : 99,
@@ -166,6 +173,28 @@ class ProductModel {
   }
   
   // hàm helper để chuyển đổi dữ liệu từ json sang double, int, list, map trong dart tránh bị lỗi null , lệch kiểu 
+  static List<String> _uniqueRamRomFromVersions(List<ProductVersion> versions) {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final version in versions) {
+      if (version.ramRom.isNotEmpty && seen.add(version.ramRom)) {
+        result.add(version.ramRom);
+      }
+    }
+    return result;
+  }
+
+  static List<String> _uniqueColorsFromVersions(List<ProductVersion> versions) {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final version in versions) {
+      if (version.color.isNotEmpty && seen.add(version.color)) {
+        result.add(version.color);
+      }
+    }
+    return result;
+  }
+
   static double _toDouble(dynamic value) {
     if (value == null) return 0;
     if (value is num) return value.toDouble();

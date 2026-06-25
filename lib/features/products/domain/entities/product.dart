@@ -73,6 +73,40 @@ class Product extends Equatable {
     return result.isNotEmpty ? result : colors;
   }
 
+  List<String> ramRomOptionsForColor(String color) {
+    if (versions.isEmpty) return ramRomOptions;
+
+    final seen = <String>{};
+    final result = <String>[];
+    for (final version in versions) {
+      if (version.color == color &&
+          version.ramRom.isNotEmpty &&
+          seen.add(version.ramRom)) {
+        result.add(version.ramRom);
+      }
+    }
+    return result;
+  }
+
+  bool isVersionInStock({required String color, required String ramRom}) {
+    final version = findVersion(color: color, ramRom: ramRom);
+    return version?.inStock ?? false;
+  }
+
+  bool isColorFullyOutOfStock(String color) {
+    final colorVersions =
+        versions.where((version) => version.color == color).toList();
+    if (colorVersions.isEmpty) return false;
+    return colorVersions.every((version) => !version.inStock);
+  }
+
+  ProductVersion? get firstInStockVersion {
+    for (final version in versions) {
+      if (version.inStock) return version;
+    }
+    return null;
+  }
+
   ProductVersion? versionFor({required String color, required String ramRom}) {
     return resolveVersion(color: color, ramRom: ramRom);
   }

@@ -7,6 +7,8 @@ class ProductColorOptionTile extends StatelessWidget {
   final String priceLabel;
   final bool isSelected;
   final bool isDark;
+  final bool enabled;
+  final String? statusLabel;
   final VoidCallback onTap;
 
   const ProductColorOptionTile({
@@ -16,6 +18,8 @@ class ProductColorOptionTile extends StatelessWidget {
     required this.priceLabel,
     required this.isSelected,
     required this.isDark,
+    this.enabled = true,
+    this.statusLabel,
     required this.onTap,
   });
 
@@ -28,8 +32,11 @@ class ProductColorOptionTile extends StatelessWidget {
     final selectedBorder = theme.colorScheme.primary;
 
     return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
+      onTap: enabled ? onTap : null,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: enabled ? 1 : 0.55,
+        child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(10),
@@ -99,6 +106,17 @@ class ProductColorOptionTile extends StatelessWidget {
                               : const Color(0xFF414753),
                         ),
                       ),
+                      if (statusLabel != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          statusLabel!,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            color: AppColors.error,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -127,6 +145,7 @@ class ProductColorOptionTile extends StatelessWidget {
               ),
           ],
         ),
+      ),
       ),
     );
   }

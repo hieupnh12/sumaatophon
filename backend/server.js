@@ -22,7 +22,8 @@ function mergeUniqueImages(mainImage, extraImages = []) {
   };
 
   add(mainImage);
-  for (const image of extraImages) add(image);
+  const extras = Array.isArray(extraImages) ? extraImages : [];
+  for (const image of extras) add(image);
   return images;
 }
 
@@ -150,7 +151,7 @@ async function fetchProductVersions(productId) {
         r.ram_size,
         ro.rom_size,
         c.color_name
-      ORDER BY pv.product_version_id
+      ORDER BY stock_quantity DESC, pv.product_version_id
     `,
     [productId],
   );
@@ -242,7 +243,7 @@ app.get('/products', async (_req, res) => {
       ORDER BY p.product_id DESC
     `);
 
-    res.json(rows.map(mapProductRow));
+    res.json(rows.map((row) => mapProductRow(row)));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message, code: 'PRODUCTS_LIST_ERROR' });
