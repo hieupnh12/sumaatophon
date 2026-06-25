@@ -5,7 +5,7 @@ class ApiEndpoints {
   static String get baseUrl => ApiConfig.baseUrl;
 
   static const String products = '/products';
-  static const String googleLogin = '/auth/google'; // Có thể bỏ
+  static const String googleLogin = '/auth/google';
   static const String requestOtp = '/auth/request-otp';
   static const String verifyOtp = '/auth/verify-otp';
   static const String authSync = '/auth/sync';
@@ -14,4 +14,5 @@ class ApiEndpoints {
   static const String health = '/health';
 
   static String productById(String id) => '/products/$id';
+  static String productFeedbacks(String id) => '/products/$id/feedbacks';
 }
