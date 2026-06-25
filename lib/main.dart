@@ -19,6 +19,7 @@ import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/link_phone_page.dart';
 import 'features/onboarding/presentation/pages/onboarding_page.dart';
 import 'core/network/api_client.dart';
+import 'core/network/api_config.dart';
 import 'features/products/domain/repositories/product_repository.dart';
 import 'features/products/data/datasources/product_remote_datasource.dart';
 import 'features/products/data/datasources/product_local_datasource.dart';
@@ -45,6 +46,7 @@ final sl = GetIt.instance;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await ApiConfig.init();
   await setupDependencyInjection();
   runApp(const PhoneShopApp());
 }
