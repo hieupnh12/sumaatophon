@@ -1,17 +1,29 @@
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 
 /// URL REST API backend — không chứa thông tin MySQL.
 class ApiEndpoints {
-  // Android Emulator: http://10.0.2.2:3000
-  // iOS Simulator: http://localhost:3000
-  // Máy thật (cùng WiFi với PC chạy backend): http://<IP-LAN-PC>:3000
+  /// Production VPS: https://maclenin.io.vn/mobile (Nginx → flutter-api :3001)
+  /// Override khi dev: --dart-define=API_BASE_URL=http://192.168.x.x:3000
+  static const String _prodBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://maclenin.io.vn/mobile',
+  );
 
-  // Tự động nhận diện thiết bị để dùng đúng IP Localhost
   static String get baseUrl {
+    const override = String.fromEnvironment('API_BASE_URL');
+    if (override.isNotEmpty && !kReleaseMode) {
+      return override;
+    }
+    if (kReleaseMode) {
+      return _prodBaseUrl;
+    }
+
+    // Debug local: emulator / simulator / máy thật cùng WiFi với PC chạy backend
     if (kIsWeb) return 'http://localhost:3000';
-    if (Platform.isAndroid) return 'http://10.0.2.2:3000'; // Máy ảo Android
-    return 'http://127.0.0.1:3000'; // iOS Simulator hoặc Desktop
+    if (Platform.isAndroid) return 'http://10.0.2.2:3000';
+    return 'http://127.0.0.1:3000';
   }
 
   static const String products = '/products';
