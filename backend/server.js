@@ -1,6 +1,11 @@
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
+const { Server } = require('socket.io');
 const pool = require('./db');
+const { setupChat } = require('./chat');
+const { setupChatbot } = require('./chatbot');
+const { setupAuth } = require('./auth');
 
 const app = express();
 app.use(cors());
@@ -254,6 +259,10 @@ try {
 }
 const { getAuth } = require('firebase-admin/auth');
 const otpCache = new Map();
+
+function normalizePhone(phone) {
+  return String(phone || '').replace(/\D/g, '');
+}
 // --- KẾT THÚC KHỞI TẠO ---
 
 // POST /auth/sync — Xác thực Google Token, kiểm tra tài khoản
@@ -279,7 +288,7 @@ app.post('/auth/sync', async (req, res) => {
 
 // POST /auth/request-otp — Sinh OTP và gửi qua Cloud Gateway
 app.post('/auth/request-otp', async (req, res) => {
-  const { phone } = req.body;
+  const phone = normalizePhone(req.body.phone);
   if (!phone) return res.status(400).json({message: 'Missing phone'});
   
   const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -308,7 +317,8 @@ app.post('/auth/request-otp', async (req, res) => {
 
 // POST /auth/verify-otp — Đăng nhập SĐT thuần túy
 app.post('/auth/verify-otp', async (req, res) => {
-  const { phone, otp } = req.body;
+  const phone = normalizePhone(req.body.phone);
+  const { otp } = req.body;
   console.log(`[Verify OTP] Received phone: ${phone}, otp: ${otp}`);
   const cached = otpCache.get(phone);
   if (!cached || cached.otp !== otp || cached.expires < Date.now()) {
@@ -330,7 +340,18 @@ app.post('/auth/verify-otp', async (req, res) => {
   otpCache.delete(phone);
   const [finalUser] = await pool.query('SELECT * FROM customers WHERE customer_id = ?', [customer_id]);
   const user = finalUser[0];
-  res.json({ id: String(customer_id), name: user.full_name, phone: user.phone_number, email: user.email || '', gender: user.gender, dob: user.birth_date ? new Date(user.birth_date.getTime() - user.birth_date.getTimezoneOffset() * 60000).toISOString().split('T')[0] : null, address: user.address });
+  res.json({
+    id: String(customer_id),
+    name: user.full_name,
+    phone: user.phone_number,
+    phoneNumber: user.phone_number,
+    email: user.email || '',
+    role: 'user',
+    accountType: 'customer',
+    gender: user.gender,
+    dob: user.birth_date ? new Date(user.birth_date.getTime() - user.birth_date.getTimezoneOffset() * 60000).toISOString().split('T')[0] : null,
+    address: user.address,
+  });
 });
 
 // POST /auth/link-phone — Cập nhật SĐT vào Google ID và xử lý Merge
@@ -343,7 +364,8 @@ app.post('/auth/link-phone', async (req, res) => {
     const firebaseUid = decodedToken.uid;
     const email = decodedToken.email || '';
     
-    const { phone, otp, force } = req.body;
+    const phone = normalizePhone(req.body.phone);
+    const { otp, force } = req.body;
     const cached = otpCache.get(phone);
     if (!cached || cached.otp !== otp || cached.expires < Date.now()) return res.status(400).json({message: 'OTP Invalid', code: 'INVALID_OTP'});
     
@@ -413,6 +435,21 @@ app.get('/health', async (_req, res) => {
 });
 
 const port = Number(process.env.PORT) || 3000;
-app.listen(port, () => {
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: '*' },
+});
+
+setupAuth(app, pool);
+setupChat(app, io, pool);
+setupChatbot(app, pool);
+
+server.listen(port, () => {
   console.log(`PhoneShop API listening on http://localhost:${port}`);
+}).on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${port} đang được dùng. Dừng server cũ rồi chạy lại.`);
+    process.exit(1);
+  }
+  throw err;
 });

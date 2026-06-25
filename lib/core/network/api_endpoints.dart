@@ -35,5 +35,13 @@ class ApiEndpoints {
   static const String profile = '/profile';
   static const String health = '/health';
 
+  static const String chatThreads = '/chat/threads';
+  static const String chatThreadsMine = '/chat/threads/mine';
+  static const String chatbotAsk = '/chatbot/ask';
+  static const String chatbotSuggestions = '/chatbot/suggestions';
+
+  static String chatThreadMessages(String threadId) =>
+      '/chat/threads/$threadId/messages';
+
   static String productById(String id) => '/products/$id';
 }

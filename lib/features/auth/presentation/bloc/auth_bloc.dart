@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../phone_utils.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/entities/user_entity.dart';
@@ -180,8 +181,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onOtpRequested(OtpRequested event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      _pendingPhone = event.phone;
-      final devOtp = await authRepository.requestOtp(event.phone);
+      _pendingPhone = normalizePhone(event.phone);
+      final devOtp = await authRepository.requestOtp(_pendingPhone!);
       
       emit(AuthOtpSent(
         message: devOtp != null 
@@ -206,7 +207,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onOtpLoginSubmitted(OtpLoginSubmitted event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      final user = await authRepository.verifyOtp(event.phone, event.otp);
+      final phone = _pendingPhone ?? normalizePhone(event.phone);
+      final user = await authRepository.verifyOtp(phone, event.otp);
       emit(AuthenticatedState(user));
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
@@ -336,7 +338,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       id: 'guest',
       name: 'Khách',
       email: '',
-      avatarUrl: '',
     )));
   }
 

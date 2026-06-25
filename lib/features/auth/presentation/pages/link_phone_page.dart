@@ -5,6 +5,8 @@ import 'package:pinput/pinput.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../phone_utils.dart';
+import '../auth_navigation.dart';
 import '../bloc/auth_bloc.dart';
 import 'dart:async';
 
@@ -86,7 +88,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
   }
 
   void _onContinuePressed() {
-    final phone = _phoneController.text.trim();
+    final phone = normalizePhone(_phoneController.text);
     if (phone.isEmpty) return;
     context.read<AuthBloc>().add(OtpRequested(phone: phone));
   }
@@ -107,7 +109,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
 
   void _onResendOtpPressed() {
     if (_resendSeconds == 0) {
-      final phone = _phoneController.text.trim();
+      final phone = normalizePhone(_phoneController.text);
       context.read<AuthBloc>().add(OtpRequested(phone: phone));
     }
   }
@@ -275,7 +277,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
                Future.delayed(const Duration(milliseconds: 300), () => _onOtpCompleted(state.mockOtp!));
              }
           } else if (state is AuthenticatedState) {
-             Navigator.pop(context); // Về lại Login
+            navigateAfterAuth(context);
           }
         },
         builder: (context, state) {

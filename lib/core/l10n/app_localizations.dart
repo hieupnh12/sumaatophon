@@ -130,6 +130,26 @@ class AppLocalizations {
       'concierge': 'Hỗ trợ',
       'notifications': 'Thông báo',
 
+      // Chat
+      'chat_support': 'phoneShop Support',
+      'chat_online': 'Trực tuyến',
+      'chat_input_hint': 'Nhập tin nhắn...',
+      'chat_empty': 'Chưa có tin nhắn. Hãy bắt đầu cuộc trò chuyện!',
+      'chat_admin_inbox': 'Hộp thư hỗ trợ',
+      'chat_no_conversations': 'Chưa có cuộc trò chuyện nào',
+      'chat_start_conversation': 'Bắt đầu trò chuyện',
+      'chat_retry': 'Thử lại',
+      'chat_login_required': 'Vui lòng đăng nhập để sử dụng chat hỗ trợ khách hàng',
+      'chat_bot_tab': 'Bot tư vấn',
+      'chat_staff_tab': 'Nhân viên',
+      'chatbot_welcome':
+          'Xin chào! Tôi là bot tư vấn phoneShop. Chọn câu hỏi gợi ý bên dưới hoặc hỏi về giá, thông số, tồn kho điện thoại.',
+      'chatbot_suggestions_label': 'Gợi ý câu hỏi',
+      'chatbot_suggestions_more': 'Xem thêm',
+      'chatbot_input_hint': 'Hỏi về sản phẩm...',
+      'chatbot_transfer_staff': 'Chuyển sang nhân viên',
+      'chatbot_error': 'Bot tạm thời không phản hồi. Thử lại hoặc chuyển sang tab Nhân viên.',
+
       // Profile
       'theme': 'Giao diện (Dark/Light)',
       'language': 'Ngôn ngữ',
@@ -293,6 +313,26 @@ class AppLocalizations {
       'concierge': 'Concierge',
       'notifications': 'Notifications',
 
+      // Chat
+      'chat_support': 'phoneShop Support',
+      'chat_online': 'Online',
+      'chat_input_hint': 'Type a message...',
+      'chat_empty': 'No messages yet. Start a conversation!',
+      'chat_admin_inbox': 'Support inbox',
+      'chat_no_conversations': 'No conversations yet',
+      'chat_start_conversation': 'Start conversation',
+      'chat_retry': 'Retry',
+      'chat_login_required': 'Please sign in to use customer support chat',
+      'chat_bot_tab': 'Advisor bot',
+      'chat_staff_tab': 'Staff',
+      'chatbot_welcome':
+          'Hello! I am the phoneShop advisor bot. Pick a suggestion below or ask about price, specs, and stock.',
+      'chatbot_suggestions_label': 'Suggested questions',
+      'chatbot_suggestions_more': 'Show more',
+      'chatbot_input_hint': 'Ask about products...',
+      'chatbot_transfer_staff': 'Talk to staff',
+      'chatbot_error': 'Bot is temporarily unavailable. Retry or switch to the Staff tab.',
+
       // Profile
       'theme': 'Theme (Dark/Light)',
       'language': 'Language',
@@ -455,6 +495,25 @@ class AppLocalizations {
       'stores': '店舗',
       'concierge': 'サポート',
       'notifications': '通知',
+
+      // Chat
+      'chat_support': 'phoneShop サポート',
+      'chat_online': 'オンライン',
+      'chat_input_hint': 'メッセージを入力...',
+      'chat_empty': 'まだメッセージがありません。会話を始めましょう！',
+      'chat_admin_inbox': 'サポート受信箱',
+      'chat_no_conversations': '会話はまだありません',
+      'chat_start_conversation': '会話を始める',
+      'chat_retry': '再試行',
+      'chat_login_required': 'チャットを利用するにはログインしてください',
+      'chat_bot_tab': '相談ボット',
+      'chat_staff_tab': 'スタッフ',
+      'chatbot_welcome': 'こんにちは！phoneShopの相談ボットです。価格・仕様・在庫について質問できます。',
+      'chatbot_suggestions_label': 'おすすめの質問',
+      'chatbot_suggestions_more': 'もっと見る',
+      'chatbot_input_hint': '商品について質問...',
+      'chatbot_transfer_staff': 'スタッフに相談',
+      'chatbot_error': 'ボットは一時的に利用できません。再試行するかスタッフタブへ移動してください。',
 
       // Profile
       'theme': 'テーマ (Dark/Light)',

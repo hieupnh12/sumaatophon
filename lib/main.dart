@@ -1,10 +1,12 @@
 // lib/main.dart
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'core/config/app_feature_flags.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'core/design_system/app_theme.dart';
 import 'core/design_system/app_colors.dart';
 import 'core/theme/theme_cubit.dart';
@@ -34,8 +36,12 @@ import 'features/cart/presentation/pages/cart_page.dart';
 import 'features/checkout/presentation/bloc/checkout_bloc.dart';
 import 'features/store_locator/presentation/bloc/store_locator_bloc.dart';
 import 'features/store_locator/presentation/pages/store_location_page.dart';
+import 'features/chatbot/data/datasources/chatbot_remote_datasource.dart';
+import 'features/chat/data/datasources/chat_remote_datasource.dart';
+import 'features/chat/data/repositories/chat_repository_impl.dart';
+import 'features/chat/domain/repositories/chat_repository.dart';
 import 'features/chat/presentation/bloc/chat_bloc.dart';
-import 'features/chat/presentation/pages/chat_page.dart';
+import 'features/chat/presentation/pages/chat_hub_page.dart';
 import 'features/notifications/presentation/bloc/notification_bloc.dart';
 import 'features/notifications/presentation/pages/notifications_page.dart';
 import 'features/profile/presentation/pages/profile_page.dart';
@@ -44,7 +50,9 @@ final sl = GetIt.instance;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  if (!kIsWeb) {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  }
   await setupDependencyInjection();
   runApp(const PhoneShopApp());
 }
@@ -62,11 +70,14 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton(() => AuthRemoteDataSource(sl(), sl()));
   sl.registerLazySingleton(() => ProductRemoteDataSource(sl()));
   sl.registerLazySingleton(() => ProductLocalDataSource(sl()));
+  sl.registerLazySingleton(() => ChatbotRemoteDataSource(sl()));
+  sl.registerLazySingleton(() => ChatRemoteDataSource(sl()));
   sl.registerLazySingleton(() => CartLocalDatasource(sl()));
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl<AuthRemoteDataSource>()));
   sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(sl(), sl()));
+  sl.registerLazySingleton<ChatRepository>(() => ChatRepositoryImpl(sl()));
   sl.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(sl()));
 
   // Blocs
@@ -75,7 +86,7 @@ Future<void> setupDependencyInjection() async {
   sl.registerFactory(() => CartBloc(repository: sl()));
   sl.registerFactory(() => CheckoutBloc());
   sl.registerFactory(() => StoreLocatorBloc());
-  sl.registerFactory(() => ChatBloc());
+  sl.registerFactory(() => ChatBloc(repository: sl()));
   sl.registerFactory(() => NotificationBloc());
   
   // Theme & Language
@@ -199,7 +210,7 @@ class _AppMainPageState extends State<AppMainPage> {
             ),
           ),
           const StoreLocationPage(),
-          const ChatPage(),
+          const ChatHubPage(),
           const NotificationsPage(),
           const ProfilePage(),
         ],

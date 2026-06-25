@@ -8,8 +8,9 @@ import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../bloc/auth_bloc.dart';
+import '../phone_utils.dart';
+import '../auth_navigation.dart';
 import 'link_phone_page.dart';
-import '../../../../main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -120,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       return;
     }
 
-    final phone = phoneDisplay.replaceAll(' ', '');
+    final phone = normalizePhone(phoneDisplay);
     final phoneRegex = RegExp(r'^(0[3|5|7|8|9])+([0-9]{8})$');
     if (!phoneRegex.hasMatch(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -136,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   void _onOtpCompleted(String otp) {
-    final phone = _phoneController.text.trim();
+    final phone = normalizePhone(_phoneController.text);
     context.read<AuthBloc>().add(OtpLoginSubmitted(phone: phone, otp: otp));
   }
 
@@ -150,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   void _onResendOtpPressed() {
     if (_resendSeconds == 0) {
-      final phone = _phoneController.text.trim();
+      final phone = normalizePhone(_phoneController.text);
       context.read<AuthBloc>().add(OtpRequested(phone: phone));
     }
   }
@@ -211,11 +212,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               ),
             );
           } else if (state is AuthenticatedState) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (_) => AppMainPage()),
-              (route) => false,
-            );
+            navigateAfterAuth(context);
           } else if (state is AuthRequirePhoneLink) {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const LinkPhonePage()));
           } else if (state is AuthOtpSent) {
