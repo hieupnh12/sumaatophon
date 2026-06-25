@@ -1,0 +1,20 @@
+# Thay block flutter-api trong docker-compose.yml gốc trên VPS
+# sau khi đã push image: hieupnh12/flutter-api:latest
+
+flutter-api:
+  image: hieupnh12/flutter-api:latest
+  container_name: flutter-api
+  restart: unless-stopped
+  pull_policy: always
+
+  env_file:
+    - .env
+
+  environment:
+    PORT: 3000
+
+  ports:
+    - "127.0.0.1:3001:3000"
+
+  volumes:
+    - ./flutter-api/firebase-service-account.json:/app/firebase-service-account.json:ro

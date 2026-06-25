@@ -1,6 +1,30 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
+
 /// URL REST API backend — không chứa thông tin MySQL.
 class ApiEndpoints {
-  static const String baseUrl = 'https://maclenin.io.vn/mobile';
+  /// Production VPS: https://maclenin.io.vn/mobile (Nginx → flutter-api :3001)
+  /// Override khi dev: --dart-define=API_BASE_URL=http://192.168.x.x:3000
+  static const String _prodBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://maclenin.io.vn/mobile',
+  );
+
+  static String get baseUrl {
+    const override = String.fromEnvironment('API_BASE_URL');
+    if (override.isNotEmpty && !kReleaseMode) {
+      return override;
+    }
+    if (kReleaseMode) {
+      return _prodBaseUrl;
+    }
+
+    // Debug local: emulator / simulator / máy thật cùng WiFi với PC chạy backend
+    if (kIsWeb) return 'http://localhost:3000';
+    if (Platform.isAndroid) return 'http://10.0.2.2:3000';
+    return 'http://127.0.0.1:3000';
+  }
 
   static const String products = '/products';
   static const String googleLogin = '/auth/google';
