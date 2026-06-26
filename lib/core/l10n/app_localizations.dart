@@ -166,6 +166,42 @@ class AppLocalizations {
       'order_total_amount': 'Tổng tiền',
       'order_item_count': 'sản phẩm',
       'order_empty': 'Chưa có đơn hàng nào',
+      'account_info_edit': 'Sửa',
+      'account_info_unsaved_title': 'Chưa lưu thay đổi',
+      'account_info_unsaved_desc': 'Bạn có thay đổi chưa lưu. Bạn có chắc chắn muốn thoát?',
+      'account_info_discard': 'Thoát',
+      'account_info_keep_editing': 'Ở lại',
+
+      // Address
+      'address_title': 'Sổ địa chỉ',
+      'address_empty_title': 'Chưa có địa chỉ nào được lưu',
+      'address_empty_desc': 'Lưu lại địa chỉ của bạn giúp thuận tiện hơn khi sử dụng dịch vụ',
+      'address_add_btn': 'Thêm địa chỉ',
+      'address_add_title': 'Thêm địa chỉ',
+      'address_edit_title': 'Sửa địa chỉ',
+      'address_name_label': 'Họ và tên',
+      'address_phone_label': 'Số điện thoại',
+      'address_province_label': 'Tỉnh/ Thành phố',
+      'address_district_label': 'Quận/ Huyện',
+      'address_ward_label': 'Phường/ Xã',
+      'address_street_label': 'Địa chỉ cụ thể',
+      'address_type_label': 'Loại địa chỉ',
+      'address_type_home': 'Nhà',
+      'address_type_office': 'Văn phòng',
+      'address_set_default': 'Đặt làm địa chỉ mặc định',
+      'address_select_province': 'Chọn Tỉnh/ Thành phố',
+      'address_select_district': 'Chọn Quận/ Huyện',
+      'address_select_ward': 'Chọn Phường/ Xã',
+      'address_search_placeholder': 'Tìm kiếm',
+      'address_btn_edit': 'Sửa',
+      'address_btn_delete': 'Xoá',
+      'address_save_success': 'Lưu địa chỉ thành công',
+      'address_delete_success': 'Xóa địa chỉ thành công',
+      'address_delete_confirm_title': 'Xóa địa chỉ?',
+      'address_delete_confirm_desc': 'Bạn có chắc chắn muốn xóa địa chỉ này không?',
+      'address_receiver_info': 'Thông tin người nhận',
+      'address_shipping_info': 'Địa chỉ nhận hàng',
+      'address_specific_hint': 'Nhập Địa chỉ cụ thể',
     },
     'en': {
       // Onboarding
@@ -329,6 +365,42 @@ class AppLocalizations {
       'order_total_amount': 'Total',
       'order_item_count': 'items',
       'order_empty': 'No orders yet',
+      'account_info_edit': 'Edit',
+      'account_info_unsaved_title': 'Unsaved Changes',
+      'account_info_unsaved_desc': 'You have unsaved changes. Are you sure you want to exit?',
+      'account_info_discard': 'Discard',
+      'account_info_keep_editing': 'Keep Editing',
+
+      // Address
+      'address_title': 'Address Book',
+      'address_empty_title': 'No addresses saved yet',
+      'address_empty_desc': 'Saving your address makes it easier to use our services',
+      'address_add_btn': 'Add Address',
+      'address_add_title': 'Add Address',
+      'address_edit_title': 'Edit Address',
+      'address_name_label': 'Full Name',
+      'address_phone_label': 'Phone Number',
+      'address_province_label': 'Province/City',
+      'address_district_label': 'District',
+      'address_ward_label': 'Ward',
+      'address_street_label': 'Specific Address',
+      'address_type_label': 'Address Type',
+      'address_type_home': 'Home',
+      'address_type_office': 'Office',
+      'address_set_default': 'Set as default address',
+      'address_select_province': 'Select Province/City',
+      'address_select_district': 'Select District',
+      'address_select_ward': 'Select Ward',
+      'address_search_placeholder': 'Search',
+      'address_btn_edit': 'Edit',
+      'address_btn_delete': 'Delete',
+      'address_save_success': 'Address saved successfully',
+      'address_delete_success': 'Address deleted successfully',
+      'address_delete_confirm_title': 'Delete address?',
+      'address_delete_confirm_desc': 'Are you sure you want to delete this address?',
+      'address_receiver_info': 'Receiver Information',
+      'address_shipping_info': 'Shipping Address',
+      'address_specific_hint': 'Enter specific address',
     },
     'ja': {
       // Onboarding
@@ -492,6 +564,42 @@ class AppLocalizations {
       'order_total_amount': '合計',
       'order_item_count': '商品',
       'order_empty': '注文はまだありません',
+      'account_info_edit': '編集',
+      'account_info_unsaved_title': '未保存の変更',
+      'account_info_unsaved_desc': '保存されていない変更があります。終了してもよろしいですか？',
+      'account_info_discard': '破棄',
+      'account_info_keep_editing': '編集を続ける',
+
+      // Address
+      'address_title': 'アドレス帳',
+      'address_empty_title': '保存された住所はありません',
+      'address_empty_desc': '住所を保存すると、サービスの利用が便利になります',
+      'address_add_btn': '住所を追加',
+      'address_add_title': '住所を追加',
+      'address_edit_title': '住所を編集',
+      'address_name_label': '氏名',
+      'address_phone_label': '電話番号',
+      'address_province_label': '都道府県',
+      'address_district_label': '市区町村',
+      'address_ward_label': '区/町/村',
+      'address_street_label': '詳しい住所',
+      'address_type_label': '住所の種類',
+      'address_type_home': '自宅',
+      'address_type_office': '職場',
+      'address_set_default': 'デフォルトの住所に設定',
+      'address_select_province': '都道府県を選択',
+      'address_select_district': '市区町村を選択',
+      'address_select_ward': '区/町/村を選択',
+      'address_search_placeholder': '検索',
+      'address_btn_edit': '編集',
+      'address_btn_delete': '削除',
+      'address_save_success': '住所が保存されました',
+      'address_delete_success': '住所が削除されました',
+      'address_delete_confirm_title': '住所を削除しますか？',
+      'address_delete_confirm_desc': 'この住所を削除してもよろしいですか？',
+      'address_receiver_info': '受取人情報',
+      'address_shipping_info': '配送先住所',
+      'address_specific_hint': '詳しい住所を入力',
     }
   };
 
@@ -503,6 +611,11 @@ class AppLocalizations {
 extension LocalizationExtension on BuildContext {
   String tr(String key) {
     final langCode = watch<LanguageCubit>().state;
+    return AppLocalizations.translate(key, langCode);
+  }
+
+  String trRead(String key) {
+    final langCode = read<LanguageCubit>().state;
     return AppLocalizations.translate(key, langCode);
   }
 }

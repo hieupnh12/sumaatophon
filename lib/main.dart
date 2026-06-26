@@ -39,6 +39,12 @@ import 'features/chat/presentation/pages/chat_page.dart';
 import 'features/notifications/presentation/bloc/notification_bloc.dart';
 import 'features/notifications/presentation/pages/notifications_page.dart';
 import 'features/profile/presentation/pages/profile_page.dart';
+import 'package:http/http.dart' as http;
+import 'features/address/data/datasources/address_remote_datasource.dart';
+import 'features/address/data/datasources/location_remote_datasource.dart';
+import 'features/address/data/repositories/address_repository_impl.dart';
+import 'features/address/domain/repositories/address_repository.dart';
+import 'features/address/presentation/bloc/address_bloc.dart';
 
 final sl = GetIt.instance;
 
@@ -68,15 +74,22 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl<AuthRemoteDataSource>()));
   sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(sl(), sl()));
   sl.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(sl()));
+  
+  // Address
+  sl.registerLazySingleton(() => http.Client());
+  sl.registerLazySingleton<LocationRemoteDataSource>(() => LocationRemoteDataSourceImpl(client: sl()));
+  sl.registerLazySingleton<AddressRemoteDataSource>(() => AddressRemoteDataSourceImpl(client: sl()));
+  sl.registerLazySingleton<AddressRepository>(() => AddressRepositoryImpl(remoteDataSource: sl(), locationDataSource: sl()));
 
   // Blocs
-  sl.registerFactory(() => AuthBloc(authRepository: sl()));
+  sl.registerLazySingleton(() => AuthBloc(authRepository: sl()));
   sl.registerFactory(() => ProductBloc(repository: sl()));
   sl.registerFactory(() => CartBloc(repository: sl()));
   sl.registerFactory(() => CheckoutBloc());
   sl.registerFactory(() => StoreLocatorBloc());
   sl.registerFactory(() => ChatBloc());
   sl.registerFactory(() => NotificationBloc());
+  sl.registerFactory(() => AddressBloc(repository: sl(), authBloc: sl()));
   
   // Theme & Language
   sl.registerLazySingleton(() => ThemeCubit());
@@ -104,6 +117,7 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
         BlocProvider(create: (_) => sl<StoreLocatorBloc>()..add(LoadStoresEvent())),
         BlocProvider(create: (_) => sl<ChatBloc>()),
         BlocProvider(create: (_) => sl<NotificationBloc>()..add(LoadNotificationsEvent())),
+        BlocProvider(create: (_) => sl<AddressBloc>()..add(LoadAddressesEvent())),
         BlocProvider(create: (_) => sl<ThemeCubit>()),
         BlocProvider(create: (_) => sl<LanguageCubit>()),
       ],

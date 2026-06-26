@@ -3,15 +3,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// URL REST API backend — không chứa thông tin MySQL.
 class ApiEndpoints {
-  // Android Emulator: http://10.0.2.2:3000
-  // iOS Simulator: http://localhost:3000
-  // Máy thật (cùng WiFi với PC chạy backend): http://<IP-LAN-PC>:3000
 
-  // Tự động nhận diện thiết bị để dùng đúng IP Localhost
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:3000';
-    if (Platform.isAndroid) return 'http://10.0.2.2:3000'; // Máy ảo Android
-    return 'http://127.0.0.1:3000'; // iOS Simulator hoặc Desktop
+    return 'https://maclenin.io.vn/mobile';
   }
 
   static const String products = '/products';

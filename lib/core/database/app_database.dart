@@ -7,7 +7,7 @@ class AppDatabase {
   static Database? _database;
 
   static const String _dbName = 'phoneshop.db';
-  static const int _dbVersion = 4;
+  static const int _dbVersion = 5;
 
   Future<Database> get database async {
     _database ??= await _initDatabase();
@@ -43,6 +43,25 @@ class AppDatabase {
       await db.execute('DROP TABLE IF EXISTS cart_items');
       await _createCartItemsTable(db);
     }
+    if (oldVersion < 5) {
+      await _createAddressesTable(db);
+    }
+  }
+
+  Future<void> _createAddressesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS addresses (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        province TEXT NOT NULL,
+        district TEXT NOT NULL,
+        ward TEXT NOT NULL,
+        street TEXT NOT NULL,
+        type TEXT NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
   }
 
   Future<void> _createCartItemsTable(Database db) async {
@@ -94,5 +113,6 @@ class AppDatabase {
   Future<void> _onCreate(Database db, int version) async {
     await _createCartItemsTable(db);
     await _createProductsCacheTable(db);
+    await _createAddressesTable(db);
   }
 }
