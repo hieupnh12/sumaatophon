@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../l10n/app_localizations.dart';
-import '../../features/auth/domain/entities/user_entity.dart';import '../../features/auth/presentation/bloc/auth_bloc.dart';
+
+import '../design_system/app_confirm_dialog.dart';
+import '../../features/auth/domain/entities/user_entity.dart';
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 
 /// Chỉ coi là đăng nhập thật khi có customer_id từ MySQL (không phải guest/biometric demo).
@@ -29,35 +31,7 @@ Future<bool> requireAuthForCart(
   }
 
   if (confirmBeforeLogin) {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        final theme = Theme.of(dialogContext);
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(
-            dialogContext.tr('cart_login_confirm_title'),
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-          content: Text(dialogContext.tr('cart_login_confirm_message')),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(dialogContext.tr('cancel')),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text(dialogContext.tr('login_btn')),
-            ),
-          ],
-        );
-      },
-    );
+    final confirmed = await showCartLoginConfirmDialog(context);
 
     if (confirmed != true || !context.mounted) {
       return false;
