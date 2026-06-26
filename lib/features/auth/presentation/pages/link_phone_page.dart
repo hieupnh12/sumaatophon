@@ -6,6 +6,7 @@ import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../bloc/auth_bloc.dart';
+import '../../../../main.dart';
 import 'dart:async';
 
 class LinkPhonePage extends StatefulWidget {
@@ -275,7 +276,11 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
                Future.delayed(const Duration(milliseconds: 300), () => _onOtpCompleted(state.mockOtp!));
              }
           } else if (state is AuthenticatedState) {
-             Navigator.pop(context); // Về lại Login
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const AppMainPage()),
+              (route) => false,
+            );
           }
         },
         builder: (context, state) {
@@ -340,7 +345,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
                       left: 16,
                       child: IconButton(
                         icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : Colors.black),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.maybePop(context),
                       ),
                     ),
 
