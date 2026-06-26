@@ -14,7 +14,20 @@ function splitPipe(value) {
     .filter((item) => item && item !== '/');
 }
 
-function mapProductRow(row) {
+function mergeUniqueImages(mainImage, extraImages = []) {
+  const images = [];
+  const add = (url) => {
+    const trimmed = String(url ?? '').trim();
+    if (trimmed && !images.includes(trimmed)) images.push(trimmed);
+  };
+
+  add(mainImage);
+  const extras = Array.isArray(extraImages) ? extraImages : [];
+  for (const image of extras) add(image);
+  return images;
+}
+
+function mapProductRow(row, galleryImages = null) {
   const minPrice = Number(row.min_price ?? 0);
   const maxImport = Number(row.max_import_price ?? minPrice);
   const originalPrice = maxImport > minPrice ? maxImport : minPrice;
@@ -29,14 +42,16 @@ function mapProductRow(row) {
   if (row.operating_system_name) specifications.OS = row.operating_system_name;
   if (row.warranty_period) specifications.Warranty = `${row.warranty_period} months`;
 
+  const images = mergeUniqueImages(row.picture, galleryImages);
+
   return {
     id: String(row.product_id),
     name: row.product_name,
     brand: row.brand_name ?? 'Unknown',
     price: minPrice,
     originalPrice,
-    imageUrl: row.picture ?? '',
-    galleryImages: row.picture ? [row.picture] : [],
+    imageUrl: images[0] ?? '',
+    galleryImages: images,
     rating: Number(row.avg_rating ?? 0),
     reviewCount: Number(row.review_count ?? 0),
     ramRomOptions: splitPipe(row.ram_rom_options),
@@ -45,10 +60,11 @@ function mapProductRow(row) {
     isNew: row.status === 1,
     stockQuantity: Number(row.stock_quantity ?? 0),
     versions: [],
+    feedbacks: [],
   };
 }
 
-function mapProductVersionRow(row) {
+function mapProductVersionRow(row, versionImages = []) {
   const ram = row.ram_size ? String(row.ram_size).trim() : '';
   const rom = row.rom_size ? String(row.rom_size).trim() : '';
   const ramRom = [ram, rom].filter(Boolean).join('/');
@@ -61,7 +77,54 @@ function mapProductVersionRow(row) {
     ramRom,
     price: Number(row.export_price ?? 0),
     stockQuantity: Number(row.stock_quantity ?? 0),
+    imageUrl: versionImages[0] ?? '',
+    galleryImages: versionImages,
   };
+}
+
+function mapFeedbackRow(row) {
+  return {
+    id: String(row.feedback_id),
+    customerName: row.full_name || 'Customer',
+    rate: Number(row.rate ?? 0),
+    content: row.content || '',
+    createdAt: row.date ? new Date(row.date).toISOString() : null,
+  };
+}
+
+async function fetchProductGalleryImages(productId) {
+  const [rows] = await pool.query(
+    `
+      SELECT vi.image
+      FROM version_image vi
+      INNER JOIN product_versions pv ON vi.product_version_id = pv.product_version_id
+      WHERE pv.product_id = ? AND vi.image IS NOT NULL AND vi.image != ''
+      ORDER BY vi.image_id
+    `,
+    [productId],
+  );
+
+  return rows.map((row) => row.image).filter(Boolean);
+}
+
+async function fetchProductFeedbacks(productId) {
+  const [rows] = await pool.query(
+    `
+      SELECT
+        f.feedback_id,
+        f.rate,
+        f.content,
+        f.date,
+        c.full_name
+      FROM feedbacks f
+      LEFT JOIN customers c ON f.customer_id = c.customer_id
+      WHERE f.product_id = ? AND (f.status = 1 OR f.status IS NULL)
+      ORDER BY f.date DESC
+    `,
+    [productId],
+  );
+
+  return rows.map(mapFeedbackRow);
 }
 
 async function fetchProductVersions(productId) {
@@ -88,12 +151,36 @@ async function fetchProductVersions(productId) {
         r.ram_size,
         ro.rom_size,
         c.color_name
-      ORDER BY pv.product_version_id
+      ORDER BY stock_quantity DESC, pv.product_version_id
     `,
     [productId],
   );
 
-  return rows.map(mapProductVersionRow);
+  const [imageRows] = await pool.query(
+    `
+      SELECT vi.product_version_id, vi.image
+      FROM version_image vi
+      INNER JOIN product_versions pv ON vi.product_version_id = pv.product_version_id
+      WHERE pv.product_id = ?
+        AND vi.image IS NOT NULL AND vi.image != ''
+      ORDER BY vi.product_version_id, vi.image_id
+    `,
+    [productId],
+  );
+
+  const imagesByVersion = new Map();
+  for (const row of imageRows) {
+    const versionId = String(row.product_version_id);
+    if (!imagesByVersion.has(versionId)) {
+      imagesByVersion.set(versionId, []);
+    }
+    imagesByVersion.get(versionId).push(String(row.image).trim());
+  }
+
+  return rows.map((row) => {
+    const versionId = String(row.product_version_id);
+    return mapProductVersionRow(row, imagesByVersion.get(versionId) ?? []);
+  });
 }
 
 // GET /products — danh sách sản phẩm cho tab Shop
@@ -156,14 +243,30 @@ app.get('/products', async (_req, res) => {
       ORDER BY p.product_id DESC
     `);
 
-    res.json(rows.map(mapProductRow));
+    res.json(rows.map((row) => mapProductRow(row)));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message, code: 'PRODUCTS_LIST_ERROR' });
   }
 });
 
-// GET /products — danh sách sản phẩm cho tab Shop , voiws req = request , res = response
+// GET /products/:id/feedbacks — danh sách đánh giá của sản phẩm
+app.get('/products/:id/feedbacks', async (req, res) => {
+  try {
+    const productId = req.params.id;
+    if (!productId) {
+      return res.status(400).json({ message: 'Product ID is required', code: 'MISSING_PRODUCT_ID' });
+    }
+
+    const feedbacks = await fetchProductFeedbacks(productId);
+    res.json(feedbacks);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message, code: 'PRODUCT_FEEDBACKS_ERROR' });
+  }
+});
+
+// GET /products/:id — chi tiết sản phẩm
 app.get('/products/:id', async (req, res) => {
   try {
      const productId = req.params.id;
@@ -234,8 +337,10 @@ app.get('/products/:id', async (req, res) => {
       return res.status(404).json({ message: 'Product not found', code: 'PRODUCT_NOT_FOUND' });
     }
 
-    const product = mapProductRow(rows[0]);
+    const galleryImages = await fetchProductGalleryImages(productId);
+    const product = mapProductRow(rows[0], galleryImages);
     product.versions = await fetchProductVersions(productId);
+    product.feedbacks = await fetchProductFeedbacks(productId);
     res.json(product);
   } catch (err) {
     console.error(err);

@@ -57,6 +57,8 @@ class AppLocalizations {
       'not_found_desc': 'Thử tìm kiếm với một từ khóa khác nhé.',
       'home': 'Trang chủ',
       'explore': 'Khám phá',
+      'brand_all': 'Tất cả',
+      'product_installment': 'Trả góp 0%',
 
       // Product Detail
       'add_to_cart': 'Thêm vào giỏ',
@@ -64,10 +66,20 @@ class AppLocalizations {
       'buy_now': 'Mua ngay',
       'color': 'Màu sắc',
       'storage': 'Phiên bản',
+      'product_version_out_of_stock': 'Hết hàng',
       'specifications': 'Thông số kỹ thuật',
       'reviews': 'Đánh giá',
       'reviews_based_on': 'Dựa trên số đánh giá',
       'description': 'Mô tả sản phẩm',
+      'product_favorite': 'Yêu thích',
+      'product_qa': 'Hỏi đáp',
+      'product_specs_btn': 'Thông số',
+      'product_compare': 'So sánh',
+      'product_video': 'Video',
+      'product_highlights': 'Tính năng nổi bật',
+      'product_coming_soon': 'Tính năng sắp ra mắt',
+      'product_reviews_empty': 'Chưa có đánh giá nào cho sản phẩm này.',
+      'product_review_guest': 'Khách hàng',
 
       // Cart
       'cart_empty_title': 'Giỏ hàng trống',
@@ -90,9 +102,6 @@ class AppLocalizations {
       'cart_save_error': 'Không lưu được giỏ hàng. Hãy khởi động lại app.',
       'cart_promo_applied': 'Đã áp dụng mã \'{code}\'',
       'promo_invalid': 'Mã giảm giá không hợp lệ hoặc đã hết hạn.',
-      'product_version_stock': 'Còn {count} máy trong kho',
-      'product_version_out_of_stock': 'Phiên bản này đã hết hàng',
-      'product_version_unavailable': 'Vui lòng chọn màu và dung lượng',
 
       // Checkout
       'checkout_title': 'Thanh toán',
@@ -126,7 +135,7 @@ class AppLocalizations {
 
       // Navigation
       'shop': 'Cửa hàng',
-      'stores': 'Hệ thống',
+      'stores': 'Địa chỉ ',
       'concierge': 'Hỗ trợ',
       'notifications': 'Thông báo',
 
@@ -256,6 +265,8 @@ class AppLocalizations {
       'not_found_desc': 'Try searching with a different keyword.',
       'home': 'Home',
       'explore': 'Explore',
+      'brand_all': 'All',
+      'product_installment': '0% Installment',
 
       // Product Detail
       'add_to_cart': 'Add to Cart',
@@ -263,10 +274,20 @@ class AppLocalizations {
       'buy_now': 'Buy Now',
       'color': 'Color',
       'storage': 'Storage',
+      'product_version_out_of_stock': 'Out of stock',
       'specifications': 'Specifications',
       'reviews': 'Reviews',
       'reviews_based_on': 'Based on reviews',
       'description': 'Product Description',
+      'product_favorite': 'Favorite',
+      'product_qa': 'Q&A',
+      'product_specs_btn': 'Specs',
+      'product_compare': 'Compare',
+      'product_video': 'Video',
+      'product_highlights': 'Highlights',
+      'product_coming_soon': 'Coming soon',
+      'product_reviews_empty': 'No reviews for this product yet.',
+      'product_review_guest': 'Customer',
 
       // Cart
       'cart_empty_title': 'Cart is empty',
@@ -289,9 +310,6 @@ class AppLocalizations {
       'cart_save_error': 'Could not save cart. Please restart the app.',
       'cart_promo_applied': 'Promo \'{code}\' applied',
       'promo_invalid': 'Invalid or expired promo code.',
-      'product_version_stock': '{count} units in stock',
-      'product_version_out_of_stock': 'This variant is out of stock',
-      'product_version_unavailable': 'Please select color and storage',
 
       // Checkout
       'checkout_title': 'Checkout',
@@ -455,6 +473,8 @@ class AppLocalizations {
       'not_found_desc': '別のキーワードで検索してみてください。',
       'home': 'ホーム',
       'explore': '見る',
+      'brand_all': 'すべて',
+      'product_installment': '分割0%',
 
       // Product Detail
       'add_to_cart': 'カートに追加',
@@ -462,10 +482,20 @@ class AppLocalizations {
       'buy_now': '今すぐ購入',
       'color': 'カラー',
       'storage': 'ストレージ',
+      'product_version_out_of_stock': '在庫切れ',
       'specifications': '仕様',
       'reviews': 'レビュー',
       'reviews_based_on': 'レビューに基づく',
       'description': '商品説明',
+      'product_favorite': 'お気に入り',
+      'product_qa': '質問',
+      'product_specs_btn': '仕様',
+      'product_compare': '比較',
+      'product_video': '動画',
+      'product_highlights': '特徴',
+      'product_coming_soon': '近日公開',
+      'product_reviews_empty': 'この商品のレビューはまだありません。',
+      'product_review_guest': 'お客様',
 
       // Cart
       'cart_empty_title': 'カートは空です',
@@ -488,9 +518,6 @@ class AppLocalizations {
       'cart_save_error': 'カートを保存できません。アプリを再起動してください。',
       'cart_promo_applied': 'プロモコード \'{code}\' を適用しました',
       'promo_invalid': 'プロモコードが無効または期限切れです。',
-      'product_version_stock': '在庫 {count} 台',
-      'product_version_out_of_stock': 'このバリエーションは在庫切れです',
-      'product_version_unavailable': 'カラーと容量を選択してください',
 
       // Checkout
       'checkout_title': 'チェックアウト',

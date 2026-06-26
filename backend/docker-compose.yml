@@ -1,0 +1,15 @@
+services:
+  sumaatophon-api:
+    build: .
+    container_name: sumaatophon-api
+    restart: unless-stopped
+    # Chỉ listen localhost trên VPS — Nginx proxy vào, tránh conflict port public.
+    # Đổi 3001 nếu trùng service khác trên VPS.
+    ports:
+      - "127.0.0.1:${FLUTTER_API_PORT:-3001}:3000"
+    env_file:
+      - .env
+    environment:
+      PORT: 3000
+    volumes:
+      - ./firebase-service-account.json:/app/firebase-service-account.json:ro
