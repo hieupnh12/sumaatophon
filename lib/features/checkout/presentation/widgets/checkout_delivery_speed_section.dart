@@ -22,11 +22,7 @@ class CheckoutDeliverySpeedSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                context.tr('checkout_select_delivery_method'),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 16),
+              CheckoutSectionTitle(title: context.tr('checkout_select_delivery_method')),
               _DeliveryOptionCard(
                 icon: Icons.inventory_2_outlined,
                 label: context.tr('checkout_super_fast_delivery').replaceAll('{time}', superFastTime),

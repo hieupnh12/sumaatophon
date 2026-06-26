@@ -32,6 +32,7 @@ class _CheckoutCustomerSectionState extends State<CheckoutCustomerSection> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondaryColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
 
     return BlocBuilder<CheckoutBloc, CheckoutState>(
       builder: (context, state) {
@@ -39,39 +40,37 @@ class _CheckoutCustomerSectionState extends State<CheckoutCustomerSection> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                context.tr('checkout_customer_info'),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 16),
+              CheckoutSectionTitle(title: context.tr('checkout_customer_info')),
               Text(
                 state.customerName,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, height: 1.3),
               ),
-              const SizedBox(height: 4),
-              Text(
-                state.customerPhone,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  'S-${state.memberCode}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      state.customerPhone,
+                      style: TextStyle(fontSize: 14, height: 1.3, color: secondaryColor),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    ),
+                    child: Text(
+                      'S-${state.memberCode}',
+                      style: TextStyle(fontSize: 11, height: 1.2, color: secondaryColor),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               CheckoutLabeledField(
                 label: context.tr('checkout_email'),
                 child: CheckoutTextField(
@@ -83,13 +82,10 @@ class _CheckoutCustomerSectionState extends State<CheckoutCustomerSection> {
                   },
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 context.tr('checkout_email_vat_note'),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                ),
+                style: TextStyle(fontSize: 12, height: 1.4, color: secondaryColor),
               ),
             ],
           ),

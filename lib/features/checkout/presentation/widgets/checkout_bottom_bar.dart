@@ -106,7 +106,7 @@ class CheckoutBottomBar extends StatelessWidget {
                   : Text(
                       step == CheckoutStep.information
                           ? context.tr('checkout_continue_payment')
-                          : context.tr('checkout_confirm_order'),
+                          : context.tr('checkout_pay'),
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                     ),
             ),

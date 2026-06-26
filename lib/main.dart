@@ -33,6 +33,7 @@ import 'features/cart/presentation/bloc/cart_bloc.dart';
 import 'features/cart/presentation/cart_auth_helper.dart';
 import 'core/auth/auth_guard.dart';
 import 'features/checkout/presentation/bloc/checkout_bloc.dart';
+import 'features/checkout/data/datasources/payment_remote_datasource.dart';
 import 'features/store_locator/presentation/bloc/store_locator_bloc.dart';
 import 'features/store_locator/presentation/pages/store_location_page.dart';
 import 'features/chat/presentation/bloc/chat_bloc.dart';
@@ -82,12 +83,13 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton<LocationRemoteDataSource>(() => LocationRemoteDataSourceImpl(client: sl()));
   sl.registerLazySingleton<AddressRemoteDataSource>(() => AddressRemoteDataSourceImpl(client: sl()));
   sl.registerLazySingleton<AddressRepository>(() => AddressRepositoryImpl(remoteDataSource: sl(), locationDataSource: sl()));
+  sl.registerLazySingleton<PaymentRemoteDataSource>(() => PaymentRemoteDataSourceImpl(client: sl()));
 
   // Blocs
   sl.registerLazySingleton(() => AuthBloc(authRepository: sl()));
   sl.registerFactory(() => ProductBloc(repository: sl()));
   sl.registerFactory(() => CartBloc(repository: sl()));
-  sl.registerFactory(() => CheckoutBloc());
+  sl.registerFactory(() => CheckoutBloc(paymentDataSource: sl()));
   sl.registerFactory(() => StoreLocatorBloc());
   sl.registerFactory(() => ChatBloc());
   sl.registerFactory(() => NotificationBloc());

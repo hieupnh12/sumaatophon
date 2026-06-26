@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../../../address/presentation/bloc/address_bloc.dart';
 import '../bloc/checkout_bloc.dart';
-import 'checkout_company_invoice_section.dart';
 import 'checkout_customer_section.dart';
 import 'checkout_delivery_speed_section.dart';
 import 'checkout_delivery_type_tabs.dart';
@@ -21,35 +21,41 @@ class CheckoutInfoTab extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
             const CheckoutCustomerSection(),
-            const SizedBox(height: 12),
+            const SizedBox(height: CheckoutSpacing.sectionGap),
             CheckoutSectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.tr('checkout_receiving_info'),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 16),
-                  CheckoutDeliveryTypeTabs(
-                    activeType: state.deliveryType,
-                    onTypeChanged: (type) {
-                      context.read<CheckoutBloc>().add(SetDeliveryTypeEvent(type));
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  if (state.deliveryType == DeliveryType.storePickup)
-                    const CheckoutPickupForm()
-                  else
-                    const CheckoutHomeDeliveryForm(),
-                ],
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: CheckoutDeliveryTypeTabs(
+                activeType: state.deliveryType,
+                onTypeChanged: (type) {
+                  context.read<CheckoutBloc>().add(SetDeliveryTypeEvent(type));
+                  if (type == DeliveryType.homeDelivery) {
+                    final addressState = context.read<AddressBloc>().state;
+                    if (addressState is AddressLoaded) {
+                      context.read<CheckoutBloc>().add(
+                            ApplyAddressesFromBookEvent(addressState.addresses),
+                          );
+                    } else {
+                      context.read<AddressBloc>().add(LoadAddressesEvent());
+                    }
+                  }
+                },
               ),
             ),
-            if (state.deliveryType == DeliveryType.homeDelivery) ...[
-              const SizedBox(height: 12),
+            const SizedBox(height: CheckoutSpacing.sectionGap),
+            if (state.deliveryType == DeliveryType.storePickup) ...[
+              CheckoutSectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CheckoutSectionTitle(title: context.tr('checkout_receiving_info')),
+                    const CheckoutPickupForm(),
+                  ],
+                ),
+              ),
+            ] else ...[
+              const CheckoutHomeDeliveryForm(),
+              const SizedBox(height: CheckoutSpacing.sectionGap),
               const CheckoutDeliverySpeedSection(),
-              const SizedBox(height: 12),
-              const CheckoutCompanyInvoiceSection(),
             ],
           ],
         );

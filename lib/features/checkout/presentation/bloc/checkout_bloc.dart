@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../address/domain/entities/address.dart';
+import '../../data/datasources/payment_remote_datasource.dart';
+import '../widgets/checkout_location_data.dart';
 
 enum CheckoutStep { information, payment }
 
@@ -167,7 +170,44 @@ class SelectPaymentMethodEvent extends CheckoutEvent {
   List<Object?> get props => [method];
 }
 
-class SubmitOrderEvent extends CheckoutEvent {}
+class ApplyAddressesFromBookEvent extends CheckoutEvent {
+  final List<Address> addresses;
+
+  const ApplyAddressesFromBookEvent(this.addresses);
+
+  @override
+  List<Object?> get props => [addresses];
+}
+
+class SelectSavedAddressEvent extends CheckoutEvent {
+  final Address address;
+
+  const SelectSavedAddressEvent(this.address);
+
+  @override
+  List<Object?> get props => [address];
+}
+
+class EnableManualAddressEvent extends CheckoutEvent {}
+
+class ApplyDefaultPickupStoreEvent extends CheckoutEvent {
+  const ApplyDefaultPickupStoreEvent();
+}
+
+class ContinueToPaymentEvent extends CheckoutEvent {}
+
+class ClearCheckoutErrorEvent extends CheckoutEvent {}
+
+class ClearCheckoutSuccessEvent extends CheckoutEvent {}
+
+class SubmitOrderEvent extends CheckoutEvent {
+  final int totalAmount;
+
+  const SubmitOrderEvent(this.totalAmount);
+
+  @override
+  List<Object?> get props => [totalAmount];
+}
 
 // --- STATE ---
 class CheckoutState extends Equatable {
@@ -188,6 +228,8 @@ class CheckoutState extends Equatable {
   final bool saveToAddressBook;
   final DeliverySpeed deliverySpeed;
   final bool? wantsCompanyInvoice;
+  final String? selectedAddressId;
+  final bool isManualAddressEntry;
   final String selectedPaymentMethod;
   final bool isProcessing;
   final bool isSuccess;
@@ -202,16 +244,18 @@ class CheckoutState extends Equatable {
     this.memberCode = 'NULL',
     this.recipientName = '',
     this.recipientPhone = '',
-    this.province = 'Đà Nẵng',
-    this.district,
+    this.province = CheckoutLocationData.defaultProvince,
+    this.district = CheckoutLocationData.defaultDistrict,
     this.ward,
     this.homeAddress = '',
-    this.selectedStore,
+    this.selectedStore = CheckoutLocationData.defaultStoreLabel,
     this.notes = '',
     this.saveToAddressBook = false,
     this.deliverySpeed = DeliverySpeed.standard,
     this.wantsCompanyInvoice,
-    this.selectedPaymentMethod = 'checkout_payment_cod',
+    this.selectedAddressId,
+    this.isManualAddressEntry = false,
+    this.selectedPaymentMethod = 'checkout_payment_store',
     this.isProcessing = false,
     this.isSuccess = false,
     this.error,
@@ -239,6 +283,9 @@ class CheckoutState extends Equatable {
     DeliverySpeed? deliverySpeed,
     bool? wantsCompanyInvoice,
     bool clearCompanyInvoice = false,
+    String? selectedAddressId,
+    bool clearSelectedAddress = false,
+    bool? isManualAddressEntry,
     String? selectedPaymentMethod,
     bool? isProcessing,
     bool? isSuccess,
@@ -263,6 +310,8 @@ class CheckoutState extends Equatable {
       deliverySpeed: deliverySpeed ?? this.deliverySpeed,
       wantsCompanyInvoice:
           clearCompanyInvoice ? null : (wantsCompanyInvoice ?? this.wantsCompanyInvoice),
+      selectedAddressId: clearSelectedAddress ? null : (selectedAddressId ?? this.selectedAddressId),
+      isManualAddressEntry: isManualAddressEntry ?? this.isManualAddressEntry,
       selectedPaymentMethod: selectedPaymentMethod ?? this.selectedPaymentMethod,
       isProcessing: isProcessing ?? this.isProcessing,
       isSuccess: isSuccess ?? this.isSuccess,
@@ -289,6 +338,8 @@ class CheckoutState extends Equatable {
         saveToAddressBook,
         deliverySpeed,
         wantsCompanyInvoice,
+        selectedAddressId,
+        isManualAddressEntry,
         selectedPaymentMethod,
         isProcessing,
         isSuccess,
@@ -298,40 +349,196 @@ class CheckoutState extends Equatable {
 
 // --- BLOC ---
 class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
-  CheckoutBloc() : super(const CheckoutState()) {
+  final PaymentRemoteDataSource? paymentDataSource;
+
+  CheckoutBloc({this.paymentDataSource}) : super(const CheckoutState()) {
     on<InitializeCheckoutEvent>(_onInitialize);
     on<SetCheckoutStepEvent>((event, emit) => emit(state.copyWith(step: event.step)));
     on<SetDeliveryTypeEvent>((event, emit) {
-      emit(state.copyWith(
-        deliveryType: event.type,
-        clearDistrict: true,
-        clearWard: true,
-        clearStore: true,
-      ));
+      final paymentMethod = event.type == DeliveryType.storePickup
+          ? 'checkout_payment_store'
+          : 'checkout_payment_cod';
+      if (event.type == DeliveryType.storePickup) {
+        emit(state.copyWith(
+          deliveryType: event.type,
+          selectedPaymentMethod: paymentMethod,
+          province: CheckoutLocationData.defaultProvince,
+          district: CheckoutLocationData.defaultDistrict,
+          selectedStore: CheckoutLocationData.defaultStoreLabel,
+          clearWard: true,
+        ));
+      } else {
+        emit(state.copyWith(
+          deliveryType: event.type,
+          selectedPaymentMethod: paymentMethod,
+          clearStore: true,
+          isManualAddressEntry: false,
+        ));
+      }
     });
     on<UpdateCustomerEmailEvent>((event, emit) => emit(state.copyWith(customerEmail: event.email)));
-    on<UpdateRecipientNameEvent>((event, emit) => emit(state.copyWith(recipientName: event.name)));
-    on<UpdateRecipientPhoneEvent>((event, emit) => emit(state.copyWith(recipientPhone: event.phone)));
+    on<UpdateRecipientNameEvent>((event, emit) => _emitManualFieldUpdate(emit, recipientName: event.name));
+    on<UpdateRecipientPhoneEvent>((event, emit) => _emitManualFieldUpdate(emit, recipientPhone: event.phone));
     on<UpdateProvinceEvent>((event, emit) {
-      emit(state.copyWith(
+      if (state.deliveryType == DeliveryType.storePickup) {
+        emit(state.copyWith(
+          province: event.province,
+          clearDistrict: true,
+          clearWard: true,
+          clearStore: true,
+        ));
+        return;
+      }
+      _emitManualFieldUpdate(
+        emit,
         province: event.province,
-        clearDistrict: true,
         clearWard: true,
-        clearStore: true,
-      ));
+      );
     });
     on<UpdateDistrictEvent>((event, emit) {
       emit(state.copyWith(district: event.district, clearWard: true, clearStore: true));
     });
-    on<UpdateWardEvent>((event, emit) => emit(state.copyWith(ward: event.ward)));
-    on<UpdateHomeAddressEvent>((event, emit) => emit(state.copyWith(homeAddress: event.address)));
+    on<UpdateWardEvent>((event, emit) => _emitManualFieldUpdate(emit, ward: event.ward));
+    on<UpdateHomeAddressEvent>((event, emit) => _emitManualFieldUpdate(emit, homeAddress: event.address));
     on<UpdateStoreEvent>((event, emit) => emit(state.copyWith(selectedStore: event.store)));
     on<UpdateNotesEvent>((event, emit) => emit(state.copyWith(notes: event.notes)));
     on<ToggleSaveAddressEvent>((event, emit) => emit(state.copyWith(saveToAddressBook: event.save)));
     on<SelectDeliverySpeedEvent>((event, emit) => emit(state.copyWith(deliverySpeed: event.speed)));
     on<SetCompanyInvoiceEvent>((event, emit) => emit(state.copyWith(wantsCompanyInvoice: event.wantsInvoice)));
-    on<SelectPaymentMethodEvent>((event, emit) => emit(state.copyWith(selectedPaymentMethod: event.method)));
+    on<SelectPaymentMethodEvent>((event, emit) {
+      if (event.method == 'checkout_payment_qr') {
+        emit(state.copyWith(
+          selectedPaymentMethod: event.method,
+          clearCompanyInvoice: true,
+        ));
+      } else {
+        emit(state.copyWith(selectedPaymentMethod: event.method));
+      }
+    });
+    on<ApplyDefaultPickupStoreEvent>((event, emit) => _applyDefaultPickupStore(emit));
+    on<ApplyAddressesFromBookEvent>(_onApplyAddressesFromBook);
+    on<SelectSavedAddressEvent>(_onSelectSavedAddress);
+    on<EnableManualAddressEvent>((event, emit) {
+      emit(state.copyWith(clearSelectedAddress: true, isManualAddressEntry: true));
+    });
+    on<ContinueToPaymentEvent>(_onContinueToPayment);
+    on<ClearCheckoutErrorEvent>((event, emit) => emit(state.copyWith(error: null)));
+    on<ClearCheckoutSuccessEvent>((event, emit) => emit(state.copyWith(isSuccess: false)));
     on<SubmitOrderEvent>(_onSubmitOrder);
+  }
+
+  String? _validateInformationStep() {
+    if (state.deliveryType == DeliveryType.storePickup) {
+      if (state.selectedStore == null || state.selectedStore!.trim().isEmpty) {
+        return 'checkout_error_store';
+      }
+      return null;
+    }
+
+    if (state.selectedAddressId == null || state.selectedAddressId!.isEmpty) {
+      return 'checkout_error_address';
+    }
+
+    final name = state.recipientName.trim().isNotEmpty ? state.recipientName : state.customerName;
+    final phone = state.recipientPhone.trim().isNotEmpty ? state.recipientPhone : state.customerPhone;
+    if (name.trim().isEmpty) return 'checkout_error_recipient_name';
+    if (phone.trim().isEmpty) return 'checkout_error_recipient_phone';
+
+    return null;
+  }
+
+  void _applyDefaultPickupStore(Emitter<CheckoutState> emit) {
+    if (state.deliveryType != DeliveryType.storePickup) return;
+    emit(state.copyWith(
+      province: CheckoutLocationData.defaultProvince,
+      district: CheckoutLocationData.defaultDistrict,
+      selectedStore: CheckoutLocationData.defaultStoreLabel,
+    ));
+  }
+
+  void _onContinueToPayment(ContinueToPaymentEvent event, Emitter<CheckoutState> emit) {
+    final validationError = _validateInformationStep();
+    if (validationError != null) {
+      emit(state.copyWith(error: validationError));
+      return;
+    }
+    emit(state.copyWith(step: CheckoutStep.payment, error: null));
+  }
+
+  void _emitManualFieldUpdate(
+    Emitter<CheckoutState> emit, {
+    String? recipientName,
+    String? recipientPhone,
+    String? province,
+    String? ward,
+    bool clearWard = false,
+    String? homeAddress,
+  }) {
+    if (state.deliveryType != DeliveryType.homeDelivery) {
+      emit(state.copyWith(
+        recipientName: recipientName,
+        recipientPhone: recipientPhone,
+        province: province,
+        ward: ward,
+        clearWard: clearWard,
+        homeAddress: homeAddress,
+      ));
+      return;
+    }
+
+    final fromSavedAddress = state.selectedAddressId != null;
+    emit(state.copyWith(
+      recipientName: recipientName,
+      recipientPhone: recipientPhone,
+      province: province,
+      ward: ward,
+      clearWard: clearWard,
+      homeAddress: homeAddress,
+      clearSelectedAddress: fromSavedAddress,
+      isManualAddressEntry: fromSavedAddress ? true : state.isManualAddressEntry,
+    ));
+  }
+
+  CheckoutState _stateFromAddress(Address address) {
+    return state.copyWith(
+      selectedAddressId: address.id,
+      isManualAddressEntry: false,
+      recipientName: address.receiverName?.isNotEmpty == true ? address.receiverName! : state.recipientName,
+      recipientPhone: address.receiverPhone?.isNotEmpty == true ? address.receiverPhone! : state.recipientPhone,
+      province: address.province,
+      ward: address.ward,
+      homeAddress: address.street,
+    );
+  }
+
+  void _onApplyAddressesFromBook(ApplyAddressesFromBookEvent event, Emitter<CheckoutState> emit) {
+    if (state.deliveryType != DeliveryType.homeDelivery) return;
+
+    if (event.addresses.isEmpty) {
+      emit(state.copyWith(clearSelectedAddress: true, isManualAddressEntry: false));
+      return;
+    }
+
+    Address? selected;
+    if (state.selectedAddressId != null) {
+      for (final address in event.addresses) {
+        if (address.id == state.selectedAddressId) {
+          selected = address;
+          break;
+        }
+      }
+    }
+
+    selected ??= () {
+      final defaults = event.addresses.where((a) => a.isDefault).toList();
+      return defaults.isNotEmpty ? defaults.first : event.addresses.first;
+    }();
+
+    emit(_stateFromAddress(selected));
+  }
+
+  void _onSelectSavedAddress(SelectSavedAddressEvent event, Emitter<CheckoutState> emit) {
+    emit(_stateFromAddress(event.address));
   }
 
   void _onInitialize(InitializeCheckoutEvent event, Emitter<CheckoutState> emit) {
@@ -342,16 +549,43 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       memberCode: event.memberCode ?? state.memberCode,
       recipientName: event.customerName ?? state.recipientName,
       recipientPhone: event.customerPhone ?? state.recipientPhone,
+      isSuccess: false,
+      isProcessing: false,
+      error: null,
     ));
   }
 
   Future<void> _onSubmitOrder(SubmitOrderEvent event, Emitter<CheckoutState> emit) async {
+    if (state.selectedPaymentMethod.isEmpty) {
+      emit(state.copyWith(error: 'checkout_error_payment_method'));
+      return;
+    }
+
+    if (state.selectedPaymentMethod == 'checkout_payment_qr' && state.wantsCompanyInvoice == null) {
+      emit(state.copyWith(error: 'checkout_error_invoice_choice'));
+      return;
+    }
+
     emit(state.copyWith(isProcessing: true, error: null));
     try {
-      await Future.delayed(const Duration(seconds: 2));
+      if (state.selectedPaymentMethod == 'checkout_payment_qr') {
+        if (paymentDataSource == null) {
+          throw Exception('PayOS not configured');
+        }
+        final orderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
+        await paymentDataSource!.createPayOsCheckout(
+          orderId: orderId,
+          amount: event.totalAmount,
+          description: 'Thanh toan don hang $orderId',
+        );
+        emit(state.copyWith(isProcessing: false, isSuccess: true));
+        return;
+      }
+
+      await Future.delayed(const Duration(seconds: 1));
       emit(state.copyWith(isProcessing: false, isSuccess: true));
     } catch (e) {
-      emit(state.copyWith(isProcessing: false, error: 'checkout_submit_error'));
+      emit(state.copyWith(isProcessing: false, error: 'checkout_payos_error'));
     }
   }
 }
