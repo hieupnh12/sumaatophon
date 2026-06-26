@@ -44,12 +44,14 @@ const Map<String, String> jaLocalizations = {
 
   // Home / Product List
   'search_hint': 'スマートフォン、ブランドを検索...',
+  'search_trends_title': '🔥 検索トレンド',
   'price_range': '価格帯',
   'million': '百万',
   'ram': 'RAM容量',
   'rom': '内部ストレージ (ROM)',
   'not_found_title': '商品が見つかりません',
   'not_found_desc': '別のキーワードで検索してみてください。',
+  'product_load_more': 'もっと見る',
   'home': 'ホーム',
   'explore': '見る',
   'brand_all': 'すべて',

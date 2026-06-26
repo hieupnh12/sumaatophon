@@ -44,12 +44,14 @@ const Map<String, String> enLocalizations = {
 
   // Home / Product List
   'search_hint': 'Search phones, brands...',
+  'search_trends_title': '🔥 Search trends',
   'price_range': 'Price Range',
   'million': 'M',
   'ram': 'RAM Capacity',
   'rom': 'Internal Storage (ROM)',
   'not_found_title': 'No products found',
   'not_found_desc': 'Try searching with a different keyword.',
+  'product_load_more': 'Load more',
   'home': 'Home',
   'explore': 'Explore',
   'brand_all': 'All',
