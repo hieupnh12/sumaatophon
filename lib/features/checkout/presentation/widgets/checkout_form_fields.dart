@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/design_system/app_colors.dart';
+import 'checkout_section_card.dart';
 
 class CheckoutLabeledField extends StatelessWidget {
   const CheckoutLabeledField({
@@ -23,6 +24,7 @@ class CheckoutLabeledField extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
+            height: 1.2,
             color: isDark ? AppColors.darkText : AppColors.lightText,
           ),
         ),
@@ -68,38 +70,49 @@ class _CheckoutTextFieldState extends State<CheckoutTextField> {
 
   void _onTextChanged() => setState(() {});
 
+  InputDecoration _inputDecoration(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+    );
+
+    return InputDecoration(
+      hintText: widget.hintText,
+      isDense: true,
+      suffixIcon: widget.showClear && widget.controller.text.isNotEmpty
+          ? IconButton(
+              icon: Icon(
+                Icons.close,
+                size: 18,
+                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              ),
+              onPressed: () {
+                widget.controller.clear();
+                widget.onChanged?.call('');
+              },
+            )
+          : null,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: border,
+      enabledBorder: border,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.primary),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return TextField(
-      controller: widget.controller,
-      keyboardType: widget.keyboardType,
-      onChanged: widget.onChanged,
-      decoration: InputDecoration(
-        hintText: widget.hintText,
-        suffixIcon: widget.showClear && widget.controller.text.isNotEmpty
-            ? IconButton(
-                icon: Icon(Icons.close, size: 18, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                onPressed: () {
-                  widget.controller.clear();
-                  widget.onChanged?.call('');
-                },
-              )
-            : null,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primary),
-        ),
+    return SizedBox(
+      height: CheckoutSpacing.inputHeight,
+      child: TextField(
+        controller: widget.controller,
+        keyboardType: widget.keyboardType,
+        onChanged: widget.onChanged,
+        style: const TextStyle(fontSize: 14, height: 1.2),
+        decoration: _inputDecoration(context),
       ),
     );
   }
@@ -122,30 +135,41 @@ class CheckoutDropdownField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
     return Container(
+      height: CheckoutSpacing.inputHeight,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        border: Border.all(color: borderColor),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           isExpanded: true,
+          isDense: true,
           value: value != null && items.contains(value) ? value : null,
           hint: Text(
             hint ?? '',
             style: TextStyle(
               color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
               fontSize: 14,
+              height: 1.2,
             ),
           ),
-          icon: Icon(Icons.keyboard_arrow_down_rounded, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+          ),
           items: items
               .map(
                 (item) => DropdownMenuItem<String>(
                   value: item,
-                  child: Text(item, style: const TextStyle(fontSize: 14)),
+                  child: Text(
+                    item,
+                    style: const TextStyle(fontSize: 14, height: 1.2),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               )
               .toList(),

@@ -50,14 +50,15 @@ class ApiConfig {
       return;
     }
 
-    // Debug build trên mobile/emulator: luôn dùng backend local (cart/address chưa có trên VPS).
-    // Máy thật + USB: chạy `adb reverse tcp:3000 tcp:3000` trước khi test.
-    if (kDebugMode) {
+    // Mobile: không dùng kDebugMode — debug APK mở từ launcher vẫn có kDebugMode=true
+    // nhưng không có debugger/adb reverse → phải dùng VPS.
+    if (await _isEmulatorOrSimulator()) {
       _baseUrl = await _resolveLocalBaseUrl();
-      _log('debug build → local ($_baseUrl)');
+      _log('emulator/simulator → local ($_baseUrl)');
       return;
     }
 
+    // Máy thật + flutter run/USB: chạy `adb reverse tcp:3000 tcp:3000` trước khi test.
     final debuggerAttached = await _isDebuggerAttached();
     if (debuggerAttached) {
       _baseUrl = await _resolveLocalBaseUrl();
@@ -67,6 +68,16 @@ class ApiConfig {
 
     _baseUrl = productionBaseUrl;
     _log('standalone → production');
+  }
+
+  static Future<bool> _isEmulatorOrSimulator() async {
+    if (Platform.isAndroid) {
+      return _invokeBool('isEmulator');
+    }
+    if (Platform.isIOS) {
+      return _invokeBool('isSimulator');
+    }
+    return false;
   }
 
   /// Android emulator: 10.0.2.2

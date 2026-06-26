@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../bloc/checkout_bloc.dart';
 import 'checkout_form_fields.dart';
 import 'checkout_location_data.dart';
+import 'checkout_section_card.dart';
 
 class CheckoutPickupForm extends StatefulWidget {
   const CheckoutPickupForm({super.key});
@@ -18,7 +20,11 @@ class _CheckoutPickupFormState extends State<CheckoutPickupForm> {
   @override
   void initState() {
     super.initState();
-    _notesController = TextEditingController(text: context.read<CheckoutBloc>().state.notes);
+    final state = context.read<CheckoutBloc>().state;
+    _notesController = TextEditingController(text: state.notes);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CheckoutBloc>().add(const ApplyDefaultPickupStoreEvent());
+    });
   }
 
   @override
@@ -29,50 +35,40 @@ class _CheckoutPickupFormState extends State<CheckoutPickupForm> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+
     return BlocBuilder<CheckoutBloc, CheckoutState>(
       builder: (context, state) {
-        final districts = CheckoutLocationData.districts[state.province] ?? [];
-        final stores = state.district != null ? (CheckoutLocationData.stores[state.district] ?? []) : <String>[];
-
         return Column(
           children: [
             CheckoutLabeledField(
-              label: context.tr('checkout_province'),
-              child: CheckoutDropdownField(
-                value: state.province,
-                items: CheckoutLocationData.provinces,
-                onChanged: (value) {
-                  if (value != null) {
-                    context.read<CheckoutBloc>().add(UpdateProvinceEvent(value));
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-            CheckoutLabeledField(
-              label: context.tr('checkout_district'),
-              child: CheckoutDropdownField(
-                value: state.district,
-                items: districts,
-                hint: context.tr('checkout_select_district'),
-                onChanged: (value) {
-                  context.read<CheckoutBloc>().add(UpdateDistrictEvent(value));
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-            CheckoutLabeledField(
               label: context.tr('checkout_store'),
-              child: CheckoutDropdownField(
-                value: state.selectedStore,
-                items: stores,
-                hint: context.tr('checkout_select_store'),
-                onChanged: (value) {
-                  context.read<CheckoutBloc>().add(UpdateStoreEvent(value));
-                },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      CheckoutLocationData.defaultStoreName,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, height: 1.3),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      CheckoutLocationData.defaultStoreAddress,
+                      style: TextStyle(fontSize: 14, height: 1.4, color: secondary),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: CheckoutSpacing.fieldGap),
             CheckoutLabeledField(
               label: context.tr('checkout_notes'),
               child: CheckoutTextField(

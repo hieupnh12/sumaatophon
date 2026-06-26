@@ -14,6 +14,7 @@ class ApiEndpoints {
   static const String cart = '/api/cart';
   static const String cartItems = '/api/cart/items';
   static const String orders = '/api/orders';
+  static const String payOsCreate = '/api/payments/payos/create';
 
   static String productById(String id) => '/products/$id';
   static String productFeedbacks(String id) => '/products/$id/feedbacks';
