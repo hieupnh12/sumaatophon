@@ -121,9 +121,26 @@ async function clearCustomerCart(customerId, conn = pool) {
   }
 }
 
+async function removeCartItemsByVersionIds(customerId, productVersionIds, conn = pool) {
+  if (!Array.isArray(productVersionIds) || productVersionIds.length === 0) return;
+
+  const [carts] = await conn.query(
+    'SELECT cart_id FROM carts WHERE customer_id = ? AND status = 1',
+    [customerId],
+  );
+
+  for (const cart of carts) {
+    await conn.query(
+      'DELETE FROM cart_items WHERE cart_id = ? AND product_version_id IN (?)',
+      [cart.cart_id, productVersionIds],
+    );
+  }
+}
+
 module.exports = {
   getOrCreateActiveCart,
   fetchVersionStock,
   fetchCartItemsEnriched,
   clearCustomerCart,
+  removeCartItemsByVersionIds,
 };

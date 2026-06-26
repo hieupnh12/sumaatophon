@@ -34,9 +34,16 @@ class _CheckoutCustomerSectionState extends State<CheckoutCustomerSection> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondaryColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
 
-    return BlocBuilder<CheckoutBloc, CheckoutState>(
-      builder: (context, state) {
-        return CheckoutSectionCard(
+    return BlocListener<CheckoutBloc, CheckoutState>(
+      listenWhen: (previous, current) => previous.customerEmail != current.customerEmail,
+      listener: (context, state) {
+        if (_emailController.text != state.customerEmail) {
+          _emailController.text = state.customerEmail;
+        }
+      },
+      child: BlocBuilder<CheckoutBloc, CheckoutState>(
+        builder: (context, state) {
+          return CheckoutSectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -72,7 +79,9 @@ class _CheckoutCustomerSectionState extends State<CheckoutCustomerSection> {
               ),
               const SizedBox(height: 16),
               CheckoutLabeledField(
-                label: context.tr('checkout_email'),
+                label: state.wantsCompanyInvoice == true
+                    ? '${context.tr('checkout_email')} *'
+                    : context.tr('checkout_email'),
                 child: CheckoutTextField(
                   controller: _emailController,
                   hintText: context.tr('checkout_email_hint'),
@@ -84,13 +93,16 @@ class _CheckoutCustomerSectionState extends State<CheckoutCustomerSection> {
               ),
               const SizedBox(height: 6),
               Text(
-                context.tr('checkout_email_vat_note'),
+                state.wantsCompanyInvoice == true
+                    ? context.tr('checkout_email_receipt_required_hint')
+                    : context.tr('checkout_email_vat_note'),
                 style: TextStyle(fontSize: 12, height: 1.4, color: secondaryColor),
               ),
             ],
           ),
         );
       },
+      ),
     );
   }
 }

@@ -1,8 +1,10 @@
 // lib/main.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:refresh_rate/refresh_rate.dart';
 import 'core/config/app_feature_flags.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/design_system/app_theme.dart';
@@ -33,6 +35,7 @@ import 'features/cart/presentation/bloc/cart_bloc.dart';
 import 'features/cart/presentation/cart_auth_helper.dart';
 import 'core/auth/auth_guard.dart';
 import 'features/checkout/presentation/bloc/checkout_bloc.dart';
+import 'features/checkout/data/datasources/checkout_remote_datasource.dart';
 import 'features/checkout/data/datasources/payment_remote_datasource.dart';
 import 'features/store_locator/presentation/bloc/store_locator_bloc.dart';
 import 'features/store_locator/presentation/pages/store_location_page.dart';
@@ -84,12 +87,13 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton<AddressRemoteDataSource>(() => AddressRemoteDataSourceImpl(client: sl()));
   sl.registerLazySingleton<AddressRepository>(() => AddressRepositoryImpl(remoteDataSource: sl(), locationDataSource: sl()));
   sl.registerLazySingleton<PaymentRemoteDataSource>(() => PaymentRemoteDataSourceImpl(client: sl()));
+  sl.registerLazySingleton<CheckoutRemoteDataSource>(() => CheckoutRemoteDataSourceImpl(client: sl()));
 
   // Blocs
   sl.registerLazySingleton(() => AuthBloc(authRepository: sl()));
   sl.registerFactory(() => ProductBloc(repository: sl()));
   sl.registerFactory(() => CartBloc(repository: sl()));
-  sl.registerFactory(() => CheckoutBloc(paymentDataSource: sl()));
+  sl.registerFactory(() => CheckoutBloc(checkoutDataSource: sl(), paymentDataSource: sl()));
   sl.registerFactory(() => StoreLocatorBloc());
   sl.registerFactory(() => ChatBloc());
   sl.registerFactory(() => NotificationBloc());
@@ -109,6 +113,27 @@ class PhoneShopApp extends StatefulWidget {
 
 class _PhoneShopAppState extends State<PhoneShopApp> {
   bool _showOnboarding = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Gọi sau frame đầu — Activity/window đã sẵn sàng (plugin hay fail nếu gọi trong main()).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyHighRefreshRate());
+  }
+
+  Future<void> _applyHighRefreshRate() async {
+    RefreshRate.enable();
+    RefreshRate.preferMax();
+    RefreshRate.setTouchBoost(true);
+    final info = await RefreshRate.refresh();
+    assert(() {
+      debugPrint(
+        '[RefreshRate] current=${info.currentRate}Hz max=${info.maxRate}Hz '
+        'supported=${info.supportedRates}',
+      );
+      return true;
+    }());
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
+import '../bloc/checkout_bloc.dart';
 import 'checkout_payment_details_section.dart';
-import 'checkout_payment_invoice_section.dart';
 import 'checkout_payment_methods_section.dart';
 import 'checkout_payment_product_section.dart';
 import 'checkout_receiving_summary_section.dart';
@@ -22,8 +22,13 @@ class CheckoutPickupPaymentTab extends StatelessWidget {
             CheckoutPaymentProductSection(items: cartState.selectedItems),
             const CheckoutPaymentDetailsSection(shippingFee: 0),
             const SizedBox(height: CheckoutSpacing.sectionGap),
-            const CheckoutPaymentMethodsSection(),
-            const CheckoutPaymentInvoiceSection(),
+            BlocBuilder<CheckoutBloc, CheckoutState>(
+              builder: (context, checkoutState) {
+                return CheckoutPaymentMethodsSection(
+                  key: ValueKey(checkoutState.deliveryType),
+                );
+              },
+            ),
             const SizedBox(height: CheckoutSpacing.sectionGap),
             const CheckoutReceivingSummarySection(),
             const SizedBox(height: CheckoutSpacing.sectionGap),
