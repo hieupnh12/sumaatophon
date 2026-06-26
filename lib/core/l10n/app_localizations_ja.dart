@@ -318,4 +318,21 @@ const Map<String, String> jaLocalizations = {
   'address_receiver_info': '受取人情報',
   'address_shipping_info': '配送先住所',
   'address_specific_hint': '詳しい住所を入力',
+
+  // Chat
+  'chat_support': 'サポート',
+  'chat_bot_tab': 'AIアシスタント',
+  'chat_staff_tab': 'スタッフ',
+  'chat_login_required': 'phoneShopスタッフとチャットするにはログインしてください。',
+  'chat_retry': '再試行',
+  'chat_no_conversations': '会話はまだありません',
+  'chat_admin_inbox': 'サポート受信箱',
+  'chat_start_conversation': '会話を始める',
+  'chat_online': 'オンライン',
+  'chat_empty': 'メッセージはまだありません。挨拶してみましょう！',
+  'chat_input_hint': 'メッセージを入力...',
+  'chatbot_suggestions_label': 'おすすめの質問',
+  'chatbot_suggestions_more': 'もっと見る',
+  'chatbot_input_hint': 'スマホ、価格、在庫について質問...',
+  'chatbot_transfer_staff': 'スタッフに相談',
 };

@@ -30,7 +30,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       context.read<CheckoutBloc>().add(
             InitializeCheckoutEvent(
               customerName: authState.user.name,
-              customerPhone: authState.user.phone ?? '',
+              customerPhone: authState.user.phoneNumber ?? '',
               customerEmail: authState.user.email,
               memberCode: authState.user.id.isNotEmpty ? authState.user.id : 'NULL',
             ),

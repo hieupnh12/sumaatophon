@@ -16,8 +16,10 @@ class ApiClient {
     return headers;
   }
 
-  Future<dynamic> get(String path) async {
-    final uri = Uri.parse('${ApiEndpoints.baseUrl}$path');
+  Future<dynamic> get(String path, {Map<String, String>? queryParams}) async {
+    final uri = Uri.parse('${ApiEndpoints.baseUrl}$path').replace(
+      queryParameters: queryParams,
+    );
     final response = await _client.get(uri, headers: _headers);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body);
