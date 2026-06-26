@@ -8,11 +8,13 @@
     "test:db": "node test-db.js"
   },
   "dependencies": {
+    "@payos/node": "^2.0.5",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
     "express": "^4.22.2",
     "firebase-admin": "^14.1.0",
-    "mysql2": "^3.14.0"
+    "mysql2": "^3.14.0",
+    "nodemailer": "^7.0.5"
   }
 }

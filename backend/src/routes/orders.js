@@ -1,10 +1,26 @@
 const express = require('express');
 const pool = require('../../db');
-const { fetchVersionStock, clearCustomerCart } = require('../services/cartService');
+const {
+  fetchVersionStock,
+  clearCustomerCart,
+  removeCartItemsByVersionIds,
+} = require('../services/cartService');
+const { createPaymentTransaction } = require('../services/orderPaymentService');
+const { appendReceiptToNote, sendOrderReceiptEmail } = require('../services/orderEmailService');
 
 const router = express.Router();
 
-// POST /api/orders — tạo đơn, gán IMEI (product_items) và đánh dấu SOLD
+const SUPPORTED_PAYMENT_METHODS = new Set([
+  'checkout_payment_store',
+  'checkout_payment_cod',
+  'checkout_payment_qr',
+]);
+
+function buildOrderNote({ address, shippingMethod, paymentMethod, note, deliveryType }) {
+  return [address, shippingMethod, deliveryType, paymentMethod, note].filter(Boolean).join(' | ');
+}
+
+// POST /api/orders — tạo đơn, gán IMEI (product_items), payment_transactions
 router.post('/api/orders', async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -15,31 +31,52 @@ router.post('/api/orders', async (req, res) => {
       shippingMethod,
       shippingCost,
       paymentMethod,
+      deliveryType,
       subtotal,
       discount,
       total,
       note,
+      wantsEmailReceipt,
+      receiptEmail,
     } = req.body;
 
     if (!customerId || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'Missing customerId or items', code: 'MISSING_FIELDS' });
     }
 
+    if (!SUPPORTED_PAYMENT_METHODS.has(paymentMethod)) {
+      return res.status(400).json({ message: 'Unsupported payment method', code: 'INVALID_PAYMENT_METHOD' });
+    }
+
     await conn.beginTransaction();
 
     const orderTotal = Number(total ?? subtotal ?? 0);
-    const orderNote = [address, shippingMethod, paymentMethod, note].filter(Boolean).join(' | ');
+    const orderNote = appendReceiptToNote(
+      buildOrderNote({
+        address,
+        shippingMethod,
+        paymentMethod,
+        note,
+        deliveryType,
+      }),
+      wantsEmailReceipt,
+      receiptEmail,
+    );
+    const isQrPayment = paymentMethod === 'checkout_payment_qr';
 
     const [orderResult] = await conn.query(
       'INSERT INTO orders (customer_id, total_amount, status, note, is_paid) VALUES (?, ?, ?, ?, ?)',
-      [customerId, orderTotal, 'PENDING', orderNote || null, paymentMethod === 'checkout_payment_cod' ? 0 : 0],
+      [customerId, orderTotal, 'PENDING', orderNote || null, 0],
     );
     const orderId = orderResult.insertId;
+
+    const orderedVersionIds = [];
 
     for (const item of items) {
       const productVersionId = item.productVersionId;
       const quantity = Number(item.quantity ?? 1);
       const unitPrice = Number(item.unitPrice ?? 0);
+      orderedVersionIds.push(productVersionId);
 
       const stock = await fetchVersionStock(productVersionId, conn);
       if (quantity > stock) {
@@ -64,23 +101,51 @@ router.post('/api/orders', async (req, res) => {
         [productVersionId, quantity],
       );
 
+      if (availableImeis.length < quantity) {
+        throw new Error(`Insufficient IMEI stock for version ${productVersionId}`);
+      }
+
       for (const row of availableImeis) {
-        await conn.query("UPDATE product_items SET status = 'SOLD', order_detail_id = ? WHERE imei = ?", [
-          orderDetailId,
-          row.imei,
-        ]);
+        await conn.query(
+          "UPDATE product_items SET status = 'SOLD', order_detail_id = ? WHERE imei = ?",
+          [orderDetailId, row.imei],
+        );
       }
     }
 
-    await clearCustomerCart(customerId, conn);
+    await createPaymentTransaction({
+      conn,
+      orderId,
+      paymentMethodKey: paymentMethod,
+      amount: orderTotal,
+    });
+
+    if (isQrPayment) {
+      // QR: chỉ xóa cart sau khi PayOS webhook xác nhận thành công.
+    } else {
+      await removeCartItemsByVersionIds(customerId, orderedVersionIds, conn);
+    }
+
     await conn.commit();
+
+    if (!isQrPayment && wantsEmailReceipt === true) {
+      try {
+        await sendOrderReceiptEmail(orderId, conn);
+      } catch (err) {
+        console.error('[orderEmail] Gửi email xác nhận đơn thất bại:', err.message);
+      }
+    }
 
     res.json({
       id: String(orderId),
+      orderId,
       status: 'PENDING',
+      isPaid: false,
+      paymentMethod,
       total: orderTotal,
       shippingCost: Number(shippingCost ?? 0),
       discount: Number(discount ?? 0),
+      requiresPayOs: isQrPayment,
     });
   } catch (err) {
     await conn.rollback();

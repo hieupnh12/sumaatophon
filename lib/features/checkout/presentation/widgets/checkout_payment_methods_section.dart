@@ -63,10 +63,8 @@ class _CheckoutPaymentMethodsSectionState extends State<CheckoutPaymentMethodsSe
 
     return BlocBuilder<CheckoutBloc, CheckoutState>(
       builder: (context, state) {
-        final isStorePickup = state.deliveryType == DeliveryType.storePickup;
         final methods = _methodsFor(state.deliveryType);
-        final showAllByDefault = isStorePickup;
-        final visibleMethods = showAllByDefault || _showAll ? methods : methods.take(2).toList();
+        final visibleMethods = _showAll ? methods : methods.take(2).toList();
 
         return CheckoutSectionCard(
           child: Column(
@@ -83,7 +81,7 @@ class _CheckoutPaymentMethodsSectionState extends State<CheckoutPaymentMethodsSe
                   },
                 ),
               ),
-              if (!showAllByDefault && !_showAll) ...[
+              if (!_showAll && methods.length > 2) ...[
                 const SizedBox(height: 4),
                 Center(
                   child: TextButton.icon(

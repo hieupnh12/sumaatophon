@@ -8,6 +8,7 @@ import 'checkout_delivery_speed_section.dart';
 import 'checkout_delivery_type_tabs.dart';
 import 'checkout_home_delivery_form.dart';
 import 'checkout_pickup_form.dart';
+import 'checkout_company_invoice_section.dart';
 import 'checkout_section_card.dart';
 
 class CheckoutInfoTab extends StatelessWidget {
@@ -57,6 +58,8 @@ class CheckoutInfoTab extends StatelessWidget {
               const SizedBox(height: CheckoutSpacing.sectionGap),
               const CheckoutDeliverySpeedSection(),
             ],
+            const SizedBox(height: CheckoutSpacing.sectionGap),
+            const CheckoutCompanyInvoiceSection(),
           ],
         );
       },
