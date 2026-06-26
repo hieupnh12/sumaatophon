@@ -23,7 +23,7 @@ Future<void> ensureCartReady(BuildContext context) async {
 }
 
 Future<void> openCartWithAuth(BuildContext context) async {
-  if (!await requireAuthForCart(context)) return;
+  if (!await requireAuthForCart(context, confirmBeforeLogin: true)) return;
   await ensureCartReady(context);
   if (!context.mounted) return;
 
