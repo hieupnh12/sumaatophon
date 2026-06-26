@@ -7,6 +7,8 @@ class ProductVersion extends Equatable {
   final String rom;
   final double price;
   final int stockQuantity;
+  final String imageUrl;
+  final List<String> galleryImages;
 
   const ProductVersion({
     required this.id,
@@ -15,6 +17,8 @@ class ProductVersion extends Equatable {
     required this.rom,
     required this.price,
     required this.stockQuantity,
+    this.imageUrl = '',
+    this.galleryImages = const [],
   });
 
   String get ramRom {
@@ -29,5 +33,5 @@ class ProductVersion extends Equatable {
   bool get inStock => stockQuantity > 0;
 
   @override
-  List<Object?> get props => [id, color, ram, rom, price, stockQuantity];
+  List<Object?> get props => [id, color, ram, rom, price, stockQuantity, imageUrl, galleryImages];
 }

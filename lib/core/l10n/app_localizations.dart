@@ -57,6 +57,8 @@ class AppLocalizations {
       'not_found_desc': 'Thử tìm kiếm với một từ khóa khác nhé.',
       'home': 'Trang chủ',
       'explore': 'Khám phá',
+      'brand_all': 'Tất cả',
+      'product_installment': 'Trả góp 0%',
 
       // Product Detail
       'add_to_cart': 'Thêm vào giỏ',
@@ -64,10 +66,20 @@ class AppLocalizations {
       'buy_now': 'Mua ngay',
       'color': 'Màu sắc',
       'storage': 'Phiên bản',
+      'product_version_out_of_stock': 'Hết hàng',
       'specifications': 'Thông số kỹ thuật',
       'reviews': 'Đánh giá',
       'reviews_based_on': 'Dựa trên số đánh giá',
       'description': 'Mô tả sản phẩm',
+      'product_favorite': 'Yêu thích',
+      'product_qa': 'Hỏi đáp',
+      'product_specs_btn': 'Thông số',
+      'product_compare': 'So sánh',
+      'product_video': 'Video',
+      'product_highlights': 'Tính năng nổi bật',
+      'product_coming_soon': 'Tính năng sắp ra mắt',
+      'product_reviews_empty': 'Chưa có đánh giá nào cho sản phẩm này.',
+      'product_review_guest': 'Khách hàng',
 
       // Cart
       'cart_empty_title': 'Giỏ hàng trống',
@@ -90,9 +102,6 @@ class AppLocalizations {
       'cart_save_error': 'Không lưu được giỏ hàng. Hãy khởi động lại app.',
       'cart_promo_applied': 'Đã áp dụng mã \'{code}\'',
       'promo_invalid': 'Mã giảm giá không hợp lệ hoặc đã hết hạn.',
-      'product_version_stock': 'Còn {count} máy trong kho',
-      'product_version_out_of_stock': 'Phiên bản này đã hết hàng',
-      'product_version_unavailable': 'Vui lòng chọn màu và dung lượng',
 
       // Checkout
       'checkout_title': 'Thanh toán',
@@ -126,7 +135,7 @@ class AppLocalizations {
 
       // Navigation
       'shop': 'Cửa hàng',
-      'stores': 'Hệ thống',
+      'stores': 'Địa chỉ ',
       'concierge': 'Hỗ trợ',
       'notifications': 'Thông báo',
 
@@ -186,6 +195,42 @@ class AppLocalizations {
       'order_total_amount': 'Tổng tiền',
       'order_item_count': 'sản phẩm',
       'order_empty': 'Chưa có đơn hàng nào',
+      'account_info_edit': 'Sửa',
+      'account_info_unsaved_title': 'Chưa lưu thay đổi',
+      'account_info_unsaved_desc': 'Bạn có thay đổi chưa lưu. Bạn có chắc chắn muốn thoát?',
+      'account_info_discard': 'Thoát',
+      'account_info_keep_editing': 'Ở lại',
+
+      // Address
+      'address_title': 'Sổ địa chỉ',
+      'address_empty_title': 'Chưa có địa chỉ nào được lưu',
+      'address_empty_desc': 'Lưu lại địa chỉ của bạn giúp thuận tiện hơn khi sử dụng dịch vụ',
+      'address_add_btn': 'Thêm địa chỉ',
+      'address_add_title': 'Thêm địa chỉ',
+      'address_edit_title': 'Sửa địa chỉ',
+      'address_name_label': 'Họ và tên',
+      'address_phone_label': 'Số điện thoại',
+      'address_province_label': 'Tỉnh/ Thành phố',
+      'address_district_label': 'Quận/ Huyện',
+      'address_ward_label': 'Phường/ Xã',
+      'address_street_label': 'Địa chỉ cụ thể',
+      'address_type_label': 'Loại địa chỉ',
+      'address_type_home': 'Nhà',
+      'address_type_office': 'Văn phòng',
+      'address_set_default': 'Đặt làm địa chỉ mặc định',
+      'address_select_province': 'Chọn Tỉnh/ Thành phố',
+      'address_select_district': 'Chọn Quận/ Huyện',
+      'address_select_ward': 'Chọn Phường/ Xã',
+      'address_search_placeholder': 'Tìm kiếm',
+      'address_btn_edit': 'Sửa',
+      'address_btn_delete': 'Xoá',
+      'address_save_success': 'Lưu địa chỉ thành công',
+      'address_delete_success': 'Xóa địa chỉ thành công',
+      'address_delete_confirm_title': 'Xóa địa chỉ?',
+      'address_delete_confirm_desc': 'Bạn có chắc chắn muốn xóa địa chỉ này không?',
+      'address_receiver_info': 'Thông tin người nhận',
+      'address_shipping_info': 'Địa chỉ nhận hàng',
+      'address_specific_hint': 'Nhập Địa chỉ cụ thể',
     },
     'en': {
       // Onboarding
@@ -240,6 +285,8 @@ class AppLocalizations {
       'not_found_desc': 'Try searching with a different keyword.',
       'home': 'Home',
       'explore': 'Explore',
+      'brand_all': 'All',
+      'product_installment': '0% Installment',
 
       // Product Detail
       'add_to_cart': 'Add to Cart',
@@ -247,10 +294,20 @@ class AppLocalizations {
       'buy_now': 'Buy Now',
       'color': 'Color',
       'storage': 'Storage',
+      'product_version_out_of_stock': 'Out of stock',
       'specifications': 'Specifications',
       'reviews': 'Reviews',
       'reviews_based_on': 'Based on reviews',
       'description': 'Product Description',
+      'product_favorite': 'Favorite',
+      'product_qa': 'Q&A',
+      'product_specs_btn': 'Specs',
+      'product_compare': 'Compare',
+      'product_video': 'Video',
+      'product_highlights': 'Highlights',
+      'product_coming_soon': 'Coming soon',
+      'product_reviews_empty': 'No reviews for this product yet.',
+      'product_review_guest': 'Customer',
 
       // Cart
       'cart_empty_title': 'Cart is empty',
@@ -273,9 +330,6 @@ class AppLocalizations {
       'cart_save_error': 'Could not save cart. Please restart the app.',
       'cart_promo_applied': 'Promo \'{code}\' applied',
       'promo_invalid': 'Invalid or expired promo code.',
-      'product_version_stock': '{count} units in stock',
-      'product_version_out_of_stock': 'This variant is out of stock',
-      'product_version_unavailable': 'Please select color and storage',
 
       // Checkout
       'checkout_title': 'Checkout',
@@ -369,6 +423,42 @@ class AppLocalizations {
       'order_total_amount': 'Total',
       'order_item_count': 'items',
       'order_empty': 'No orders yet',
+      'account_info_edit': 'Edit',
+      'account_info_unsaved_title': 'Unsaved Changes',
+      'account_info_unsaved_desc': 'You have unsaved changes. Are you sure you want to exit?',
+      'account_info_discard': 'Discard',
+      'account_info_keep_editing': 'Keep Editing',
+
+      // Address
+      'address_title': 'Address Book',
+      'address_empty_title': 'No addresses saved yet',
+      'address_empty_desc': 'Saving your address makes it easier to use our services',
+      'address_add_btn': 'Add Address',
+      'address_add_title': 'Add Address',
+      'address_edit_title': 'Edit Address',
+      'address_name_label': 'Full Name',
+      'address_phone_label': 'Phone Number',
+      'address_province_label': 'Province/City',
+      'address_district_label': 'District',
+      'address_ward_label': 'Ward',
+      'address_street_label': 'Specific Address',
+      'address_type_label': 'Address Type',
+      'address_type_home': 'Home',
+      'address_type_office': 'Office',
+      'address_set_default': 'Set as default address',
+      'address_select_province': 'Select Province/City',
+      'address_select_district': 'Select District',
+      'address_select_ward': 'Select Ward',
+      'address_search_placeholder': 'Search',
+      'address_btn_edit': 'Edit',
+      'address_btn_delete': 'Delete',
+      'address_save_success': 'Address saved successfully',
+      'address_delete_success': 'Address deleted successfully',
+      'address_delete_confirm_title': 'Delete address?',
+      'address_delete_confirm_desc': 'Are you sure you want to delete this address?',
+      'address_receiver_info': 'Receiver Information',
+      'address_shipping_info': 'Shipping Address',
+      'address_specific_hint': 'Enter specific address',
     },
     'ja': {
       // Onboarding
@@ -423,6 +513,8 @@ class AppLocalizations {
       'not_found_desc': '別のキーワードで検索してみてください。',
       'home': 'ホーム',
       'explore': '見る',
+      'brand_all': 'すべて',
+      'product_installment': '分割0%',
 
       // Product Detail
       'add_to_cart': 'カートに追加',
@@ -430,10 +522,20 @@ class AppLocalizations {
       'buy_now': '今すぐ購入',
       'color': 'カラー',
       'storage': 'ストレージ',
+      'product_version_out_of_stock': '在庫切れ',
       'specifications': '仕様',
       'reviews': 'レビュー',
       'reviews_based_on': 'レビューに基づく',
       'description': '商品説明',
+      'product_favorite': 'お気に入り',
+      'product_qa': '質問',
+      'product_specs_btn': '仕様',
+      'product_compare': '比較',
+      'product_video': '動画',
+      'product_highlights': '特徴',
+      'product_coming_soon': '近日公開',
+      'product_reviews_empty': 'この商品のレビューはまだありません。',
+      'product_review_guest': 'お客様',
 
       // Cart
       'cart_empty_title': 'カートは空です',
@@ -456,9 +558,6 @@ class AppLocalizations {
       'cart_save_error': 'カートを保存できません。アプリを再起動してください。',
       'cart_promo_applied': 'プロモコード \'{code}\' を適用しました',
       'promo_invalid': 'プロモコードが無効または期限切れです。',
-      'product_version_stock': '在庫 {count} 台',
-      'product_version_out_of_stock': 'このバリエーションは在庫切れです',
-      'product_version_unavailable': 'カラーと容量を選択してください',
 
       // Checkout
       'checkout_title': 'チェックアウト',
@@ -551,6 +650,42 @@ class AppLocalizations {
       'order_total_amount': '合計',
       'order_item_count': '商品',
       'order_empty': '注文はまだありません',
+      'account_info_edit': '編集',
+      'account_info_unsaved_title': '未保存の変更',
+      'account_info_unsaved_desc': '保存されていない変更があります。終了してもよろしいですか？',
+      'account_info_discard': '破棄',
+      'account_info_keep_editing': '編集を続ける',
+
+      // Address
+      'address_title': 'アドレス帳',
+      'address_empty_title': '保存された住所はありません',
+      'address_empty_desc': '住所を保存すると、サービスの利用が便利になります',
+      'address_add_btn': '住所を追加',
+      'address_add_title': '住所を追加',
+      'address_edit_title': '住所を編集',
+      'address_name_label': '氏名',
+      'address_phone_label': '電話番号',
+      'address_province_label': '都道府県',
+      'address_district_label': '市区町村',
+      'address_ward_label': '区/町/村',
+      'address_street_label': '詳しい住所',
+      'address_type_label': '住所の種類',
+      'address_type_home': '自宅',
+      'address_type_office': '職場',
+      'address_set_default': 'デフォルトの住所に設定',
+      'address_select_province': '都道府県を選択',
+      'address_select_district': '市区町村を選択',
+      'address_select_ward': '区/町/村を選択',
+      'address_search_placeholder': '検索',
+      'address_btn_edit': '編集',
+      'address_btn_delete': '削除',
+      'address_save_success': '住所が保存されました',
+      'address_delete_success': '住所が削除されました',
+      'address_delete_confirm_title': '住所を削除しますか？',
+      'address_delete_confirm_desc': 'この住所を削除してもよろしいですか？',
+      'address_receiver_info': '受取人情報',
+      'address_shipping_info': '配送先住所',
+      'address_specific_hint': '詳しい住所を入力',
     }
   };
 
@@ -562,6 +697,11 @@ class AppLocalizations {
 extension LocalizationExtension on BuildContext {
   String tr(String key) {
     final langCode = watch<LanguageCubit>().state;
+    return AppLocalizations.translate(key, langCode);
+  }
+
+  String trRead(String key) {
+    final langCode = read<LanguageCubit>().state;
     return AppLocalizations.translate(key, langCode);
   }
 }

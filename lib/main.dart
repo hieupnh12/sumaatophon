@@ -18,9 +18,9 @@ import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/pages/login_page.dart';
-import 'features/auth/presentation/pages/link_phone_page.dart';
 import 'features/onboarding/presentation/pages/onboarding_page.dart';
 import 'core/network/api_client.dart';
+import 'core/network/api_config.dart';
 import 'features/products/domain/repositories/product_repository.dart';
 import 'features/products/data/datasources/product_remote_datasource.dart';
 import 'features/products/data/datasources/product_local_datasource.dart';
@@ -45,6 +45,12 @@ import 'features/chat/presentation/pages/chat_hub_page.dart';
 import 'features/notifications/presentation/bloc/notification_bloc.dart';
 import 'features/notifications/presentation/pages/notifications_page.dart';
 import 'features/profile/presentation/pages/profile_page.dart';
+import 'package:http/http.dart' as http;
+import 'features/address/data/datasources/address_remote_datasource.dart';
+import 'features/address/data/datasources/location_remote_datasource.dart';
+import 'features/address/data/repositories/address_repository_impl.dart';
+import 'features/address/domain/repositories/address_repository.dart';
+import 'features/address/presentation/bloc/address_bloc.dart';
 
 final sl = GetIt.instance;
 
@@ -53,6 +59,7 @@ void main() async {
   if (!kIsWeb) {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   }
+  await ApiConfig.init();
   await setupDependencyInjection();
   runApp(const PhoneShopApp());
 }
@@ -79,15 +86,22 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(sl(), sl()));
   sl.registerLazySingleton<ChatRepository>(() => ChatRepositoryImpl(sl()));
   sl.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(sl()));
+  
+  // Address
+  sl.registerLazySingleton(() => http.Client());
+  sl.registerLazySingleton<LocationRemoteDataSource>(() => LocationRemoteDataSourceImpl(client: sl()));
+  sl.registerLazySingleton<AddressRemoteDataSource>(() => AddressRemoteDataSourceImpl(client: sl()));
+  sl.registerLazySingleton<AddressRepository>(() => AddressRepositoryImpl(remoteDataSource: sl(), locationDataSource: sl()));
 
   // Blocs
-  sl.registerFactory(() => AuthBloc(authRepository: sl()));
+  sl.registerLazySingleton(() => AuthBloc(authRepository: sl()));
   sl.registerFactory(() => ProductBloc(repository: sl()));
   sl.registerFactory(() => CartBloc(repository: sl()));
   sl.registerFactory(() => CheckoutBloc());
   sl.registerFactory(() => StoreLocatorBloc());
   sl.registerFactory(() => ChatBloc(repository: sl()));
   sl.registerFactory(() => NotificationBloc());
+  sl.registerFactory(() => AddressBloc(repository: sl(), authBloc: sl()));
   
   // Theme & Language
   sl.registerLazySingleton(() => ThemeCubit());
@@ -115,6 +129,7 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
         BlocProvider(create: (_) => sl<StoreLocatorBloc>()..add(LoadStoresEvent())),
         BlocProvider(create: (_) => sl<ChatBloc>()),
         BlocProvider(create: (_) => sl<NotificationBloc>()..add(LoadNotificationsEvent())),
+        BlocProvider(create: (_) => sl<AddressBloc>()..add(LoadAddressesEvent())),
         BlocProvider(create: (_) => sl<ThemeCubit>()),
         BlocProvider(create: (_) => sl<LanguageCubit>()),
       ],
@@ -137,7 +152,7 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
                     messenger.showSnackBar(
                       SnackBar(
                         content: Text(
-                          '${state.addedProductName} ${context.tr('added_to_cart')}',
+                          '${state.addedProductName} ${context.trRead('added_to_cart')}',
                         ),
                         backgroundColor: AppColors.success,
                         behavior: SnackBarBehavior.floating,
@@ -148,7 +163,7 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
                   } else if (state.cartMessage != null) {
                     messenger.showSnackBar(
                       SnackBar(
-                        content: Text(context.tr(state.cartMessage!)),
+                        content: Text(context.trRead(state.cartMessage!)),
                         backgroundColor: AppColors.error,
                         behavior: SnackBarBehavior.floating,
                       ),

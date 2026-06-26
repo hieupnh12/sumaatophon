@@ -7,6 +7,8 @@ class ProductVersionModel {
   final String rom;
   final double price;
   final int stockQuantity;
+  final String imageUrl;
+  final List<String> galleryImages;
 
   const ProductVersionModel({
     required this.id,
@@ -15,6 +17,8 @@ class ProductVersionModel {
     required this.rom,
     required this.price,
     required this.stockQuantity,
+    this.imageUrl = '',
+    this.galleryImages = const [],
   });
 
   factory ProductVersionModel.fromJson(Map<String, dynamic> json) {
@@ -37,6 +41,8 @@ class ProductVersionModel {
       rom: parsedRom,
       price: _toDouble(json['price']),
       stockQuantity: _toInt(json['stockQuantity']),
+      imageUrl: json['imageUrl']?.toString() ?? '',
+      galleryImages: _toStringList(json['galleryImages']),
     );
   }
 
@@ -48,7 +54,14 @@ class ProductVersionModel {
       rom: rom,
       price: price,
       stockQuantity: stockQuantity,
+      imageUrl: imageUrl,
+      galleryImages: galleryImages,
     );
+  }
+
+  static List<String> _toStringList(dynamic value) {
+    if (value is! List) return const [];
+    return value.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
   }
 
   static double _toDouble(dynamic value) {

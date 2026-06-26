@@ -114,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     if (phoneDisplay.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.tr('login_phone_hint')),
+          content: Text(context.trRead('login_phone_hint')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -126,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     if (!phoneRegex.hasMatch(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.tr('login_phone_invalid')),
+          content: Text(context.trRead('login_phone_invalid')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -196,7 +196,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 _otpFocusNode.requestFocus();
               }
             } else if ((errorMsg.toLowerCase().contains('otp') || errorMsg.toLowerCase().contains('code')) && _showOtpStep) {
-              errorMsg = context.tr('otp_invalid_error');
+              errorMsg = context.trRead('otp_invalid_error');
               setState(() {
                 _otpError = errorMsg;
                 _otpController.clear();
@@ -646,32 +646,41 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
         // OTP Input
         Center(
-          child: Pinput(
-            length: 6,
-            controller: _otpController,
-            focusNode: _otpFocusNode,
-            errorText: _otpError,
-            forceErrorState: _otpError != null,
-            onChanged: (val) {
-              if (val.isNotEmpty && _otpError != null) {
-                setState(() => _otpError = null);
-              }
-            },
-            defaultPinTheme: defaultPinTheme,
-            focusedPinTheme: defaultPinTheme.copyWith(
-              decoration: defaultPinTheme.decoration!.copyWith(
-                border: Border.all(color: AppColors.primary, width: 2),
+          child: Column(
+            children: [
+              Pinput(
+                length: 6,
+                controller: _otpController,
+                focusNode: _otpFocusNode,
+                errorText: _otpError,
+                forceErrorState: _otpError != null,
+                onChanged: (val) {
+                  if (val.isNotEmpty && _otpError != null) {
+                    setState(() => _otpError = null);
+                  }
+                },
+                defaultPinTheme: defaultPinTheme,
+                focusedPinTheme: defaultPinTheme.copyWith(
+                  decoration: defaultPinTheme.decoration!.copyWith(
+                    border: Border.all(color: AppColors.primary, width: 2),
+                  ),
+                ),
+                errorPinTheme: defaultPinTheme.copyWith(
+                  decoration: defaultPinTheme.decoration!.copyWith(
+                    border: Border.all(color: AppColors.error, width: 2),
+                  ),
+                ),
+                submittedPinTheme: defaultPinTheme,
+                onCompleted: _onOtpCompleted,
+                enabled: !isLoading,
+                autofocus: true,
               ),
-            ),
-            errorPinTheme: defaultPinTheme.copyWith(
-              decoration: defaultPinTheme.decoration!.copyWith(
-                border: Border.all(color: AppColors.error, width: 2),
-              ),
-            ),
-            submittedPinTheme: defaultPinTheme,
-            onCompleted: _onOtpCompleted,
-            enabled: !isLoading,
-            autofocus: true,
+              if (isLoading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 16.0),
+                  child: CircularProgressIndicator(),
+                ),
+            ],
           ),
         ),
         

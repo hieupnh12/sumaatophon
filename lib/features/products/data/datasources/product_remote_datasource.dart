@@ -1,6 +1,8 @@
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_feedback.dart';
+import '../models/product_feedback_model.dart';
 import '../models/product_model.dart';
 
 /// Gọi REST API backend để lấy danh sách sản phẩm từ MySQL (qua backend).
@@ -8,8 +10,7 @@ class ProductRemoteDataSource {
   final ApiClient apiClient;
 
   ProductRemoteDataSource(this.apiClient);
-   
-  // lấy danh sách sản phẩm từ MySQL (qua backend) → ProductModel → Product entity , trả về List<Product>  và tránh lỗi bất đồng bộ 
+
   Future<List<Product>> getProducts() async {
     final data = await apiClient.get(ApiEndpoints.products);
 
@@ -22,17 +23,39 @@ class ProductRemoteDataSource {
         .toList();
   }
 
-   
-  // lấy sản phẩm theo id từ MySQL (qua backend) → ProductModel → Product entity , trả về Product và tránh lỗi bất đồng bộ
+  Future<List<ProductFeedback>> getProductFeedbacks(String id) async {
+    final data = await apiClient.get(ApiEndpoints.productFeedbacks(id));
+
+    if (data is! List) {
+      throw FormatException('Expected list from /products/$id/feedbacks');
+    }
+
+    return data
+        .whereType<Map>()
+        .map((item) => ProductFeedbackModel.fromJson(Map<String, dynamic>.from(item)).toEntity())
+        .toList();
+  }
+
   Future<Product> getProductById(String id) async {
     final data = await apiClient.get(ApiEndpoints.productById(id));
-    
-    //dòng này là để kiểm tra dữ liệu nhận từ backend có phải là map không
+
     if (data is! Map<String, dynamic>) {
       throw FormatException('Expected map from /products/$id');
     }
 
-    return ProductModel.fromJson(data).toEntity();
-  }
+    var product = ProductModel.fromJson(data).toEntity();
 
+    if (product.feedbacks.isEmpty) {
+      try {
+        final feedbacks = await getProductFeedbacks(id);
+        if (feedbacks.isNotEmpty) {
+          product = product.copyWith(feedbacks: feedbacks);
+        }
+      } catch (_) {
+        // Giữ product không có feedback nếu endpoint chưa sẵn sàng.
+      }
+    }
+
+    return product;
+  }
 }

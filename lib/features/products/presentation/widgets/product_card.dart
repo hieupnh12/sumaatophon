@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/design_system/app_colors.dart';
+import '../../../../core/l10n/app_localizations.dart';
 import '../../domain/entities/product.dart';
 
 class ProductCard extends StatefulWidget {
@@ -18,8 +20,8 @@ class ProductCard extends StatefulWidget {
 }
 
 class _ProductCardState extends State<ProductCard> {
-  bool _isHovered = false;
   bool _isPressed = false;
+  bool _isFavorite = false;
 
   @override
   Widget build(BuildContext context) {
@@ -27,68 +29,57 @@ class _ProductCardState extends State<ProductCard> {
     final isDark = theme.brightness == Brightness.dark;
     final currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
-    final isElevated = _isHovered || _isPressed;
+    final cardBg = isDark ? AppColors.darkCard : Colors.white;
+    final imageBg = isDark ? const Color(0xFF2A2A2C) : const Color(0xFFF6F3F2);
+    final borderColor = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.3)
+        : const Color(0xFFC1C6D5).withValues(alpha: 0.3);
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _isPressed = true),
-        onTapUp: (_) {
-          setState(() => _isPressed = false);
-          widget.onTap();
-        },
-        onTapCancel: () => setState(() => _isPressed = false),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          // ignore: deprecated_member_use
-          transform: Matrix4.identity()..translate(0.0, isElevated ? -6.0 : 0.0),
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        child: Container(
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCard : AppColors.lightCard,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isElevated 
-                  ? theme.colorScheme.primary.withValues(alpha: 0.5)
-                  : (isDark ? AppColors.darkBorder.withValues(alpha: 0.5) : AppColors.lightBorder.withValues(alpha: 0.5)),
-              width: isElevated ? 1.5 : 1,
-            ),
+            color: cardBg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor),
             boxShadow: [
-              if (isElevated)
+              if (!isDark)
                 BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                )
-              else if (!isDark)
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- IMAGE SECTION ---
               Expanded(
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(16), // Prevent overflow
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF5F5F7),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                        color: imageBg,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                       ),
+                      padding: const EdgeInsets.all(12),
                       child: Hero(
                         tag: 'product_image_${widget.product.id}',
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
+                        createRectTween: (begin, end) => MaterialRectCenterArcTween(begin: begin, end: end),
+                        child: Material(
+                          color: Colors.transparent,
                           child: Image.network(
                             widget.product.imageUrl,
-                            fit: BoxFit.contain, // Maintain aspect ratio without overflowing
+                            fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) => Icon(
                               Icons.image_not_supported_outlined,
                               color: isDark ? Colors.white54 : Colors.black26,
@@ -98,93 +89,129 @@ class _ProductCardState extends State<ProductCard> {
                         ),
                       ),
                     ),
-                    
-                    // BADGES
-                    if (widget.product.hasDiscount || widget.product.isNew)
+                    if (widget.product.isNew)
+                      const Positioned(
+                        top: 8,
+                        left: 8,
+                        child: _Badge(
+                          label: 'NEW',
+                          bg: AppColors.primary,
+                          fg: Colors.white,
+                        ),
+                      ),
+                    if (widget.product.hasDiscount)
                       Positioned(
-                        top: 10,
-                        left: 10,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: widget.product.hasDiscount ? AppColors.error : AppColors.primary,
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))
-                            ]
-                          ),
-                          child: Text(
-                            widget.product.hasDiscount ? '-${widget.product.discountPercentage}%' : 'NEW',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        top: 8,
+                        left: 8,
+                        child: _Badge(
+                          label: '-${widget.product.discountPercentage}%',
+                          bg: AppColors.error,
+                          fg: Colors.white,
+                        ),
+                      ),
+                    if (!widget.product.isNew && !widget.product.hasDiscount)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: _Badge(
+                          label: context.tr('product_installment'),
+                          bg: const Color(0xFF896100),
+                          fg: const Color(0xFFFFE5BC),
+                          fontSize: 9,
                         ),
                       ),
                   ],
                 ),
               ),
-              
-              // --- INFO SECTION ---
               Padding(
-                padding: const EdgeInsets.all(14.0),
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Brand
                     Text(
                       widget.product.brand.toUpperCase(),
-                      style: theme.textTheme.bodySmall?.copyWith(
+                      style: TextStyle(
                         color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
+                        fontWeight: FontWeight.w700,
                         fontSize: 10,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        height: 1.2,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    
-                    // Name
                     SizedBox(
-                      height: 40,
-                      child: Text(
-                        widget.product.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          height: 1.3,
-                        ),
+                      height: widget.product.hasDiscount ? 34 : 22,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (widget.product.hasDiscount)
+                            Text(
+                              currencyFormatter.format(widget.product.originalPrice),
+                              style: TextStyle(
+                                decoration: TextDecoration.lineThrough,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                fontSize: 11,
+                                height: 1.1,
+                              ),
+                            ),
+                          Text(
+                            currencyFormatter.format(widget.product.price),
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    
-                    // Price
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        if (widget.product.hasDiscount)
-                          Text(
-                            currencyFormatter.format(widget.product.originalPrice),
-                            style: TextStyle(
-                              decoration: TextDecoration.lineThrough,
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              color: Color(0xFFFFBA20),
+                              size: 15,
                             ),
-                          )
-                        else
-                          const SizedBox(height: 16),
-                        Text(
-                          currencyFormatter.format(widget.product.price),
-                          style: TextStyle(
-                            color: isDark ? AppColors.darkText : AppColors.lightText,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 17,
-                            letterSpacing: -0.5,
+                            const SizedBox(width: 3),
+                            Text(
+                              widget.product.rating.toStringAsFixed(1),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _isFavorite = !_isFavorite);
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Icon(
+                            _isFavorite ? Icons.favorite : Icons.favorite_border,
+                            size: 20,
+                            color: _isFavorite
+                                ? AppColors.error
+                                : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
                           ),
                         ),
                       ],
@@ -194,6 +221,39 @@ class _ProductCardState extends State<ProductCard> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color bg;
+  final Color fg;
+  final double fontSize;
+
+  const _Badge({
+    required this.label,
+    required this.bg,
+    required this.fg,
+    this.fontSize = 10,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: fg,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
