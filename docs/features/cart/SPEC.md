@@ -2,132 +2,111 @@
 
 ## 1. Muc tieu
 
-Quan ly gio hang cua nguoi dung truoc khi checkout.
+Quan ly gio hang cua nguoi dung truoc khi checkout. Gio hang luu tren MySQL theo `customer_id`, khong dung SQLite local.
 
 ## 2. Pham vi
 
 Bao gom:
 
-- Them san pham vao gio.
-- Tang/giam so luong.
-- Xoa san pham.
-- Xoa toan bo gio hang.
-- Ap dung/xoa ma giam gia.
+- Yeu cau dang nhap truoc khi mo gio hang hoac them san pham.
+- Them san pham vao gio (theo `product_version_id`).
+- Tang/giam so luong (toi da = so IMEI `IN_STOCK` cua version do).
+- Xoa san pham / xoa toan bo gio hang.
+- Ap dung/xoa ma giam gia (local trong Bloc).
 - Tinh subtotal, discount, total truoc phi ship.
 - Mo checkout khi gio hang co san pham.
 
 Khong bao gom:
 
-- Tao don hang.
-- Xu ly thanh toan.
-- Lich su don hang.
+- Lich su don hang (feature `orders`).
 
 ## 3. Luong nguoi dung
 
-1. User bam add to cart tu product list/detail.
-2. `CartBloc` them item hoac tang quantity neu san pham da ton tai.
-3. User mo `CartPage`.
-4. User thay doi quantity/xoa item/ap promo code.
-5. User bam checkout de sang `CheckoutPage`.
+1. User bam cart hoac add to cart.
+2. Neu chua dang nhap that (co `customer_id` MySQL) → mo `LoginScreen(returnAfterAuth: true)`.
+3. Sau dang nhap → sync cart tu API `GET /api/cart`.
+4. User them/sua/xoa item → API cap nhat bang `carts` + `cart_items`.
+5. User checkout → `POST /api/orders` gan IMEI tu `product_items` va danh dau `SOLD`.
 
 ## 4. Hanh vi nghiep vu
 
-- Cung `product.id` thi tang quantity, khong tao duplicate item.
-- Quantity toi thieu la 1; nut `-` bi vo hieu khi quantity = 1 (khong tru ve 0 de xoa).
-- Xoa tung san pham bang nut delete rieng (hoac swipe).
-- Nut `+` tang den khi dat `stockQuantity` (so IMEI IN_STOCK tu MySQL).
-- Clear cart can hoi xac nhan truoc khi xoa.
-- Promo code hop le cap nhat discount.
-- Promo code sai hien error.
-- Khong nen cho checkout neu cart rong.
+- Moi `customer_id` co toi da 1 cart `status = 1` (active).
+- Cung `product_version_id` trong cart thi tang `quantity`, khong tao dong trung.
+- Quantity toi thieu = 1; quantity toi da = so IMEI `IN_STOCK` cua version (dem tu `product_items`).
+- Guest login / biometric demo khong duoc dung cart.
+- Promo code hop le cap nhat discount (local Bloc, chua sync MySQL).
 
-## 5. UI/UX
+## 5. Database MySQL
 
-- Empty cart co icon, title, description, action quay lai shop.
-- Cart item co image, name, price, quantity controls.
-- Swipe/delete hoac nut delete phai cap nhat `CartBloc`.
-- Summary hien subtotal, discount, total.
-- Checkout button ro rang, dung style app.
-- Moi text UI phai dung `context.tr()`.
+### `carts`
 
-## 6. Data/API/SQLite
+| Cot | Mo ta |
+|-----|-------|
+| cart_id | PK |
+| customer_id | FK → customers |
+| status | 1 = active |
+| create_date, update_date | timestamp |
 
-Hien tai cart co the nam trong memory bang `CartBloc`.
+### `cart_items`
 
-Neu can luu cart khi tat app:
+| Cot | Mo ta |
+|-----|-------|
+| cart_item_id | PK |
+| cart_id | FK → carts |
+| product_version_id | FK → product_versions |
+| quantity | so luong muon mua |
+| status | 1 = active |
 
-- Them SQLite local datasource.
-- Table du kien: `cart_items`
-- Columns du kien: `productId`, `quantity`, `createdAt`, `updatedAt`
-- File du kien:
+### Stock / IMEI
 
-```text
-lib/features/cart/domain/entities/cart_item.dart
-lib/features/cart/domain/repositories/cart_repository.dart
-lib/features/cart/data/models/cart_item_model.dart
-lib/features/cart/data/datasources/cart_local_datasource.dart
-lib/features/cart/data/repositories/cart_repository_impl.dart
-```
+- Moi version co nhieu dong `product_items` (imei).
+- Stock hien thi = COUNT imei WHERE `status = 'IN_STOCK'` AND `order_detail_id IS NULL`.
+- Khi dat hang: chon N imei theo `quantity`, set `status = 'SOLD'`, `order_detail_id` = chi tiet don.
 
-API:
+## 6. API Backend
 
-- Khong can neu cart chi local.
-- Neu backend sync cart theo user, dung remote datasource rieng.
+| Method | Endpoint | Mo ta |
+|--------|----------|-------|
+| GET | `/api/cart?customerId=` | Lay items enriched (product + version + stock) |
+| POST | `/api/cart/items` | Them/tang quantity `{ customerId, productVersionId }` |
+| PUT | `/api/cart/items/:productVersionId` | Cap nhat quantity |
+| DELETE | `/api/cart/items/:productVersionId?customerId=` | Xoa 1 item |
+| DELETE | `/api/cart?customerId=` | Xoa toan bo cart |
+| POST | `/api/orders` | Tao don + gan IMEI + clear cart |
 
-## 7. Localization keys
-
-Dang co hoac can co:
-
-```text
-cart
-cart_empty_title
-cart_empty_desc
-explore_now
-subtotal
-discount
-total
-checkout
-promo_hint
-apply
-cart_promo_applied
-cart_remove_item
-cart_clear
-```
-
-Neu them UI text moi, bat buoc them key cho `vi`, `en`, `ja`.
-
-## 8. Cau truc code du kien
+## 7. Cau truc Flutter
 
 ```text
 lib/features/cart/
-  domain/
-    entities/
-  data/
-    models/
-    datasources/
-    repositories/
-  presentation/
-    bloc/
-    pages/
-    widgets/
+  data/datasources/cart_remote_datasource.dart
+  data/models/cart_item_model.dart
+  data/repositories/cart_repository_impl.dart
+  domain/entities/cart_item.dart
+  domain/repositories/cart_repository.dart
+  presentation/bloc/cart_bloc.dart
+  presentation/cart_auth_helper.dart
+  presentation/pages/cart_page.dart
+  presentation/widgets/
+lib/core/auth/auth_guard.dart
 ```
 
-Neu chua dung SQLite/API, co the chua can `data/`.
+SQLite `cart_items` **khong con dung** cho feature nay.
+
+## 8. Localization keys
+
+```text
+cart_login_required
+cart_version_stock
+cart_max_stock_reached
+cart_save_error
+(cac key cart_* hien co)
+```
 
 ## 9. Acceptance criteria
 
-- [ ] Add to cart tang quantity khi item da ton tai.
-- [ ] Update quantity hoat dong dung.
-- [ ] Remove/clear cart hoat dong dung.
-- [ ] Promo code co success/error state.
-- [ ] Total tinh dung: `subtotal - discount`.
-- [ ] Khong checkout khi cart rong.
-- [ ] Text UI dung `context.tr()`.
-- [ ] UI dung light/dark mode.
-
-## 10. Ghi chu cho AI agent
-
-- `CartItem` nen dua ve `domain/entities` neu duoc dung boi checkout/orders.
-- Cart khong tao order truc tiep; tao order thuoc checkout.
-- Neu tach widget, uu tien `cart_item_tile.dart`, `cart_summary.dart`, `promo_code_box.dart`.
-
+- [x] Chua dang nhap → bam cart/add to cart mo login.
+- [x] Cart luu tren MySQL qua REST API.
+- [x] Hien thi product version (mau, RAM/ROM) va stock IMEI.
+- [x] Quantity khong vuot qua stock IMEI.
+- [x] Dat hang gan IMEI va danh dau SOLD (endpoint orders).
+- [x] Text UI dung `context.tr()`.

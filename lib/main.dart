@@ -16,7 +16,6 @@ import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/pages/login_page.dart';
-import 'features/auth/presentation/pages/link_phone_page.dart';
 import 'features/onboarding/presentation/pages/onboarding_page.dart';
 import 'core/network/api_client.dart';
 import 'core/network/api_config.dart';
@@ -27,11 +26,12 @@ import 'features/products/data/repositories/product_repository_impl.dart';
 import 'features/products/presentation/bloc/product_bloc.dart';
 import 'features/products/presentation/pages/product_list_page.dart';
 import 'core/database/app_database.dart';
-import 'features/cart/data/datasources/cart_local_datasource.dart';
+import 'features/cart/data/datasources/cart_remote_datasource.dart';
 import 'features/cart/data/repositories/cart_repository_impl.dart';
 import 'features/cart/domain/repositories/cart_repository.dart';
 import 'features/cart/presentation/bloc/cart_bloc.dart';
-import 'features/cart/presentation/pages/cart_page.dart';
+import 'features/cart/presentation/cart_auth_helper.dart';
+import 'core/auth/auth_guard.dart';
 import 'features/checkout/presentation/bloc/checkout_bloc.dart';
 import 'features/store_locator/presentation/bloc/store_locator_bloc.dart';
 import 'features/store_locator/presentation/pages/store_location_page.dart';
@@ -70,7 +70,7 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton(() => AuthRemoteDataSource(sl(), sl()));
   sl.registerLazySingleton(() => ProductRemoteDataSource(sl()));
   sl.registerLazySingleton(() => ProductLocalDataSource(sl()));
-  sl.registerLazySingleton(() => CartLocalDatasource(sl()));
+  sl.registerLazySingleton(() => CartRemoteDatasource(sl()));
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl<AuthRemoteDataSource>()));
@@ -114,7 +114,7 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
       providers: [
         BlocProvider(create: (_) => sl<AuthBloc>()),
         BlocProvider(create: (_) => sl<ProductBloc>()..add(LoadProductsEvent())),
-        BlocProvider(create: (_) => sl<CartBloc>()..add(LoadCartEvent())),
+        BlocProvider(create: (_) => sl<CartBloc>()),
         BlocProvider(create: (_) => sl<CheckoutBloc>()),
         BlocProvider(create: (_) => sl<StoreLocatorBloc>()..add(LoadStoresEvent())),
         BlocProvider(create: (_) => sl<ChatBloc>()),
@@ -132,7 +132,20 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
             themeMode: themeMode,
             debugShowCheckedModeBanner: false,
             builder: (context, child) {
-              return BlocListener<CartBloc, CartState>(
+              return MultiBlocListener(
+                listeners: [
+                  BlocListener<AuthBloc, AuthState>(
+                    listener: (context, state) {
+                      final cartBloc = context.read<CartBloc>();
+                      if (state is AuthenticatedState && isRealAuthenticatedUser(state.user)) {
+                        cartBloc.add(SyncCartCustomerEvent(state.user.id));
+                      } else if (state is! AuthenticatedState) {
+                        cartBloc.add(const SyncCartCustomerEvent(null));
+                      }
+                    },
+                  ),
+                ],
+                child: BlocListener<CartBloc, CartState>(
                 listenWhen: (prev, curr) =>
                     prev.cartMessage != curr.cartMessage ||
                     prev.addedProductName != curr.addedProductName,
@@ -162,6 +175,7 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
                   }
                 },
                 child: child ?? const SizedBox.shrink(),
+              ),
               );
             },
             home: AppFeatureFlags.authRequired
@@ -209,10 +223,7 @@ class _AppMainPageState extends State<AppMainPage> {
         children: [
           // Nav routes list with corresponding UI pages
           ProductListPage(
-            onOpenCart: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const CartPage()),
-            ),
+            onOpenCart: () => openCartWithAuth(context),
           ),
           const StoreLocationPage(),
           const ChatPage(),

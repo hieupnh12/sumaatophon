@@ -72,7 +72,7 @@ class CheckoutPage extends StatelessWidget {
         builder: (context, checkoutState) {
           return BlocBuilder<CartBloc, CartState>(
             builder: (context, cartState) {
-              final totalOrder = cartState.finalPrice + checkoutState.shippingCost;
+              final totalOrder = cartState.selectedFinalPrice + checkoutState.shippingCost;
 
               return Stack(
                 children: [
@@ -204,10 +204,10 @@ class CheckoutPage extends StatelessWidget {
                           ),
                           child: Column(
                             children: [
-                              _buildSummaryRow('${context.tr('checkout_items')} (${cartState.totalItems})', currencyFormatter.format(cartState.subtotal), isDark),
+                              _buildSummaryRow('${context.tr('checkout_items')} (${cartState.selectedTotalItems})', currencyFormatter.format(cartState.selectedSubtotal), isDark),
                               const SizedBox(height: 12),
-                              if (cartState.discountAmount > 0) ...[
-                                _buildSummaryRow(context.tr('discount'), '-${currencyFormatter.format(cartState.discountAmount)}', isDark, isDiscount: true),
+                              if (cartState.selectedDiscountAmount > 0) ...[
+                                _buildSummaryRow(context.tr('discount'), '-${currencyFormatter.format(cartState.selectedDiscountAmount)}', isDark, isDiscount: true),
                                 const SizedBox(height: 12),
                               ],
                               _buildSummaryRow(context.tr('checkout_shipping'), currencyFormatter.format(checkoutState.shippingCost), isDark),

@@ -50,6 +50,14 @@ class ApiConfig {
       return;
     }
 
+    // Debug build trên mobile/emulator: luôn dùng backend local (cart/address chưa có trên VPS).
+    // Máy thật + USB: chạy `adb reverse tcp:3000 tcp:3000` trước khi test.
+    if (kDebugMode) {
+      _baseUrl = await _resolveLocalBaseUrl();
+      _log('debug build → local ($_baseUrl)');
+      return;
+    }
+
     final debuggerAttached = await _isDebuggerAttached();
     if (debuggerAttached) {
       _baseUrl = await _resolveLocalBaseUrl();
@@ -58,7 +66,7 @@ class ApiConfig {
     }
 
     _baseUrl = productionBaseUrl;
-    _log('standalone debug → production');
+    _log('standalone → production');
   }
 
   /// Android emulator: 10.0.2.2

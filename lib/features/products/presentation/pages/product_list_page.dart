@@ -7,7 +7,7 @@ import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../bloc/product_bloc.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
-import '../../../cart/presentation/pages/cart_page.dart';
+import '../../../cart/presentation/cart_auth_helper.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
 import '../widgets/product_card.dart';
 import '../widgets/shimmer_product_card.dart';
@@ -243,12 +243,7 @@ class _ProductListPageState extends State<ProductListPage> {
                       ),
                       child: Icon(Icons.shopping_cart_outlined, color: theme.colorScheme.onSurface),
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const CartPage()),
-                      );
-                    },
+                    onPressed: () => openCartWithAuth(context),
                   );
                 },
               ),
