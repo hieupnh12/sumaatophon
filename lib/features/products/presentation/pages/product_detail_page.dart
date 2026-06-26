@@ -9,7 +9,8 @@ import '../../../../core/l10n/app_localizations.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_version.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
-import '../../../cart/presentation/pages/cart_page.dart';
+import '../../../../core/auth/auth_guard.dart';
+import '../../../cart/presentation/cart_auth_helper.dart';
 import '../../../checkout/presentation/pages/checkout_page.dart';
 import '../../presentation/bloc/product_bloc.dart';
 import '../widgets/product_review_tile.dart';
@@ -136,7 +137,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   void _showComingSoon() {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.tr('product_coming_soon'))),
+      SnackBar(content: Text(context.trRead('product_coming_soon'))),
     );
   }
 
@@ -296,12 +297,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   badgeStyle: const badges.BadgeStyle(badgeColor: AppColors.error, padding: EdgeInsets.all(4)),
                   child: Icon(Icons.shopping_cart_outlined, color: theme.colorScheme.primary),
                 ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CartPage()),
-                  );
-                },
+                onPressed: () => openCartWithAuth(context),
               );
             },
           ),
@@ -768,10 +764,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     height: 56,
                     child: OutlinedButton(
                       onPressed: canPurchase
-                          ? () {
+                          ? () async {
                               HapticFeedback.lightImpact();
                               final version = _selectedVersion(product);
-                              context.read<CartBloc>().add(AddToCartEvent(product, version));
+                              await addToCartWithAuth(context, product, version);
                             }
                           : null,
                       style: OutlinedButton.styleFrom(
@@ -789,9 +785,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       height: 56,
                       child: ElevatedButton(
                         onPressed: canPurchase
-                            ? () {
+                            ? () async {
                                 HapticFeedback.lightImpact();
                                 final version = _selectedVersion(product);
+                                if (!await requireAuthForCart(context)) return;
+                                await ensureCartReady(context);
+                                if (!context.mounted) return;
                                 context.read<CartBloc>().add(AddToCartEvent(product, version));
                                 Navigator.push(
                                   context,

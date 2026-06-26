@@ -24,18 +24,7 @@ class _CartPageState extends State<CartPage> {
         title: Text(context.tr('cart'), style: const TextStyle(fontWeight: FontWeight.w700)),
         centerTitle: true,
       ),
-      body: BlocConsumer<CartBloc, CartState>(
-        listener: (context, state) {
-          if (state.promoError != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(context.tr(state.promoError!)),
-                backgroundColor: AppColors.error,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        },
+      body: BlocBuilder<CartBloc, CartState>(
         builder: (context, state) {
           if (state.items.isEmpty) {
             return Center(
@@ -95,7 +84,13 @@ class _CartPageState extends State<CartPage> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   itemCount: state.items.length,
                   separatorBuilder: (context, index) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) => CartItemTile(cartItem: state.items[index]),
+                  itemBuilder: (context, index) {
+                    final item = state.items[index];
+                    return CartItemTile(
+                      cartItem: item,
+                      isSelected: state.selectedVersionIds.contains(item.version.id),
+                    );
+                  },
                 ),
               ),
               const CartSummary(),

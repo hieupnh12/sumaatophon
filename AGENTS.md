@@ -210,7 +210,9 @@ File nen co:
 
 ```text
 backend/db.js
-backend/server.js
+backend/server.js          # entry: npm start
+backend/src/routes/        # Express routers theo feature
+backend/src/services/      # helper/query dung lai
 lib/core/network/api_client.dart
 lib/core/network/api_endpoints.dart
 lib/features/products/data/datasources/product_remote_datasource.dart

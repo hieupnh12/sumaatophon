@@ -10,7 +10,9 @@ import '../../../../main.dart';
 import 'dart:async';
 
 class LinkPhonePage extends StatefulWidget {
-  const LinkPhonePage({super.key});
+  final bool returnAfterAuth;
+
+  const LinkPhonePage({super.key, this.returnAfterAuth = false});
 
   @override
   State<LinkPhonePage> createState() => _LinkPhonePageState();

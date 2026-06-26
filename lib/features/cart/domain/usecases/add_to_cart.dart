@@ -7,7 +7,7 @@ class AddToCart {
 
   AddToCart(this.repository);
 
-  Future<bool> call(Product product, ProductVersion version) {
-    return repository.addItem(product, version);
+  Future<bool> call(String customerId, Product product, ProductVersion version) {
+    return repository.addItem(customerId, product, version);
   }
 }

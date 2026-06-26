@@ -5,7 +5,7 @@ class ClearCart {
 
   ClearCart(this.repository);
 
-  void call() {
-    repository.clearCart();
+  Future<void> call(String customerId) {
+    return repository.clearCart(customerId);
   }
 }

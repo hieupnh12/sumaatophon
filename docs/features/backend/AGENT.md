@@ -93,7 +93,7 @@ File `backend/db.js`:
 
 - Doc `.env` voi `override: true`
 - Tao `mysql2/promise` pool mot lan
-- Export pool de `server.js` va route khac dung lai
+- Export pool de cac route trong `backend/src/` dung lai
 
 **Khong duoc:**
 
@@ -103,15 +103,47 @@ File `backend/db.js`:
 
 ---
 
+## 3.1. Cau truc backend (Express)
+
+Entry point van la `backend/server.js` (listen port). Logic nam trong `backend/src/`:
+
+```text
+backend/
+  server.js              # npm start — tao app va listen
+  db.js                  # MySQL pool dung chung
+  src/
+    app.js               # express + cors + json + dang ky routes
+    config/firebase.js   # Firebase Admin, OTP cache
+    routes/
+      index.js           # gom tat ca router
+      products.js        # GET /products, /products/:id, ...
+      auth.js            # POST /auth/*
+      profile.js         # PUT /profile
+      addresses.js       # CRUD /api/addresses
+      cart.js            # CRUD /api/cart
+      orders.js          # POST /api/orders
+      health.js          # GET /health
+    services/            # query/helper dung lai (cart, product)
+    utils/               # map JSON (productMappers, ...)
+```
+
+Them endpoint moi: sua hoac tao file trong `src/routes/`, roi dang ky trong `src/routes/index.js`.
+
+---
+
 ## 4. Mau them endpoint backend moi
 
-### Buoc 1 — Viet route trong `server.js` (hoac tach file route sau nay)
+### Buoc 1 — Viet route trong `backend/src/routes/<feature>.js`
+
+Vi du them `GET /orders` — tao hoac mo rong `src/routes/orders.js`:
 
 ```javascript
-const pool = require('./db');
+const express = require('express');
+const pool = require('../../db');
 
-// GET /orders — vi du feature orders
-app.get('/orders', async (req, res) => {
+const router = express.Router();
+
+router.get('/orders', async (req, res) => {
   try {
     const userId = req.query.userId;
     const [rows] = await pool.query(
@@ -121,14 +153,23 @@ app.get('/orders', async (req, res) => {
       WHERE o.user_id = ?
       ORDER BY o.created_at DESC
       `,
-      [userId]
+      [userId],
     );
-    res.json(rows.map(mapOrderRow)); // mapRow chuyen SQL -> JSON contract
+    res.json(rows.map(mapOrderRow));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message, code: 'ORDERS_LIST_ERROR' });
   }
 });
+
+module.exports = router;
+```
+
+Dang ky trong `src/routes/index.js`:
+
+```javascript
+const ordersRouter = require('./orders');
+app.use(ordersRouter);
 ```
 
 ### Buoc 2 — Quy tac route backend
@@ -220,7 +261,8 @@ sl.registerFactory(() => OrderBloc(repository: sl()));
 
 ### Backend
 
-- [ ] Route moi dung `const pool = require('./db')`
+- [ ] Route moi trong `backend/src/routes/` (pool tu `../../db`)
+- [ ] Da dang ky router trong `src/routes/index.js` neu file route moi
 - [ ] SQL dung bang/cot trong database `phoneShop`
 - [ ] Response JSON khop `docs/API.md`
 - [ ] Error tra `{ message, code }`
@@ -262,7 +304,7 @@ Page -> Bloc -> Repository -> RemoteDataSource -> ApiClient -> Backend (pool.que
 
 Backend:
 - Dung pool tu backend/db.js, khong tao connection rieng.
-- Them route trong server.js (hoac file route rieng).
+- Them route trong backend/src/routes/ va dang ky trong src/routes/index.js.
 - Cap nhat docs/API.md.
 
 Flutter:
@@ -278,4 +320,5 @@ Flutter:
 
 | Ngay | Noi dung |
 |------|-------------|
+| 2026-06-26 | Tach backend: routes/services trong `backend/src/`, `server.js` chi entry |
 | 2026-06-19 | Tao guide: db.js pool dung chung, dotenv override, luong backend + Flutter giong products |

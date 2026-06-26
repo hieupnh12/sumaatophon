@@ -9,6 +9,7 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import 'account_info_page.dart';
 import '../../../orders/presentation/pages/order_list_page.dart';
+import '../../../address/presentation/pages/address_list_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -62,37 +63,53 @@ class _ProfilePageState extends State<ProfilePage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        title: Text(context.tr('profile'), style: const TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          String userName = context.tr('profile_guest');
-          String email = '';
-          bool isGuest = true;
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        String userName = context.tr('profile_guest');
+        String email = '';
+        bool isGuest = true;
+        String gender = 'Other';
 
-          if (state is AuthenticatedState && state.user.id != 'guest') {
-            isGuest = false;
-            userName = state.user.name;
-            email = state.user.email;
+        if (state is AuthenticatedState && state.user.id != 'guest') {
+          isGuest = false;
+          userName = state.user.name;
+          email = state.user.email;
+          if (state.user.gender == 1) gender = 'Male';
+          else if (state.user.gender == 2) gender = 'Female';
+        }
+
+        String avatarUrl = '';
+        if (!isGuest) {
+          final seed = Uri.encodeComponent(userName.isEmpty ? 'User' : userName);
+          if (gender == 'Male') {
+            avatarUrl = 'https://api.dicebear.com/9.x/croodles/png?seed=$seed-boy&backgroundColor=b6e3f4';
+          } else if (gender == 'Female') {
+            avatarUrl = 'https://api.dicebear.com/9.x/croodles/png?seed=$seed-girl&backgroundColor=ffdfbf';
+          } else {
+            avatarUrl = 'https://api.dicebear.com/9.x/croodles/png?seed=$seed&backgroundColor=e2e2e2';
           }
+        }
 
-          if (isGuest) {
-            return _buildGuestBody(context, theme, isDark);
-          }
 
-          return SingleChildScrollView(
+        return Scaffold(
+          backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+          appBar: isGuest
+              ? null
+              : AppBar(
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  title: Text(context.tr('profile'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.settings_outlined),
+                      onPressed: () {},
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+          body: isGuest
+              ? _buildGuestBody(context, theme, isDark)
+              : SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Column(
@@ -101,14 +118,25 @@ class _ProfilePageState extends State<ProfilePage> {
                 // Header: Avatar & Info
                 Row(
                   children: [
-                    CircleAvatar(
-                      radius: 36,
-                      backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      backgroundImage: (!isGuest && state is AuthenticatedState && state.user.avatarUrl != null && state.user.avatarUrl!.isNotEmpty)
-                          ? NetworkImage(state.user.avatarUrl!)
-                          : null,
-                      child: (!isGuest && state is AuthenticatedState && state.user.avatarUrl != null && state.user.avatarUrl!.isNotEmpty)
-                          ? null
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      ),
+                      child: !isGuest
+                          ? ClipOval(
+                              child: Image.network(
+                                avatarUrl,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                                },
+                                errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
+                              ),
+                            )
                           : Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
                     ),
                     const SizedBox(width: 16),
@@ -130,25 +158,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
                           ],
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.warning.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.stars_rounded, color: AppColors.warning, size: 14),
-                                const SizedBox(width: 4),
-                                Text(
-                                  context.tr('profile_gold_member'),
-                                  style: const TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                          ),
+                          // Gold member badge removed as requested
                         ],
                       ),
                     ),
@@ -243,7 +253,17 @@ class _ProfilePageState extends State<ProfilePage> {
                       _buildDivider(isDark),
                       _buildListItem(Icons.local_offer_outlined, context.tr('profile_voucher'), isDark, trailingText: '5 ${context.tr('offers_count')}'),
                       _buildDivider(isDark),
-                      _buildListItem(Icons.location_on_outlined, context.tr('profile_address'), isDark),
+                      _buildListItem(
+                        Icons.location_on_outlined, 
+                        context.tr('profile_address'), 
+                        isDark,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AddressListPage()),
+                          );
+                        },
+                      ),
                       _buildDivider(isDark),
                       _buildListItem(Icons.payment_rounded, context.tr('profile_payment_methods'), isDark),
                     ],
@@ -325,9 +345,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 40),
               ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -339,7 +359,7 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           // Header section with gradient
           Container(
-            padding: const EdgeInsets.only(top: 24, left: 24, right: 24, bottom: 40),
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 24, left: 24, right: 24, bottom: 40),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -400,24 +420,34 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24), // Reduced from 32
 
-                // 3D Illustration
-                Image.asset(
-                  'assets/images/guest_illustration.png',
-                  height: 180,
-                  fit: BoxFit.contain,
-                  errorBuilder: (ctx, err, stack) => const Icon(Icons.card_giftcard, size: 100, color: Colors.grey),
+                // 3D Illustration & Features
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16), // Reduced from 24
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE7EBEE), // Matches the background color of guest_illustration.png
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Column(
+                    children: [
+                      Image.asset(
+                        'assets/images/guest_illustration.png',
+                        height: 140, // Reduced from 180
+                        fit: BoxFit.contain,
+                        errorBuilder: (ctx, err, stack) => const Icon(Icons.card_giftcard, size: 80, color: Colors.grey), // Reduced icon size
+                      ),
+                      const SizedBox(height: 16), // Reduced from 32
+                      _buildGuestFeatureItem('Theo dõi đơn hàng mọi lúc, nhận cập nhật tức thì', false),
+                      _buildGuestFeatureItem('Tích điểm & nhận ưu đãi dành riêng cho bạn', false),
+                      _buildGuestFeatureItem('Xem thông tin bảo hành nhanh chóng, chính xác', false),
+                      _buildGuestFeatureItem('Tra cứu lịch sử giao dịch đầy đủ, rõ ràng', false),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 32),
 
-                // Features list
-                _buildGuestFeatureItem('Theo dõi đơn hàng mọi lúc, nhận cập nhật tức thì', isDark),
-                _buildGuestFeatureItem('Tích điểm & nhận ưu đãi dành riêng cho bạn', isDark),
-                _buildGuestFeatureItem('Xem thông tin bảo hành nhanh chóng, chính xác', isDark),
-                _buildGuestFeatureItem('Tra cứu lịch sử giao dịch đầy đủ, rõ ràng', isDark),
-
-                const SizedBox(height: 48),
+                const SizedBox(height: 24), // Reduced from 48
 
                 // Login Button
                 ElevatedButton(
@@ -438,7 +468,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   child: const Text('Đăng nhập ngay!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 24), // Reduced from 40
               ],
             ),
           ),
@@ -449,7 +479,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildGuestFeatureItem(String text, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.only(bottom: 8.0), // Reduced from 12.0
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
