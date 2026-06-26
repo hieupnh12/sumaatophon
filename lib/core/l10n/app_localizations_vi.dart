@@ -318,4 +318,21 @@ const Map<String, String> viLocalizations = {
   'address_receiver_info': 'Thông tin người nhận',
   'address_shipping_info': 'Địa chỉ nhận hàng',
   'address_specific_hint': 'Nhập Địa chỉ cụ thể',
+
+  // Chat
+  'chat_support': 'Hỗ trợ',
+  'chat_bot_tab': 'Trợ lý AI',
+  'chat_staff_tab': 'Nhân viên',
+  'chat_login_required': 'Đăng nhập để chat với nhân viên phoneShop.',
+  'chat_retry': 'Thử lại',
+  'chat_no_conversations': 'Chưa có hội thoại nào',
+  'chat_admin_inbox': 'Hộp thư hỗ trợ',
+  'chat_start_conversation': 'Bắt đầu trò chuyện',
+  'chat_online': 'Đang trực tuyến',
+  'chat_empty': 'Chưa có tin nhắn. Hãy gửi lời chào!',
+  'chat_input_hint': 'Nhập tin nhắn...',
+  'chatbot_suggestions_label': 'Gợi ý câu hỏi',
+  'chatbot_suggestions_more': 'Xem thêm',
+  'chatbot_input_hint': 'Hỏi về điện thoại, giá, tồn kho...',
+  'chatbot_transfer_staff': 'Chuyển sang nhân viên',
 };

@@ -55,7 +55,7 @@ class _AddressFormPageState extends State<AddressFormPage> {
             _receiverNameController.text = authState.user.name;
           }
           if (_receiverPhoneController.text.trim().isEmpty) {
-            _receiverPhoneController.text = authState.user.phone ?? '';
+            _receiverPhoneController.text = authState.user.phoneNumber ?? '';
           }
         }
       }

@@ -18,8 +18,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<UserEntity> syncAuth(String idToken) {
-    return dataSource.syncAuth(idToken);
+  Future<UserEntity> syncAuth(String idToken) async {
+    final userModel = await dataSource.syncAuth(idToken);
+    return userModel.toEntity();
   }
 
   @override
@@ -28,14 +29,15 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<UserEntity> verifyOtp(String phone, String otp) {
-    return dataSource.verifyOtp(phone, otp);
+  Future<UserEntity> verifyOtp(String phone, String otp) async {
+    final userModel = await dataSource.verifyOtp(phone, otp);
+    return userModel.toEntity();
   }
 
   @override
   Future<UserEntity> linkPhone(String phone, String otp, {bool force = false}) async {
     final userModel = await dataSource.linkPhone(phone, otp, force: force);
-    return userModel;
+    return userModel.toEntity();
   }
 
   @override
@@ -53,7 +55,7 @@ class AuthRepositoryImpl implements AuthRepository {
       dob: dob,
       address: address,
     );
-    return userModel;
+    return userModel.toEntity();
   }
 
   @override

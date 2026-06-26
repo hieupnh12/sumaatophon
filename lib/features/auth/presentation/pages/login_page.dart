@@ -9,8 +9,9 @@ import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../../../../core/auth/auth_guard.dart';
 import '../bloc/auth_bloc.dart';
+import '../phone_utils.dart';
+import '../auth_navigation.dart';
 import 'link_phone_page.dart';
-import '../../../../main.dart';
 
 class LoginScreen extends StatefulWidget {
   final bool returnAfterAuth;
@@ -132,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       return;
     }
 
-    final phone = phoneDisplay.replaceAll(' ', '');
+    final phone = normalizePhone(phoneDisplay);
     final phoneRegex = RegExp(r'^(0[3|5|7|8|9])+([0-9]{8})$');
     if (!phoneRegex.hasMatch(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -228,11 +229,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             if (widget.returnAfterAuth) {
               Navigator.pop(context, true);
             } else {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => AppMainPage()),
-                (route) => false,
-              );
+              navigateAfterAuth(context);
             }
           } else if (state is AuthRequirePhoneLink) {
             Navigator.push(

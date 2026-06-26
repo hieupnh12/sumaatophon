@@ -318,4 +318,21 @@ const Map<String, String> enLocalizations = {
   'address_receiver_info': 'Receiver Information',
   'address_shipping_info': 'Shipping Address',
   'address_specific_hint': 'Enter specific address',
+
+  // Chat
+  'chat_support': 'Support',
+  'chat_bot_tab': 'AI Assistant',
+  'chat_staff_tab': 'Staff',
+  'chat_login_required': 'Sign in to chat with phoneShop staff.',
+  'chat_retry': 'Retry',
+  'chat_no_conversations': 'No conversations yet',
+  'chat_admin_inbox': 'Support inbox',
+  'chat_start_conversation': 'Start a conversation',
+  'chat_online': 'Online',
+  'chat_empty': 'No messages yet. Say hello!',
+  'chat_input_hint': 'Type a message...',
+  'chatbot_suggestions_label': 'Suggested questions',
+  'chatbot_suggestions_more': 'See more',
+  'chatbot_input_hint': 'Ask about phones, prices, stock...',
+  'chatbot_transfer_staff': 'Talk to staff',
 };
