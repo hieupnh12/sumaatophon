@@ -7,12 +7,15 @@ import 'package:flutter/services.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../../../../core/auth/auth_guard.dart';
 import '../bloc/auth_bloc.dart';
 import 'link_phone_page.dart';
 import '../../../../main.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool returnAfterAuth;
+
+  const LoginScreen({super.key, this.returnAfterAuth = false});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -55,6 +58,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
 
     _animationController.forward();
+
+    if (widget.returnAfterAuth) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (isRealAuthenticatedState(context.read<AuthBloc>().state)) {
+          Navigator.pop(context, true);
+        }
+      });
+    }
   }
 
   @override
@@ -213,13 +225,27 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               ),
             );
           } else if (state is AuthenticatedState) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (_) => AppMainPage()),
-              (route) => false,
-            );
+            if (widget.returnAfterAuth) {
+              Navigator.pop(context, true);
+            } else {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => AppMainPage()),
+                (route) => false,
+              );
+            }
           } else if (state is AuthRequirePhoneLink) {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const LinkPhonePage()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LinkPhonePage(returnAfterAuth: widget.returnAfterAuth),
+              ),
+            ).then((_) {
+              if (!mounted || !widget.returnAfterAuth) return;
+              if (isRealAuthenticatedState(context.read<AuthBloc>().state)) {
+                Navigator.pop(context, true);
+              }
+            });
           } else if (state is AuthOtpSent) {
             if (!_showOtpStep) {
               setState(() => _showOtpStep = true);

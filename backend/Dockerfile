@@ -22,6 +22,7 @@ RUN apt-get update \
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json server.js db.js ./
+COPY src ./src
 
 EXPOSE 3000
 
