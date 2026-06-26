@@ -29,7 +29,7 @@ class _CartPageState extends State<CartPage> {
           if (state.promoError != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(context.tr(state.promoError!)),
+                content: Text(context.trRead(state.promoError!)),
                 backgroundColor: AppColors.error,
                 behavior: SnackBarBehavior.floating,
               ),

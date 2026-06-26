@@ -136,7 +136,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   void _showComingSoon() {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.tr('product_coming_soon'))),
+      SnackBar(content: Text(context.trRead('product_coming_soon'))),
     );
   }
 

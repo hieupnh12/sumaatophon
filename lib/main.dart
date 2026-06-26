@@ -142,7 +142,7 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
                     messenger.showSnackBar(
                       SnackBar(
                         content: Text(
-                          '${state.addedProductName} ${context.tr('added_to_cart')}',
+                          '${state.addedProductName} ${context.trRead('added_to_cart')}',
                         ),
                         backgroundColor: AppColors.success,
                         behavior: SnackBarBehavior.floating,
@@ -153,7 +153,7 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
                   } else if (state.cartMessage != null) {
                     messenger.showSnackBar(
                       SnackBar(
-                        content: Text(context.tr(state.cartMessage!)),
+                        content: Text(context.trRead(state.cartMessage!)),
                         backgroundColor: AppColors.error,
                         behavior: SnackBarBehavior.floating,
                       ),

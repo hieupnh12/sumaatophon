@@ -66,7 +66,7 @@ class CheckoutPage extends StatelessWidget {
               ),
             );
           } else if (state.error != null) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.tr(state.error!)), backgroundColor: AppColors.error));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.trRead(state.error!)), backgroundColor: AppColors.error));
           }
         },
         builder: (context, checkoutState) {
