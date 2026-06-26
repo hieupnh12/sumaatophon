@@ -34,7 +34,7 @@ class _ProductListPageState extends State<ProductListPage> {
   String _selectedRam = '8GB';
   String _selectedRom = '256GB';
 
-  final List<String> _brands = ['All', 'Apple', 'Samsung', 'Google', 'Xiaomi'];
+  final List<String> _brandKeys = ['brand_all', 'Apple', 'Samsung', 'Google', 'Xiaomi'];
 
   @override
   void dispose() {
@@ -46,11 +46,17 @@ class _ProductListPageState extends State<ProductListPage> {
     context.read<ProductBloc>().add(SearchProductsEvent(query));
   }
 
-  void _onBrandSelected(String brand) {
+  void _onBrandSelected(String brandKey) {
+    final brand = brandKey == 'brand_all' ? 'All' : brandKey;
     setState(() {
       _selectedBrand = brand;
     });
     context.read<ProductBloc>().add(FilterProductsEvent(brand: brand));
+  }
+
+  String _brandLabel(String brandKey) {
+    if (brandKey == 'brand_all') return context.tr('brand_all');
+    return brandKey;
   }
 
   void _toggleFilter() {
@@ -166,14 +172,36 @@ class _ProductListPageState extends State<ProductListPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final pageBg = isDark ? AppColors.darkBackground : const Color(0xFFFCF9F8);
+    final outlineVariant = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.3)
+        : const Color(0xFFC1C6D5).withValues(alpha: 0.3);
+
     return Scaffold(
+      backgroundColor: pageBg,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // Sliver App Bar
           SliverAppBar(
             floating: true,
-            title: const Text('phoneShop', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+            pinned: true,
+            backgroundColor: isDark ? AppColors.darkSurface : const Color(0xFFFCF9F8),
+            surfaceTintColor: Colors.transparent,
+            title: Row(
+              children: [
+                Icon(Icons.menu, color: theme.colorScheme.onSurface, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  'phoneShop',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 24,
+                    color: theme.colorScheme.primary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
             centerTitle: false,
             actions: [
               BlocBuilder<ThemeCubit, ThemeMode>(
@@ -181,7 +209,10 @@ class _ProductListPageState extends State<ProductListPage> {
                   final isDark = themeMode == ThemeMode.dark || 
                       (themeMode == ThemeMode.system && MediaQuery.of(context).platformBrightness == Brightness.dark);
                   return IconButton(
-                    icon: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
+                    icon: Icon(
+                      isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                      color: theme.colorScheme.onSurface,
+                    ),
                     onPressed: () {
                       context.read<ThemeCubit>().toggleTheme();
                     },
@@ -189,7 +220,7 @@ class _ProductListPageState extends State<ProductListPage> {
                 },
               ),
               IconButton(
-                icon: const Icon(Icons.notifications_none_rounded),
+                icon: Icon(Icons.notifications_none_outlined, color: theme.colorScheme.onSurface),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -210,7 +241,7 @@ class _ProductListPageState extends State<ProductListPage> {
                         badgeColor: AppColors.error,
                         padding: EdgeInsets.all(4),
                       ),
-                      child: const Icon(Icons.shopping_bag_outlined),
+                      child: Icon(Icons.shopping_cart_outlined, color: theme.colorScheme.onSurface),
                     ),
                     onPressed: () {
                       Navigator.push(
@@ -225,50 +256,75 @@ class _ProductListPageState extends State<ProductListPage> {
             ],
           ),
 
-          // Search Bar & Filter & Brands
           SliverToBoxAdapter(
             child: Column(
               children: [
-                // Search Bar & Filter Icon
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                Container(
+                  color: pageBg.withValues(alpha: 0.95),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: Row(
                     children: [
                       Expanded(
                         child: TextField(
                           controller: _searchController,
-                          onChanged: _onSearchChanged,
+                          onChanged: (value) {
+                            setState(() {});
+                            _onSearchChanged(value);
+                          },
                           decoration: InputDecoration(
                             hintText: context.tr('search_hint'),
-                            prefixIcon: const Icon(Icons.search),
+                            hintStyle: TextStyle(
+                              color: (isDark ? AppColors.darkTextSecondary : const Color(0xFF414753))
+                                  .withValues(alpha: 0.6),
+                            ),
+                            filled: true,
+                            fillColor: isDark ? AppColors.darkSurface : const Color(0xFFF6F3F2),
+                            prefixIcon: Icon(Icons.search, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                             suffixIcon: _searchController.text.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear, size: 20),
                                     onPressed: () {
                                       _searchController.clear();
                                       _onSearchChanged('');
+                                      setState(() {});
                                       FocusScope.of(context).unfocus();
                                     },
                                   )
                                 : null,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: outlineVariant),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: outlineVariant),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: theme.colorScheme.primary),
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      InkWell(
-                        onTap: _toggleFilter,
-                        borderRadius: BorderRadius.circular(16),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          height: 54,
-                          width: 54,
-                          decoration: BoxDecoration(
-                            color: _isFilterExpanded ? theme.colorScheme.primary.withValues(alpha: 0.1) : theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Icon(
-                            _isFilterExpanded ? Icons.close_rounded : Icons.tune_rounded, 
-                            color: _isFilterExpanded ? theme.colorScheme.primary : Colors.white
+                      Material(
+                        color: _isFilterExpanded
+                            ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                            : theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(12),
+                        elevation: _isFilterExpanded ? 0 : 4,
+                        shadowColor: theme.colorScheme.primary.withValues(alpha: 0.3),
+                        child: InkWell(
+                          onTap: _toggleFilter,
+                          borderRadius: BorderRadius.circular(12),
+                          child: SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Icon(
+                              _isFilterExpanded ? Icons.close : Icons.tune,
+                              color: _isFilterExpanded ? theme.colorScheme.primary : Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -278,42 +334,49 @@ class _ProductListPageState extends State<ProductListPage> {
 
                 _buildAdvancedFilter(theme, isDark),
 
-                // Brand Filters
                 SizedBox(
-                  height: 50,
+                  height: 44,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    itemCount: _brands.length,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _brandKeys.length,
                     itemBuilder: (context, index) {
-                      final brand = _brands[index];
-                      final isSelected = _selectedBrand == brand;
+                      final brandKey = _brandKeys[index];
+                      final brandValue = brandKey == 'brand_all' ? 'All' : brandKey;
+                      final isSelected = _selectedBrand == brandValue;
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: ChoiceChip(
-                          label: Text(
-                            brand,
-                            style: TextStyle(
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? Colors.white : (isDark ? AppColors.darkText : AppColors.lightText),
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Material(
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : (isDark ? AppColors.darkSurface : const Color(0xFFEAE7E7)),
+                          borderRadius: BorderRadius.circular(24),
+                          elevation: isSelected ? 2 : 0,
+                          shadowColor: theme.colorScheme.primary.withValues(alpha: 0.3),
+                          child: InkWell(
+                            onTap: () => _onBrandSelected(brandKey),
+                            borderRadius: BorderRadius.circular(24),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                              child: Text(
+                                _brandLabel(brandKey),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : (isDark ? AppColors.darkTextSecondary : const Color(0xFF414753)),
+                                ),
+                              ),
                             ),
                           ),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            if (selected) _onBrandSelected(brand);
-                          },
-                          selectedColor: theme.colorScheme.primary,
-                          backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          showCheckmark: false,
-                          side: BorderSide.none,
                         ),
                       );
                     },
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -327,11 +390,11 @@ class _ProductListPageState extends State<ProductListPage> {
                   sliver: SliverGrid.builder(
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      childAspectRatio: 0.62,
+                      childAspectRatio: 0.58,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
                     ),
-                    itemCount: 6, // Show 6 skeleton items
+                    itemCount: 6,
                     itemBuilder: (context, index) => const ShimmerProductCard(),
                   ),
                 );
@@ -371,7 +434,7 @@ class _ProductListPageState extends State<ProductListPage> {
                   sliver: SliverGrid.builder(
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      childAspectRatio: 0.62,
+                      childAspectRatio: 0.58,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
                     ),
@@ -388,7 +451,10 @@ class _ProductListPageState extends State<ProductListPage> {
                             MaterialPageRoute(
                               builder: (context) => BlocProvider(
                                 create: (_) => sl<ProductBloc>(),
-                                child: ProductDetailPage(productId: product.id),
+                                child: ProductDetailPage(
+                                  productId: product.id,
+                                  heroImageUrl: product.imageUrl,
+                                ),
                               ),
                             ),
                           );
