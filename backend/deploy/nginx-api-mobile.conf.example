@@ -1,24 +1,28 @@
-# Nginx: API Flutter (Node.js) tại path /mobile trên maclenin.io.vn
-# VPS: 35.221.155.202
-# DNS: maclenin.io.vn → A record → 35.221.155.202
+# Nginx (host trên VPS): proxy Flutter Node API tại /mobile/
+# VPS: maclenin.io.vn
 #
 # App Flutter gọi:
-#   https://maclenin.io.vn/mobile/health
+#   https://maclenin.io.vn/mobile/health          → {"ok":true}
+#   https://maclenin.io.vn/mobile/products
 #   https://maclenin.io.vn/mobile/api/orders
-#   https://maclenin.io.vn/mobile/api/payments/payos/webhook  (PayOS webhook)
+#   https://maclenin.io.vn/mobile/socket.io/        (Socket.IO chat)
 #
-# Docker flutter-api bind: 127.0.0.1:3001 → container :3000
-# Copy block location /mobile/ vào server block HTTPS của maclenin.io.vn
+# Backend Docker (backend/docker-compose.yml):
+#   127.0.0.1:3001 → container :3000
+#
+# Kiểm tra sau deploy:
+#   curl -s https://maclenin.io.vn/mobile/health
+#   # Phải trả JSON, KHÔNG phải HTML React (FShop SPA).
 
-server {
-    listen 443 ssl http2;
-    server_name maclenin.io.vn;
+# Thêm vào http { } block của nginx.conf (một lần):
+# map $http_upgrade $connection_upgrade {
+#     default upgrade;
+#     ''      close;
+# }
 
-    # ssl_certificate /etc/letsencrypt/live/maclenin.io.vn/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/maclenin.io.vn/privkey.pem;
+# Thêm vào server block HTTPS của maclenin.io.vn — TRƯỚC location / { try_files ... }:
 
-    # Bỏ prefix /mobile khi chuyển sang Node (Express route gốc: /health, /api/...)
-    location /mobile/ {
+    location ^~ /mobile/ {
         rewrite ^/mobile/?(.*)$ /$1 break;
         proxy_pass http://127.0.0.1:3001;
         proxy_http_version 1.1;
@@ -26,17 +30,12 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        # Socket.IO WebSocket upgrade (chat nhân viên real-time)
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
         proxy_read_timeout 120s;
+        proxy_connect_timeout 60s;
+        proxy_buffering off;
     }
 
-    # map $http_upgrade $connection_upgrade — thêm vào http { } block của nginx.conf:
-    # map $http_upgrade $connection_upgrade {
-    #     default upgrade;
-    #     ''      close;
-    # }
-
-    # ... các location khác của site maclenin.io.vn (admin, static, ...)
-}
+# Nếu dùng Docker Compose nginx (backend/deploy/nginx-maclenin.docker.conf),
+# service tên flutter-api thay cho 127.0.0.1:3001 — xem file đó.

@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_version.dart';
 import '../../domain/repositories/product_repository.dart';
 
 // --- EVENTS ---
@@ -27,11 +28,19 @@ class FilterProductsEvent extends ProductEvent {
   final String? brand;
   final double? minPrice;
   final double? maxPrice;
+  final String? ram;
+  final String? rom;
 
-  const FilterProductsEvent({this.brand, this.minPrice, this.maxPrice});
+  const FilterProductsEvent({
+    this.brand,
+    this.minPrice,
+    this.maxPrice,
+    this.ram,
+    this.rom,
+  });
 
   @override
-  List<Object?> get props => [brand, minPrice, maxPrice];
+  List<Object?> get props => [brand, minPrice, maxPrice, ram, rom];
 }
 
 class LoadProductByIdEvent extends ProductEvent {
@@ -149,6 +158,13 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
   List<Product> _filteredProducts = [];
   int _displayCount = _pageSize;
 
+  String _searchQuery = '';
+  String _brandFilter = 'All';
+  double? _minPriceFilter;
+  double? _maxPriceFilter;
+  String? _ramFilter;
+  String? _romFilter;
+
   ProductBloc({required this.repository}) : super(ProductInitial()) {
     on<LoadProductsEvent>(_onLoadProducts);
     on<LoadMoreProductsEvent>(_onLoadMoreProducts);
@@ -188,9 +204,8 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     try {
       final products = await repository.getProducts();
       _allProducts = products;
-      _filteredProducts = products;
       _resetPagination();
-      emit(_emitPagedProducts());
+      _recomputeFilteredProducts(emit);
     } catch (e) {
       emit(ProductError(e.toString()));
     }
@@ -212,45 +227,89 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
 
   void _onSearchProducts(SearchProductsEvent event, Emitter<ProductState> emit) {
     _resetPagination();
-
-    if (event.query.isEmpty) {
-      _filteredProducts = _allProducts;
-      emit(_emitPagedProducts());
-      return;
-    }
-
-    final query = event.query.toLowerCase();
-    _filteredProducts = _allProducts
-        .where(
-          (p) =>
-              p.name.toLowerCase().contains(query) ||
-              p.brand.toLowerCase().contains(query),
-        )
-        .toList();
-
-    emit(_emitPagedProducts());
+    _searchQuery = event.query.trim();
+    _recomputeFilteredProducts(emit);
   }
 
   void _onFilterProducts(FilterProductsEvent event, Emitter<ProductState> emit) {
     _resetPagination();
+    if (event.brand != null) _brandFilter = event.brand!;
+    _minPriceFilter = event.minPrice;
+    _maxPriceFilter = event.maxPrice;
+    _ramFilter = event.ram;
+    _romFilter = event.rom;
+    _recomputeFilteredProducts(emit);
+  }
+
+  void _recomputeFilteredProducts(Emitter<ProductState> emit) {
     var filtered = _allProducts;
 
-    if (event.brand != null && event.brand != 'All') {
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
       filtered = filtered
-          .where((p) => p.brand.toLowerCase() == event.brand!.toLowerCase())
+          .where(
+            (p) =>
+                p.name.toLowerCase().contains(query) ||
+                p.brand.toLowerCase().contains(query),
+          )
           .toList();
     }
 
-    if (event.minPrice != null) {
-      filtered = filtered.where((p) => p.price >= event.minPrice!).toList();
+    if (_brandFilter != 'All') {
+      filtered = filtered
+          .where((p) => p.brand.toLowerCase() == _brandFilter.toLowerCase())
+          .toList();
     }
 
-    if (event.maxPrice != null) {
-      filtered = filtered.where((p) => p.price <= event.maxPrice!).toList();
+    if (_minPriceFilter != null) {
+      filtered = filtered.where((p) => p.price >= _minPriceFilter!).toList();
+    }
+
+    if (_maxPriceFilter != null) {
+      filtered = filtered.where((p) => p.price <= _maxPriceFilter!).toList();
+    }
+
+    if (_ramFilter != null || _romFilter != null) {
+      filtered = filtered
+          .where((p) => _matchesRamRom(p, _ramFilter, _romFilter))
+          .toList();
     }
 
     _filteredProducts = filtered;
     emit(_emitPagedProducts());
+  }
+
+  static bool _matchesRamRom(Product product, String? ram, String? rom) {
+    if (ram == null && rom == null) return true;
+
+    bool versionMatches(ProductVersion version) {
+      final ramOk = ram == null ||
+          Product.normalizeRamRom(version.ram) == Product.normalizeRamRom(ram);
+      final romOk = rom == null ||
+          Product.normalizeRamRom(version.rom) == Product.normalizeRamRom(rom);
+      return ramOk && romOk;
+    }
+
+    if (product.versions.isNotEmpty) {
+      return product.versions.any(versionMatches);
+    }
+
+    if (product.ramRomOptions.isEmpty) return false;
+
+    return product.ramRomOptions.any((option) {
+      final parts = option
+          .split('/')
+          .map((part) => part.trim())
+          .where((part) => part.isNotEmpty)
+          .toList();
+      final optionRam = parts.isNotEmpty ? parts.first : '';
+      final optionRom = parts.length > 1 ? parts[1] : '';
+      final ramOk = ram == null ||
+          Product.normalizeRamRom(optionRam) == Product.normalizeRamRom(ram);
+      final romOk = rom == null ||
+          Product.normalizeRamRom(optionRom) == Product.normalizeRamRom(rom);
+      return ramOk && romOk;
+    });
   }
    
 

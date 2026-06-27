@@ -128,6 +128,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
           final orderLabel = orderId != null && orderId.isNotEmpty
               ? '#ORD${orderId.padLeft(6, '0')}'
               : null;
+          final successTitle = context.trRead('checkout_order_success_title');
+          final successDesc = context.trRead('checkout_order_success_desc');
 
           context.read<CheckoutBloc>().add(ClearCheckoutSuccessEvent());
 
@@ -176,15 +178,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
           );
 
           // Banner + sync chạy nền, không block UI.
-          Future<void>.delayed(const Duration(milliseconds: 400), () {
+          // Dùng trRead (không phải tr) — tr gọi watch() và crash ngoài build.
+          Future<void>.delayed(const Duration(milliseconds: 400), () async {
             if (!context.mounted) return;
-            PushNotificationService.showLocal(
-              title: orderLabel != null
-                  ? '$orderLabel — ${context.tr('checkout_order_success_title')}'
-                  : context.tr('checkout_order_success_title'),
-              body: context.tr('checkout_order_success_desc'),
+            await PushNotificationService.showLocal(
+              title: orderLabel != null ? '$orderLabel — $successTitle' : successTitle,
+              body: successDesc,
               id: orderId?.hashCode ?? 0,
             );
+            if (!context.mounted) return;
             context.read<CartBloc>().add(LoadCartEvent());
             reloadNotifications(context, silent: true);
           });

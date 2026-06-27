@@ -25,4 +25,9 @@ class NotificationRepositoryImpl implements NotificationRepository {
   Future<void> markAllRead(int customerId) {
     return remote.markAllRead(customerId);
   }
+
+  @override
+  Future<void> delete(String notificationId, int customerId) {
+    return remote.delete(notificationId, customerId);
+  }
 }

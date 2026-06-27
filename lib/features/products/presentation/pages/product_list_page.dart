@@ -28,15 +28,18 @@ class ProductListPage extends StatefulWidget {
 }
 
 class _ProductListPageState extends State<ProductListPage> {
+  static const double _priceSliderMin = 0;
+  static const double _priceSliderMax = 50000000;
+
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   String _selectedBrand = 'All';
 
   bool _isFilterExpanded = false;
-  double _currentMinPrice = 5000000;
-  double _currentMaxPrice = 30000000;
-  String _selectedRam = '8GB';
-  String _selectedRom = '256GB';
+  double _currentMinPrice = _priceSliderMin;
+  double _currentMaxPrice = _priceSliderMax;
+  String? _selectedRam;
+  String? _selectedRom;
 
   final List<String> _brandKeys = ['brand_all', 'Apple', 'Samsung', 'Google', 'Xiaomi'];
 
@@ -96,7 +99,24 @@ class _ProductListPageState extends State<ProductListPage> {
     setState(() {
       _selectedBrand = brand;
     });
-    context.read<ProductBloc>().add(FilterProductsEvent(brand: brand));
+    _applyFilters();
+  }
+
+  void _applyFilters() {
+    final minPrice =
+        _currentMinPrice > _priceSliderMin ? _currentMinPrice : null;
+    final maxPrice =
+        _currentMaxPrice < _priceSliderMax ? _currentMaxPrice : null;
+
+    context.read<ProductBloc>().add(
+          FilterProductsEvent(
+            brand: _selectedBrand,
+            minPrice: minPrice,
+            maxPrice: maxPrice,
+            ram: _selectedRam,
+            rom: _selectedRom,
+          ),
+        );
   }
 
   String _brandLabel(String brandKey) {
@@ -177,8 +197,8 @@ class _ProductListPageState extends State<ProductListPage> {
                   ),
                   RangeSlider(
                     values: RangeValues(_currentMinPrice, _currentMaxPrice),
-                    min: 0,
-                    max: 50000000,
+                    min: _priceSliderMin,
+                    max: _priceSliderMax,
                     divisions: 50,
                     activeColor: theme.colorScheme.primary,
                     inactiveColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
@@ -188,6 +208,7 @@ class _ProductListPageState extends State<ProductListPage> {
                         _currentMaxPrice = values.end;
                       });
                     },
+                    onChangeEnd: (_) => _applyFilters(),
                   ),
                   const SizedBox(height: 16),
                   Text(context.tr('ram'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
@@ -195,25 +216,47 @@ class _ProductListPageState extends State<ProductListPage> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: rams.map((ram) {
-                      final isSelected = _selectedRam == ram;
-                      return ChoiceChip(
-                        label: Text(ram, style: const TextStyle(fontSize: 12)),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) setState(() => _selectedRam = ram);
+                    children: [
+                      ChoiceChip(
+                        label: Text(context.tr('brand_all'), style: const TextStyle(fontSize: 12)),
+                        selected: _selectedRam == null,
+                        onSelected: (_) {
+                          setState(() => _selectedRam = null);
+                          _applyFilters();
                         },
                         selectedColor: theme.colorScheme.primary,
                         backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
                         labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : (isDark ? AppColors.darkText : AppColors.lightText),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: _selectedRam == null
+                              ? Colors.white
+                              : (isDark ? AppColors.darkText : AppColors.lightText),
+                          fontWeight: _selectedRam == null ? FontWeight.bold : FontWeight.normal,
                         ),
                         showCheckmark: false,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         side: BorderSide.none,
-                      );
-                    }).toList(),
+                      ),
+                      ...rams.map((ram) {
+                        final isSelected = _selectedRam == ram;
+                        return ChoiceChip(
+                          label: Text(ram, style: const TextStyle(fontSize: 12)),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() => _selectedRam = selected ? ram : null);
+                            _applyFilters();
+                          },
+                          selectedColor: theme.colorScheme.primary,
+                          backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : (isDark ? AppColors.darkText : AppColors.lightText),
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          showCheckmark: false,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          side: BorderSide.none,
+                        );
+                      }),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Text(context.tr('rom'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
@@ -221,25 +264,47 @@ class _ProductListPageState extends State<ProductListPage> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: roms.map((rom) {
-                      final isSelected = _selectedRom == rom;
-                      return ChoiceChip(
-                        label: Text(rom, style: const TextStyle(fontSize: 12)),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) setState(() => _selectedRom = rom);
+                    children: [
+                      ChoiceChip(
+                        label: Text(context.tr('brand_all'), style: const TextStyle(fontSize: 12)),
+                        selected: _selectedRom == null,
+                        onSelected: (_) {
+                          setState(() => _selectedRom = null);
+                          _applyFilters();
                         },
                         selectedColor: theme.colorScheme.primary,
                         backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
                         labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : (isDark ? AppColors.darkText : AppColors.lightText),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: _selectedRom == null
+                              ? Colors.white
+                              : (isDark ? AppColors.darkText : AppColors.lightText),
+                          fontWeight: _selectedRom == null ? FontWeight.bold : FontWeight.normal,
                         ),
                         showCheckmark: false,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         side: BorderSide.none,
-                      );
-                    }).toList(),
+                      ),
+                      ...roms.map((rom) {
+                        final isSelected = _selectedRom == rom;
+                        return ChoiceChip(
+                          label: Text(rom, style: const TextStyle(fontSize: 12)),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() => _selectedRom = selected ? rom : null);
+                            _applyFilters();
+                          },
+                          selectedColor: theme.colorScheme.primary,
+                          backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : (isDark ? AppColors.darkText : AppColors.lightText),
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          showCheckmark: false,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          side: BorderSide.none,
+                        );
+                      }),
+                    ],
                   ),
                 ],
               ),

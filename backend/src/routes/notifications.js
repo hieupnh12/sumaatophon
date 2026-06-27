@@ -6,6 +6,7 @@ const {
   countUnread,
   markRead,
   markAllRead,
+  deleteNotification,
   notifyProductPublished,
   applyOrderStatusUpdate,
 } = require('../services/notificationService');
@@ -123,6 +124,25 @@ router.patch('/notifications/read-all', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message, code: 'NOTIFICATION_READ_ALL_ERROR' });
+  }
+});
+
+// DELETE /notifications/:id — xóa một thông báo (vuốt trong app)
+router.delete('/notifications/:id', async (req, res) => {
+  try {
+    const customerId = parseCustomerId(req.body.customerId ?? req.query.customerId);
+    if (!customerId) {
+      return res.status(400).json({ message: 'Valid customerId required', code: 'NOTIFICATION_BAD_REQUEST' });
+    }
+
+    const ok = await deleteNotification(pool, req.params.id, customerId);
+    if (!ok) {
+      return res.status(404).json({ message: 'Notification not found', code: 'NOTIFICATION_NOT_FOUND' });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message, code: 'NOTIFICATION_DELETE_ERROR' });
   }
 });
 
