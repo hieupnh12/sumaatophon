@@ -39,6 +39,27 @@ class CartItemModel {
     required this.quantity,
   });
 
+  factory CartItemModel.fromJson(Map<String, dynamic> json) {
+    return CartItemModel(
+      productVersionId: json['productVersionId'] as String,
+      productId: json['productId'] as String,
+      productName: json['productName'] as String,
+      productBrand: json['productBrand'] as String? ?? 'Unknown',
+      productPrice: (json['productPrice'] as num).toDouble(),
+      productOriginalPrice: (json['productOriginalPrice'] as num).toDouble(),
+      productImageUrl: json['productImageUrl'] as String? ?? json['versionImageUrl'] as String? ?? '',
+      productRating: (json['productRating'] as num?)?.toDouble() ?? 0,
+      productReviewCount: json['productReviewCount'] as int? ?? 0,
+      productIsNew: json['productIsNew'] as bool? ?? false,
+      versionColor: json['versionColor'] as String? ?? '',
+      versionRam: json['versionRam'] as String? ?? '',
+      versionRom: json['versionRom'] as String? ?? '',
+      versionPrice: (json['versionPrice'] as num).toDouble(),
+      versionStockQuantity: json['versionStockQuantity'] as int? ?? 0,
+      quantity: json['quantity'] as int? ?? 1,
+    );
+  }
+
   factory CartItemModel.fromMap(Map<String, dynamic> map) {
     return CartItemModel(
       productVersionId: map['product_version_id'] as String,

@@ -46,6 +46,22 @@ class UserModel {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'phoneNumber': phoneNumber,
+      'avatarUrl': avatarUrl,
+      'role': role,
+      'accountType': accountType,
+      'employeeRoles': employeeRoles,
+      'gender': gender,
+      'dob': dob,
+      'address': address,
+    };
+  }
+
   UserEntity toEntity() {
     final isStaff = accountType == 'employee' || role == 'staff' || role == 'admin';
     return UserEntity(

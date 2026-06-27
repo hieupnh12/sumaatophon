@@ -4,14 +4,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 import '../../../../../core/design_system/app_colors.dart';
+import '../../../../../core/l10n/app_localizations.dart';
 import '../../domain/entities/cart_item.dart';
 import '../bloc/cart_bloc.dart';
 
 // Widget hiển thị 1 dòng sản phẩm trong giỏ hàng (kiểu CellphoneS).
 class CartItemTile extends StatelessWidget {
   final CartItem cartItem;
+  final bool isSelected;
 
-  const CartItemTile({super.key, required this.cartItem});
+  const CartItemTile({
+    super.key,
+    required this.cartItem,
+    required this.isSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -53,18 +59,32 @@ class CartItemTile extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          padding: const EdgeInsets.fromLTRB(8, 12, 16, 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            SizedBox(
-              width: 72,
-              height: 88,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(product.imageUrl, fit: BoxFit.cover),
+              Padding(
+                padding: const EdgeInsets.only(top: 28),
+                child: Checkbox(
+                  value: isSelected,
+                  onChanged: (_) {
+                    HapticFeedback.selectionClick();
+                    context.read<CartBloc>().add(
+                          ToggleCartItemSelectionEvent(version.id),
+                        );
+                  },
+                  activeColor: theme.colorScheme.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                ),
               ),
-            ),
+              SizedBox(
+                width: 72,
+                height: 88,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(product.imageUrl, fit: BoxFit.cover),
+                ),
+              ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -88,6 +108,15 @@ class CartItemTile extends StatelessWidget {
                       color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                     ),
                   ),
+                  if (version.stockQuantity > 0) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      context.tr('cart_version_stock').replaceAll('{count}', '${version.stockQuantity}'),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 6),
                   Text(
                     currencyFormatter.format(cartItem.unitPrice),

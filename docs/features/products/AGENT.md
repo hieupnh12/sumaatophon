@@ -58,7 +58,7 @@ ProductListPage
       → ProductRepositoryImpl
         → ProductRemoteDataSource.getProducts()
           → ApiClient.get('/products')
-            → Backend Express (server.js)
+            → Backend Express (`backend/src/routes/products.js`)
               → MySQL JOIN products + brands + product_versions + ...
                 → JSON array
                   → ProductModel.fromJson()
@@ -77,10 +77,12 @@ Chi tiet ket noi MySQL, pool, `.env`: xem `docs/features/backend/AGENT.md`.
 
 | File | Vai tro |
 |------|---------|
-| `db.js` | MySQL pool dung chung — feature moi `require('./db')` |
+| `db.js` | MySQL pool dung chung — route moi `require('../../db')` tu `src/routes/` |
 | `.env` | Host/port/user/password MySQL (KHONG commit) |
 | `.env.example` | Mau cau hinh, khong co password that |
-| `server.js` | Express API, endpoint `GET /products`, `GET /health` |
+| `server.js` | Entry point — `npm start`, listen port |
+| `src/routes/products.js` | `GET /products`, `GET /products/:id`, `GET /products/:id/feedbacks` |
+| `src/routes/health.js` | `GET /health` |
 | `package.json` | Dependencies: express, mysql2, cors, dotenv |
 
 **Chay backend:**
@@ -222,5 +224,6 @@ Cap nhat AGENT.md neu thay doi API hoac file structure.
 
 | Ngay | Noi dung |
 |------|----------|
-| 2026-06-19 | Implement GET /products: backend server.js + Flutter remote datasource + ProductModel |
+| 2026-06-26 | Cap nhat doc: products route trong `backend/src/routes/products.js` |
+| 2026-06-19 | Implement GET /products: backend + Flutter remote datasource + ProductModel |
 | 2026-06-19 | Tach `backend/db.js` pool dung chung; them `docs/features/backend/AGENT.md` |

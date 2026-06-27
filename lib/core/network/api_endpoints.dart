@@ -11,6 +11,14 @@ class ApiEndpoints {
   static const String linkPhone = '/auth/link-phone';
   static const String profile = '/profile';
   static const String health = '/health';
+  static const String cart = '/api/cart';
+  static const String cartItems = '/api/cart/items';
+  static const String orders = '/api/orders';
+  static const String payOsCreate = '/api/payments/payos/create';
+  static const String payOsCancel = '/api/payments/payos/cancel';
+  static const String payOsConfirm = '/api/payments/payos/confirm';
+
+  static String payOsStatus(String orderId) => '/api/payments/payos/status/$orderId';
 
   static const String chatThreads = '/chat/threads';
   static const String chatThreadsMine = '/chat/threads/mine';
@@ -22,4 +30,8 @@ class ApiEndpoints {
 
   static String productById(String id) => '/products/$id';
   static String productFeedbacks(String id) => '/products/$id/feedbacks';
+
+  // Orders
+  static String orderById(String id) => '/api/orders/$id';
+  static String cartItemByVersionId(String productVersionId) => '/api/cart/items/$productVersionId';
 }

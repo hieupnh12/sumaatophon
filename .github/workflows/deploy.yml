@@ -1,0 +1,39 @@
+name: Deploy Flutter API
+
+on:
+  push:
+    branches: ["production"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # LOGIN DOCKER HUB
+      - name: Login DockerHub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      # BUILD NODE API
+      - name: Build Flutter API
+        run: |
+          ls -R
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/flutter-api:latest ./backend
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/flutter-api:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH Deploy VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd ~/group_1
+            docker compose -f docker-compose.prod.yml pull flutter-api
+            docker compose -f docker-compose.prod.yml up -d flutter-api

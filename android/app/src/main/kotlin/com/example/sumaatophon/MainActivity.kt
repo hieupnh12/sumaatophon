@@ -3,6 +3,7 @@ package com.example.sumaatophon
 import android.os.Build
 import android.os.Debug
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterSurfaceView
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -19,6 +20,30 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    override fun onFlutterSurfaceViewCreated(flutterSurfaceView: FlutterSurfaceView) {
+        super.onFlutterSurfaceViewCreated(flutterSurfaceView)
+        // Fallback cho LTPO / MIUI khi refresh_rate plugin chưa kịp gắn Activity.
+        applyMaxRefreshRate()
+    }
+
+    private fun applyMaxRefreshRate() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        val display = display ?: return
+        val currentMode = display.mode
+        val targetMode = display.supportedModes
+            .filter {
+                it.physicalWidth == currentMode.physicalWidth &&
+                    it.physicalHeight == currentMode.physicalHeight
+            }
+            .maxByOrNull { it.refreshRate }
+            ?: return
+        if (targetMode.refreshRate <= 60f) return
+        window.attributes = window.attributes.also {
+            it.preferredDisplayModeId = targetMode.modeId
+            it.preferredRefreshRate = targetMode.refreshRate
+        }
     }
 
     private fun isEmulator(): Boolean {

@@ -2,7 +2,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../phone_utils.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/entities/user_entity.dart';
@@ -22,6 +21,8 @@ class LoginSubmitted extends AuthEvent {
   @override
   List<Object?> get props => [email, password];
 }
+
+class CheckAuthStatusEvent extends AuthEvent {}
 
 class BiometricLoginRequested extends AuthEvent {}
 
@@ -128,10 +129,9 @@ class AuthError extends AuthState {
 
 class AuthOtpSent extends AuthState {
   final String message;
-  final String? mockOtp;
-  const AuthOtpSent({required this.message, this.mockOtp});
+  const AuthOtpSent({required this.message});
   @override
-  List<Object?> get props => [message, mockOtp];
+  List<Object?> get props => [message];
 }
 
 class AuthActionSuccess extends AuthState {
@@ -163,6 +163,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   String? _pendingPhone;
 
   AuthBloc({required this.authRepository}) : super(AuthInitial()) {
+    on<CheckAuthStatusEvent>(_onCheckAuthStatusRequested);
     on<LoginSubmitted>(_onLoginSubmitted);
     on<BiometricLoginRequested>(_onBiometricLoginRequested);
     on<GuestLoginRequested>(_onGuestLoginRequested);
@@ -178,17 +179,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthInternalErrorOccurred>(_onAuthInternalErrorOccurred);
   }
 
+  Future<void> _onCheckAuthStatusRequested(CheckAuthStatusEvent event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      final user = await authRepository.getSession();
+      if (user != null) {
+        emit(AuthenticatedState(user));
+      } else {
+        emit(AuthInitial());
+      }
+    } catch (e) {
+      emit(AuthInitial());
+    }
+  }
+
   Future<void> _onOtpRequested(OtpRequested event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      _pendingPhone = normalizePhone(event.phone);
-      final devOtp = await authRepository.requestOtp(_pendingPhone!);
+      _pendingPhone = event.phone;
+      await authRepository.requestOtp(event.phone);
       
-      emit(AuthOtpSent(
-        message: devOtp != null 
-           ? "Đã tự động điền OTP (Gateway lỗi/tắt)." 
-           : "Đã gửi mã OTP thật qua SMS!",
-        mockOtp: devOtp,
+      emit(const AuthOtpSent(
+        message: "Đã gửi mã OTP qua SMS!",
       ));
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
@@ -207,8 +219,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onOtpLoginSubmitted(OtpLoginSubmitted event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      final phone = _pendingPhone ?? normalizePhone(event.phone);
-      final user = await authRepository.verifyOtp(phone, event.otp);
+      final user = await authRepository.verifyOtp(event.phone, event.otp);
       emit(AuthenticatedState(user));
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
@@ -338,6 +349,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       id: 'guest',
       name: 'Khách',
       email: '',
+      avatarUrl: '',
     )));
   }
 
@@ -363,6 +375,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
   
   Future<void> _onLogoutRequested(LogoutRequested event, Emitter<AuthState> emit) async {
+    await authRepository.logout();
     await _firebaseAuth.signOut();
     emit(AuthInitial());
   }

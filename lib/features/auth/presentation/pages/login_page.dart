@@ -7,13 +7,16 @@ import 'package:flutter/services.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../../../../core/auth/auth_guard.dart';
 import '../bloc/auth_bloc.dart';
 import '../phone_utils.dart';
 import '../auth_navigation.dart';
 import 'link_phone_page.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool returnAfterAuth;
+
+  const LoginScreen({super.key, this.returnAfterAuth = false});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -56,6 +59,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
 
     _animationController.forward();
+
+    if (widget.returnAfterAuth) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (isRealAuthenticatedState(context.read<AuthBloc>().state)) {
+          Navigator.pop(context, true);
+        }
+      });
+    }
   }
 
   @override
@@ -137,6 +149,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   void _onOtpCompleted(String otp) {
+    if (context.read<AuthBloc>().state is AuthLoading) return;
     final phone = normalizePhone(_phoneController.text);
     context.read<AuthBloc>().add(OtpLoginSubmitted(phone: phone, otp: otp));
   }
@@ -212,20 +225,28 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               ),
             );
           } else if (state is AuthenticatedState) {
-            navigateAfterAuth(context);
+            if (widget.returnAfterAuth) {
+              Navigator.pop(context, true);
+            } else {
+              navigateAfterAuth(context);
+            }
           } else if (state is AuthRequirePhoneLink) {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const LinkPhonePage()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LinkPhonePage(returnAfterAuth: widget.returnAfterAuth),
+              ),
+            ).then((_) {
+              if (!mounted || !widget.returnAfterAuth) return;
+              if (isRealAuthenticatedState(context.read<AuthBloc>().state)) {
+                Navigator.pop(context, true);
+              }
+            });
           } else if (state is AuthOtpSent) {
             if (!_showOtpStep) {
               setState(() => _showOtpStep = true);
             }
             _startTimers();
-            if (state.mockOtp != null) {
-              _otpController.text = state.mockOtp!;
-              Future.delayed(const Duration(milliseconds: 300), () {
-                _onOtpCompleted(state.mockOtp!);
-              });
-            }
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),

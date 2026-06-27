@@ -11,7 +11,9 @@ import '../bloc/auth_bloc.dart';
 import 'dart:async';
 
 class LinkPhonePage extends StatefulWidget {
-  const LinkPhonePage({super.key});
+  final bool returnAfterAuth;
+
+  const LinkPhonePage({super.key, this.returnAfterAuth = false});
 
   @override
   State<LinkPhonePage> createState() => _LinkPhonePageState();
@@ -94,6 +96,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
   }
 
   void _onOtpCompleted(String otp) {
+    if (context.read<AuthBloc>().state is AuthLoading) return;
     context.read<AuthBloc>().add(VerifyOtpForLinkSubmitted(otp: otp));
   }
 
@@ -272,10 +275,6 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
           } else if (state is AuthOtpSent) {
              if (!_showOtpStep) setState(() => _showOtpStep = true);
              _startTimers();
-             if (state.mockOtp != null) {
-               _otpController.text = state.mockOtp!;
-               Future.delayed(const Duration(milliseconds: 300), () => _onOtpCompleted(state.mockOtp!));
-             }
           } else if (state is AuthenticatedState) {
             navigateAfterAuth(context);
           }
@@ -342,7 +341,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
                       left: 16,
                       child: IconButton(
                         icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : Colors.black),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.maybePop(context),
                       ),
                     ),
 

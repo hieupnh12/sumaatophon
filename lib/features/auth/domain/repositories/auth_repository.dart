@@ -15,4 +15,7 @@ abstract class AuthRepository {
     String? address,
   });
   Future<void> logout();
+  Future<void> saveSession(UserEntity user);
+  Future<UserEntity?> getSession();
+  Future<void> clearSession();
 }

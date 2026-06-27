@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 ///
 /// | Môi trường | URL |
 /// |------------|-----|
-/// | Release (mọi nền tảng) | VPS production |
+/// | Release (mọi nền tảng) | https://maclenin.io.vn/mobile (VPS 35.221.155.202) |
 /// | Web debug (`flutter run -d chrome`) | localhost:3000 |
 /// | Web release | VPS production |
 /// | Emulator + USB debug | 10.0.2.2:3000 (Android) / 127.0.0.1:3000 (iOS) |
@@ -36,7 +36,8 @@ class ApiConfig {
       return;
     }
 
-    const forceLocal = bool.fromEnvironment('USE_LOCAL_API');
+    // FORCE LOCAL FOR TESTING
+    const forceLocal = true; // bool.fromEnvironment('USE_LOCAL_API');
     if (forceLocal) {
       _baseUrl = await _resolveLocalBaseUrl();
       _log('USE_LOCAL_API');
@@ -50,35 +51,41 @@ class ApiConfig {
       return;
     }
 
-    // Emulator/simulator: luôn dùng backend local khi debug (Debug.isDebuggerConnected hay false).
-    if (!kIsWeb) {
-      if (Platform.isAndroid) {
-        final isEmulator = await _invokeBool('isEmulator');
-        if (isEmulator) {
-          _baseUrl = 'http://10.0.2.2:3000';
-          _log('android emulator → local');
-          return;
-        }
-      }
-      if (Platform.isIOS) {
-        final isSimulator = await _invokeBool('isSimulator');
-        if (isSimulator) {
-          _baseUrl = 'http://127.0.0.1:3000';
-          _log('ios simulator → local');
-          return;
-        }
-      }
+    // Emulator/simulator: luôn dùng host local (10.0.2.2 / 127.0.0.1).
+    if (await _isEmulatorOrSimulator()) {
+      _baseUrl = await _resolveLocalBaseUrl();
+      _log('emulator/simulator → local ($_baseUrl)');
+      return;
     }
 
-    final debuggerAttached = await _isDebuggerAttached();
-    if (debuggerAttached) {
-      _baseUrl = await _resolveLocalBaseUrl();
-      _log('debugger attached → local ($_baseUrl)');
+    // Máy thật: probe backend local — ổn định hơn Debug.isDebuggerConnected() (hay false trên MIUI…).
+    // USB + `adb reverse tcp:3000 tcp:3000` + `npm start` → /health OK → dùng local.
+    // Mở app từ launcher (không reverse) → probe fail → VPS production.
+    final localUrl = await _resolveLocalBaseUrl();
+    if (localUrl == productionBaseUrl) {
+      _baseUrl = productionBaseUrl;
+      _log('no local host → production');
+      return;
+    }
+
+    if (await _isLocalBackendReachable(localUrl)) {
+      _baseUrl = localUrl;
+      _log('local backend reachable → $localUrl');
       return;
     }
 
     _baseUrl = productionBaseUrl;
-    _log('standalone debug → production');
+    _log('local unreachable → production (USB dev: adb reverse tcp:3000 tcp:3000 + npm start)');
+  }
+
+  static Future<bool> _isEmulatorOrSimulator() async {
+    if (Platform.isAndroid) {
+      return _invokeBool('isEmulator');
+    }
+    if (Platform.isIOS) {
+      return _invokeBool('isSimulator');
+    }
+    return false;
   }
 
   /// Android emulator: 10.0.2.2
@@ -112,13 +119,20 @@ class ApiConfig {
     return 'http://127.0.0.1:3000';
   }
 
-  static Future<bool> _isDebuggerAttached() async {
-    if (kIsWeb) return kDebugMode;
-
+  /// Gọi GET /health với timeout ngắn — phát hiện adb reverse + backend local đang chạy.
+  static Future<bool> _isLocalBackendReachable(String baseUrl) async {
+    final client = HttpClient();
     try {
-      return await _invokeBool('isDebuggerConnected');
+      client.connectionTimeout = const Duration(seconds: 2);
+      final request = await client
+          .getUrl(Uri.parse('$baseUrl/health'))
+          .timeout(const Duration(seconds: 2));
+      final response = await request.close().timeout(const Duration(seconds: 2));
+      return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
       return false;
+    } finally {
+      client.close(force: true);
     }
   }
 

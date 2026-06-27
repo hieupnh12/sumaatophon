@@ -13,6 +13,8 @@ abstract class ProductEvent extends Equatable {
 
 class LoadProductsEvent extends ProductEvent {}
 
+class LoadMoreProductsEvent extends ProductEvent {}
+
 class SearchProductsEvent extends ProductEvent {
   final String query;
   const SearchProductsEvent(this.query);
@@ -63,11 +65,33 @@ class ProductLoading extends ProductState {}
 
 class ProductLoaded extends ProductState {
   final List<Product> products;
-  
-  const ProductLoaded(this.products);
+  final List<Product> latestProducts;
+  final bool hasMore;
+  final bool isLoadingMore;
+
+  const ProductLoaded({
+    required this.products,
+    this.latestProducts = const [],
+    this.hasMore = false,
+    this.isLoadingMore = false,
+  });
+
+  ProductLoaded copyWith({
+    List<Product>? products,
+    List<Product>? latestProducts,
+    bool? hasMore,
+    bool? isLoadingMore,
+  }) {
+    return ProductLoaded(
+      products: products ?? this.products,
+      latestProducts: latestProducts ?? this.latestProducts,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    );
+  }
 
   @override
-  List<Object?> get props => [products];
+  List<Object?> get props => [products, latestProducts, hasMore, isLoadingMore];
 }
 
 class ProductError extends ProductState {
@@ -118,14 +142,45 @@ class ProductDetailLoaded extends ProductState {
 // Nó sử dụng ProductLoading để hiển thị trạng thái loading
 // Nó sử dụng ProductInitial để hiển thị trạng thái initial
 class ProductBloc extends Bloc<ProductEvent, ProductState> {
+  static const int _pageSize = 10;
+
   final ProductRepository repository;
   List<Product> _allProducts = [];
+  List<Product> _filteredProducts = [];
+  int _displayCount = _pageSize;
 
   ProductBloc({required this.repository}) : super(ProductInitial()) {
     on<LoadProductsEvent>(_onLoadProducts);
+    on<LoadMoreProductsEvent>(_onLoadMoreProducts);
     on<SearchProductsEvent>(_onSearchProducts);
     on<FilterProductsEvent>(_onFilterProducts);
     on<LoadProductByIdEvent>(_onLoadProductById);
+  }
+
+  List<Product> get catalogProducts => List.unmodifiable(_allProducts);
+
+  List<Product> _computeLatestProducts() {
+    final sorted = List<Product>.from(_allProducts);
+    sorted.sort((a, b) {
+      final aId = int.tryParse(a.id) ?? 0;
+      final bId = int.tryParse(b.id) ?? 0;
+      return bId.compareTo(aId);
+    });
+    return sorted.take(5).toList();
+  }
+
+  ProductLoaded _emitPagedProducts({bool isLoadingMore = false}) {
+    final displayed = _filteredProducts.take(_displayCount).toList();
+    return ProductLoaded(
+      products: displayed,
+      latestProducts: _computeLatestProducts(),
+      hasMore: displayed.length < _filteredProducts.length,
+      isLoadingMore: isLoadingMore,
+    );
+  }
+
+  void _resetPagination() {
+    _displayCount = _pageSize;
   }
 
   Future<void> _onLoadProducts(LoadProductsEvent event, Emitter<ProductState> emit) async {
@@ -133,43 +188,69 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     try {
       final products = await repository.getProducts();
       _allProducts = products;
-      emit(ProductLoaded(_allProducts));
+      _filteredProducts = products;
+      _resetPagination();
+      emit(_emitPagedProducts());
     } catch (e) {
       emit(ProductError(e.toString()));
     }
   }
 
-  void _onSearchProducts(SearchProductsEvent event, Emitter<ProductState> emit) {
-    if (event.query.isEmpty) {
-      emit(ProductLoaded(_allProducts));
+  Future<void> _onLoadMoreProducts(
+    LoadMoreProductsEvent event,
+    Emitter<ProductState> emit,
+  ) async {
+    final current = state;
+    if (current is! ProductLoaded || !current.hasMore || current.isLoadingMore) {
       return;
     }
-    
+
+    emit(current.copyWith(isLoadingMore: true));
+    _displayCount += _pageSize;
+    emit(_emitPagedProducts());
+  }
+
+  void _onSearchProducts(SearchProductsEvent event, Emitter<ProductState> emit) {
+    _resetPagination();
+
+    if (event.query.isEmpty) {
+      _filteredProducts = _allProducts;
+      emit(_emitPagedProducts());
+      return;
+    }
+
     final query = event.query.toLowerCase();
-    final filtered = _allProducts.where((p) => 
-      p.name.toLowerCase().contains(query) || 
-      p.brand.toLowerCase().contains(query)
-    ).toList();
-    
-    emit(ProductLoaded(filtered));
+    _filteredProducts = _allProducts
+        .where(
+          (p) =>
+              p.name.toLowerCase().contains(query) ||
+              p.brand.toLowerCase().contains(query),
+        )
+        .toList();
+
+    emit(_emitPagedProducts());
   }
 
   void _onFilterProducts(FilterProductsEvent event, Emitter<ProductState> emit) {
+    _resetPagination();
     var filtered = _allProducts;
-    
+
     if (event.brand != null && event.brand != 'All') {
-      filtered = filtered.where((p) => p.brand.toLowerCase() == event.brand!.toLowerCase()).toList();
+      filtered = filtered
+          .where((p) => p.brand.toLowerCase() == event.brand!.toLowerCase())
+          .toList();
     }
-    
+
     if (event.minPrice != null) {
       filtered = filtered.where((p) => p.price >= event.minPrice!).toList();
     }
-    
+
     if (event.maxPrice != null) {
       filtered = filtered.where((p) => p.price <= event.maxPrice!).toList();
     }
-    
-    emit(ProductLoaded(filtered));
+
+    _filteredProducts = filtered;
+    emit(_emitPagedProducts());
   }
    
 

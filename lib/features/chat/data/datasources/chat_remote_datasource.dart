@@ -31,7 +31,7 @@ class ChatRemoteDataSource {
     _socket = io.io(
       ApiEndpoints.baseUrl,
       io.OptionBuilder()
-          .setTransports(['websocket'])
+          .setTransports(['websocket', 'polling'])
           .enableAutoConnect()
           .enableReconnection()
           .setQuery({
@@ -46,7 +46,16 @@ class ChatRemoteDataSource {
           .build(),
     );
 
+    final connected = Completer<void>();
     _socket!
+      ..on('connect', (_) {
+        if (!connected.isCompleted) connected.complete();
+      })
+      ..on('connect_error', (error) {
+        if (!connected.isCompleted) {
+          connected.completeError(Exception('Socket connect failed: $error'));
+        }
+      })
       ..on('new_message', (data) {
         if (data is Map) {
           final message = ChatMessageModel.fromJson(
@@ -65,6 +74,8 @@ class ChatRemoteDataSource {
           _threadsController.add(threads);
         }
       });
+
+    await connected.future.timeout(const Duration(seconds: 12));
   }
 
   Future<void> disconnect() async {
@@ -76,7 +87,7 @@ class ChatRemoteDataSource {
   Future<List<ChatThreadEntity>> getThreads() async {
     final data = await apiClient.get(
       ApiEndpoints.chatThreads,
-      queryParams: {'role': 'staff', 'accountType': 'employee'},
+      queryParameters: {'role': 'staff', 'accountType': 'employee'},
     );
     if (data is! List) return [];
     return data
@@ -88,7 +99,7 @@ class ChatRemoteDataSource {
   Future<ChatThreadEntity> getOrCreateMyThread(UserEntity user) async {
     final data = await apiClient.get(
       ApiEndpoints.chatThreadsMine,
-      queryParams: {
+      queryParameters: {
         'customerId': user.id,
       },
     );
@@ -101,7 +112,7 @@ class ChatRemoteDataSource {
   }) async {
     final data = await apiClient.get(
       ApiEndpoints.chatThreadMessages(threadId),
-      queryParams: {'role': user.canSupportChat ? 'staff' : 'user'},
+      queryParameters: {'role': user.canSupportChat ? 'staff' : 'user'},
     );
     if (data is! List) return [];
     return data

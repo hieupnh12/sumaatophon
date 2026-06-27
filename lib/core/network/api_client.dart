@@ -16,10 +16,15 @@ class ApiClient {
     return headers;
   }
 
-  Future<dynamic> get(String path, {Map<String, String>? queryParams}) async {
-    final uri = Uri.parse('${ApiEndpoints.baseUrl}$path').replace(
-      queryParameters: queryParams,
-    );
+  Future<dynamic> get(String path, {Map<String, dynamic>? queryParameters}) async {
+    Uri uri = Uri.parse('${ApiEndpoints.baseUrl}$path');
+    if (queryParameters != null) {
+      final Map<String, String> stringParams = {};
+      queryParameters.forEach((key, value) {
+        stringParams[key] = value.toString();
+      });
+      uri = uri.replace(queryParameters: stringParams);
+    }
     final response = await _client.get(uri, headers: _headers);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body);

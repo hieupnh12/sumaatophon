@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:refresh_rate/refresh_rate.dart';
 import 'core/config/app_feature_flags.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -15,7 +16,9 @@ import 'core/l10n/app_localizations.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/data/datasources/auth_mock_datasource.dart';
 import 'features/auth/data/datasources/auth_remote_datasource.dart';
+import 'features/auth/data/datasources/auth_local_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/onboarding/presentation/pages/onboarding_page.dart';
@@ -28,12 +31,15 @@ import 'features/products/data/repositories/product_repository_impl.dart';
 import 'features/products/presentation/bloc/product_bloc.dart';
 import 'features/products/presentation/pages/product_list_page.dart';
 import 'core/database/app_database.dart';
-import 'features/cart/data/datasources/cart_local_datasource.dart';
+import 'features/cart/data/datasources/cart_remote_datasource.dart';
 import 'features/cart/data/repositories/cart_repository_impl.dart';
 import 'features/cart/domain/repositories/cart_repository.dart';
 import 'features/cart/presentation/bloc/cart_bloc.dart';
-import 'features/cart/presentation/pages/cart_page.dart';
+import 'features/cart/presentation/cart_auth_helper.dart';
+import 'core/auth/auth_guard.dart';
 import 'features/checkout/presentation/bloc/checkout_bloc.dart';
+import 'features/checkout/data/datasources/checkout_remote_datasource.dart';
+import 'features/checkout/data/datasources/payment_remote_datasource.dart';
 import 'features/store_locator/presentation/bloc/store_locator_bloc.dart';
 import 'features/store_locator/presentation/pages/store_location_page.dart';
 import 'features/chatbot/data/datasources/chatbot_remote_datasource.dart';
@@ -51,7 +57,10 @@ import 'features/address/data/datasources/location_remote_datasource.dart';
 import 'features/address/data/repositories/address_repository_impl.dart';
 import 'features/address/domain/repositories/address_repository.dart';
 import 'features/address/presentation/bloc/address_bloc.dart';
-
+import 'features/orders/domain/repositories/order_repository.dart';
+import 'features/orders/data/datasources/order_remote_datasource.dart';
+import 'features/orders/data/repositories/order_repository_impl.dart';
+import 'features/orders/presentation/bloc/order_bloc.dart';
 final sl = GetIt.instance;
 
 void main() async {
@@ -73,16 +82,18 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton(() => ApiClient());
 
   // Datasources
+  sl.registerLazySingleton(() => const FlutterSecureStorage());
+  sl.registerLazySingleton(() => AuthLocalDataSource(sl()));
   sl.registerLazySingleton(() => AuthMockDataSource());
   sl.registerLazySingleton(() => AuthRemoteDataSource(sl(), sl()));
   sl.registerLazySingleton(() => ProductRemoteDataSource(sl()));
   sl.registerLazySingleton(() => ProductLocalDataSource(sl()));
   sl.registerLazySingleton(() => ChatbotRemoteDataSource(sl()));
   sl.registerLazySingleton(() => ChatRemoteDataSource(sl()));
-  sl.registerLazySingleton(() => CartLocalDatasource(sl()));
+  sl.registerLazySingleton(() => CartRemoteDatasource(sl()));
 
   // Repositories
-  sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl<AuthRemoteDataSource>()));
+  sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl<AuthRemoteDataSource>(), sl<AuthLocalDataSource>()));
   sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(sl(), sl()));
   sl.registerLazySingleton<ChatRepository>(() => ChatRepositoryImpl(sl()));
   sl.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(sl()));
@@ -92,16 +103,23 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton<LocationRemoteDataSource>(() => LocationRemoteDataSourceImpl(client: sl()));
   sl.registerLazySingleton<AddressRemoteDataSource>(() => AddressRemoteDataSourceImpl(client: sl()));
   sl.registerLazySingleton<AddressRepository>(() => AddressRepositoryImpl(remoteDataSource: sl(), locationDataSource: sl()));
+  sl.registerLazySingleton<PaymentRemoteDataSource>(() => PaymentRemoteDataSourceImpl(client: sl()));
+  sl.registerLazySingleton<CheckoutRemoteDataSource>(() => CheckoutRemoteDataSourceImpl(client: sl()));
+
+  // Orders
+  sl.registerLazySingleton<OrderRemoteDataSource>(() => OrderRemoteDataSourceImpl(sl()));
+  sl.registerLazySingleton<OrderRepository>(() => OrderRepositoryImpl(sl()));
 
   // Blocs
   sl.registerLazySingleton(() => AuthBloc(authRepository: sl()));
   sl.registerFactory(() => ProductBloc(repository: sl()));
   sl.registerFactory(() => CartBloc(repository: sl()));
-  sl.registerFactory(() => CheckoutBloc());
+  sl.registerFactory(() => CheckoutBloc(checkoutDataSource: sl(), paymentDataSource: sl()));
   sl.registerFactory(() => StoreLocatorBloc());
   sl.registerFactory(() => ChatBloc(repository: sl()));
   sl.registerFactory(() => NotificationBloc());
   sl.registerFactory(() => AddressBloc(repository: sl(), authBloc: sl()));
+  sl.registerFactory(() => OrderBloc(repository: sl()));
   
   // Theme & Language
   sl.registerLazySingleton(() => ThemeCubit());
@@ -119,17 +137,39 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
   bool _showOnboarding = true;
 
   @override
+  void initState() {
+    super.initState();
+    // Gọi sau frame đầu — Activity/window đã sẵn sàng (plugin hay fail nếu gọi trong main()).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyHighRefreshRate());
+  }
+
+  Future<void> _applyHighRefreshRate() async {
+    RefreshRate.enable();
+    RefreshRate.preferMax();
+    RefreshRate.setTouchBoost(true);
+    final info = await RefreshRate.refresh();
+    assert(() {
+      debugPrint(
+        '[RefreshRate] current=${info.currentRate}Hz max=${info.maxRate}Hz '
+        'supported=${info.supportedRates}',
+      );
+      return true;
+    }());
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => sl<AuthBloc>()),
+        BlocProvider(create: (_) => sl<AuthBloc>()..add(CheckAuthStatusEvent())),
         BlocProvider(create: (_) => sl<ProductBloc>()..add(LoadProductsEvent())),
-        BlocProvider(create: (_) => sl<CartBloc>()..add(LoadCartEvent())),
+        BlocProvider(create: (_) => sl<CartBloc>()),
         BlocProvider(create: (_) => sl<CheckoutBloc>()),
         BlocProvider(create: (_) => sl<StoreLocatorBloc>()..add(LoadStoresEvent())),
         BlocProvider(create: (_) => sl<ChatBloc>()),
         BlocProvider(create: (_) => sl<NotificationBloc>()..add(LoadNotificationsEvent())),
         BlocProvider(create: (_) => sl<AddressBloc>()..add(LoadAddressesEvent())),
+        BlocProvider(create: (_) => sl<OrderBloc>()),
         BlocProvider(create: (_) => sl<ThemeCubit>()),
         BlocProvider(create: (_) => sl<LanguageCubit>()),
       ],
@@ -142,7 +182,20 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
             themeMode: themeMode,
             debugShowCheckedModeBanner: false,
             builder: (context, child) {
-              return BlocListener<CartBloc, CartState>(
+              return MultiBlocListener(
+                listeners: [
+                  BlocListener<AuthBloc, AuthState>(
+                    listener: (context, state) {
+                      final cartBloc = context.read<CartBloc>();
+                      if (state is AuthenticatedState && isRealAuthenticatedUser(state.user)) {
+                        cartBloc.add(SyncCartCustomerEvent(state.user.id));
+                      } else if (state is! AuthenticatedState) {
+                        cartBloc.add(const SyncCartCustomerEvent(null));
+                      }
+                    },
+                  ),
+                ],
+                child: BlocListener<CartBloc, CartState>(
                 listenWhen: (prev, curr) =>
                     prev.cartMessage != curr.cartMessage ||
                     prev.addedProductName != curr.addedProductName,
@@ -172,11 +225,15 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
                   }
                 },
                 child: child ?? const SizedBox.shrink(),
+              ),
               );
             },
             home: AppFeatureFlags.authRequired
                 ? BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, state) {
+                      if (state is AuthLoading) {
+                        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                      }
                       if (state is AuthenticatedState) {
                         return const AppMainPage();
                       }
@@ -219,10 +276,7 @@ class _AppMainPageState extends State<AppMainPage> {
         children: [
           // Nav routes list with corresponding UI pages
           ProductListPage(
-            onOpenCart: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const CartPage()),
-            ),
+            onOpenCart: () => openCartWithAuth(context),
           ),
           const StoreLocationPage(),
           const ChatHubPage(),
