@@ -39,9 +39,17 @@ class Product extends Equatable {
     this.feedbacks = const [],
   });
 
+  static String normalizeRamRom(String value) {
+    return value.replaceAll(RegExp(r'\s+'), '').toLowerCase();
+  }
+
   ProductVersion? findVersion({required String color, required String ramRom}) {
+    if (ramRom.isEmpty) return findVersionForColor(color);
+
+    final target = normalizeRamRom(ramRom);
     for (final version in versions) {
-      if (version.color == color && version.ramRom == ramRom) {
+      if (version.color == color &&
+          normalizeRamRom(version.ramRom) == target) {
         return version;
       }
     }

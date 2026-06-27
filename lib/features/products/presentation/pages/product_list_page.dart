@@ -12,6 +12,7 @@ import '../../../notifications/presentation/pages/notifications_page.dart';
 import '../widgets/product_card.dart';
 import '../widgets/shimmer_product_card.dart';
 import 'product_detail_page.dart';
+import 'product_search_page.dart';
 import '../../../../main.dart';
 
 
@@ -40,6 +41,26 @@ class _ProductListPageState extends State<ProductListPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openSearchPage() async {
+    final query = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BlocProvider.value(
+          value: context.read<ProductBloc>(),
+          child: ProductSearchPage(
+            initialQuery: _searchController.text,
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted || query == null) return;
+
+    _searchController.text = query;
+    _onSearchChanged(query);
+    setState(() {});
   }
 
   void _onSearchChanged(String query) {
@@ -187,20 +208,14 @@ class _ProductListPageState extends State<ProductListPage> {
             pinned: true,
             backgroundColor: isDark ? AppColors.darkSurface : const Color(0xFFFCF9F8),
             surfaceTintColor: Colors.transparent,
-            title: Row(
-              children: [
-                Icon(Icons.menu, color: theme.colorScheme.onSurface, size: 24),
-                const SizedBox(width: 8),
-                Text(
-                  'phoneShop',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 24,
-                    color: theme.colorScheme.primary,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ],
+            title: Text(
+              'phoneShop',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 24,
+                color: theme.colorScheme.primary,
+                letterSpacing: -0.5,
+              ),
             ),
             centerTitle: false,
             actions: [
@@ -262,10 +277,8 @@ class _ProductListPageState extends State<ProductListPage> {
                       Expanded(
                         child: TextField(
                           controller: _searchController,
-                          onChanged: (value) {
-                            setState(() {});
-                            _onSearchChanged(value);
-                          },
+                          readOnly: true,
+                          onTap: _openSearchPage,
                           decoration: InputDecoration(
                             hintText: context.tr('search_hint'),
                             hintStyle: TextStyle(
@@ -282,7 +295,6 @@ class _ProductListPageState extends State<ProductListPage> {
                                       _searchController.clear();
                                       _onSearchChanged('');
                                       setState(() {});
-                                      FocusScope.of(context).unfocus();
                                     },
                                   )
                                 : null,
@@ -423,40 +435,82 @@ class _ProductListPageState extends State<ProductListPage> {
                   );
                 }
                 
-                // phần này trả về liền về cho từng product card , tức là lấy id 
-                return SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  sliver: SliverGrid.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.58,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
-                    itemCount: state.products.length,
-                    itemBuilder: (context, index) {
-                      final product = state.products[index];
-                      return ProductCard(
-                        product: product,
-
-                       // sử dụng BlocProvider mới để quản lí lít detail , để không bị lẫn lộn với bloc global trong main.dart đang quản list product ==> nếu sài chung thì detail emit của productDetailloading sẽ làm list cũng đổi state  
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => BlocProvider(
-                                create: (_) => sl<ProductBloc>(),
-                                child: ProductDetailPage(
-                                  productId: product.id,
-                                  heroImageUrl: product.imageUrl,
+                return SliverMainAxisGroup(
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      sliver: SliverGrid.builder(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.58,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                        ),
+                        itemCount: state.products.length,
+                        itemBuilder: (context, index) {
+                          final product = state.products[index];
+                          return ProductCard(
+                            product: product,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => BlocProvider(
+                                    create: (_) => sl<ProductBloc>(),
+                                    child: ProductDetailPage(
+                                      productId: product.id,
+                                      heroImageUrl: product.imageUrl,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
                           );
                         },
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                    if (state.hasMore)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: state.isLoadingMore
+                                  ? null
+                                  : () {
+                                      context
+                                          .read<ProductBloc>()
+                                          .add(LoadMoreProductsEvent());
+                                    },
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                side: BorderSide(color: theme.colorScheme.primary),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: state.isLoadingMore
+                                  ? SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    )
+                                  : Text(
+                                      context.tr('product_load_more'),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 );
               }
               return const SliverToBoxAdapter(child: SizedBox.shrink());

@@ -5,6 +5,7 @@ class ProductVersionModel {
   final String color;
   final String ram;
   final String rom;
+  final String ramRomLabel;
   final double price;
   final int stockQuantity;
   final String imageUrl;
@@ -15,6 +16,7 @@ class ProductVersionModel {
     required this.color,
     required this.ram,
     required this.rom,
+    this.ramRomLabel = '',
     required this.price,
     required this.stockQuantity,
     this.imageUrl = '',
@@ -39,6 +41,7 @@ class ProductVersionModel {
       color: json['color']?.toString() ?? '',
       ram: parsedRam,
       rom: parsedRom,
+      ramRomLabel: ramRom.trim(),
       price: _toDouble(json['price']),
       stockQuantity: _toInt(json['stockQuantity']),
       imageUrl: json['imageUrl']?.toString() ?? '',
@@ -52,6 +55,7 @@ class ProductVersionModel {
       color: color,
       ram: ram,
       rom: rom,
+      ramRomLabel: ramRomLabel,
       price: price,
       stockQuantity: stockQuantity,
       imageUrl: imageUrl,
