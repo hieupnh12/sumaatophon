@@ -92,6 +92,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
   }
 
   void _onOtpCompleted(String otp) {
+    if (context.read<AuthBloc>().state is AuthLoading) return;
     context.read<AuthBloc>().add(VerifyOtpForLinkSubmitted(otp: otp));
   }
 
@@ -270,10 +271,6 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
           } else if (state is AuthOtpSent) {
              if (!_showOtpStep) setState(() => _showOtpStep = true);
              _startTimers();
-             if (state.mockOtp != null) {
-               _otpController.text = state.mockOtp!;
-               Future.delayed(const Duration(milliseconds: 300), () => _onOtpCompleted(state.mockOtp!));
-             }
           } else if (state is AuthenticatedState) {
              Navigator.pop(context); // Về lại Login
           }

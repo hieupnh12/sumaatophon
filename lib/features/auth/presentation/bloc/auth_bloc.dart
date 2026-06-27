@@ -22,6 +22,8 @@ class LoginSubmitted extends AuthEvent {
   List<Object?> get props => [email, password];
 }
 
+class CheckAuthStatusEvent extends AuthEvent {}
+
 class BiometricLoginRequested extends AuthEvent {}
 
 class GuestLoginRequested extends AuthEvent {}
@@ -127,10 +129,9 @@ class AuthError extends AuthState {
 
 class AuthOtpSent extends AuthState {
   final String message;
-  final String? mockOtp;
-  const AuthOtpSent({required this.message, this.mockOtp});
+  const AuthOtpSent({required this.message});
   @override
-  List<Object?> get props => [message, mockOtp];
+  List<Object?> get props => [message];
 }
 
 class AuthActionSuccess extends AuthState {
@@ -162,6 +163,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   String? _pendingPhone;
 
   AuthBloc({required this.authRepository}) : super(AuthInitial()) {
+    on<CheckAuthStatusEvent>(_onCheckAuthStatusRequested);
     on<LoginSubmitted>(_onLoginSubmitted);
     on<BiometricLoginRequested>(_onBiometricLoginRequested);
     on<GuestLoginRequested>(_onGuestLoginRequested);
@@ -177,17 +179,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthInternalErrorOccurred>(_onAuthInternalErrorOccurred);
   }
 
+  Future<void> _onCheckAuthStatusRequested(CheckAuthStatusEvent event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      final user = await authRepository.getSession();
+      if (user != null) {
+        emit(AuthenticatedState(user));
+      } else {
+        emit(AuthInitial());
+      }
+    } catch (e) {
+      emit(AuthInitial());
+    }
+  }
+
   Future<void> _onOtpRequested(OtpRequested event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
       _pendingPhone = event.phone;
-      final devOtp = await authRepository.requestOtp(event.phone);
+      await authRepository.requestOtp(event.phone);
       
-      emit(AuthOtpSent(
-        message: devOtp != null 
-           ? "Đã tự động điền OTP (Gateway lỗi/tắt)." 
-           : "Đã gửi mã OTP thật qua SMS!",
-        mockOtp: devOtp,
+      emit(const AuthOtpSent(
+        message: "Đã gửi mã OTP qua SMS!",
       ));
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
@@ -362,6 +375,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
   
   Future<void> _onLogoutRequested(LogoutRequested event, Emitter<AuthState> emit) async {
+    await authRepository.logout();
     await _firebaseAuth.signOut();
     emit(AuthInitial());
   }

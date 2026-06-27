@@ -14,4 +14,8 @@ class ApiEndpoints {
 
   static String productById(String id) => '/products/$id';
   static String productFeedbacks(String id) => '/products/$id/feedbacks';
+
+  // Orders
+  static const String orders = '/api/orders';
+  static String orderById(String id) => '/api/orders/$id';
 }

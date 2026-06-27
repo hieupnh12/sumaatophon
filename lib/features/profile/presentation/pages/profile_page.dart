@@ -93,140 +93,202 @@ class _ProfilePageState extends State<ProfilePage> {
 
         return Scaffold(
           backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
-          appBar: isGuest
-              ? null
-              : AppBar(
-                  elevation: 0,
-                  backgroundColor: Colors.transparent,
-                  title: Text(context.tr('profile'), style: const TextStyle(fontWeight: FontWeight.bold)),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.settings_outlined),
-                      onPressed: () {},
-                    ),
-                    const SizedBox(width: 8),
+          appBar: AppBar(
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            backgroundColor: Colors.transparent,
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.primary.withValues(alpha: 0.1),
+                    isDark ? AppColors.darkBackground : AppColors.lightBackground,
                   ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-          body: isGuest
-              ? _buildGuestBody(context, theme, isDark)
-              : SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              ),
+            ),
+            toolbarHeight: 90,
+            titleSpacing: 16,
+            title: Row(
               children: [
-                // Header: Avatar & Info
-                Row(
-                  children: [
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      ),
-                      child: !isGuest
-                          ? ClipOval(
-                              child: Image.network(
-                                avatarUrl,
-                                fit: BoxFit.cover,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                                },
-                                errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
-                              ),
-                            )
-                          : Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            userName,
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                          if (email.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              email,
-                              style: TextStyle(
-                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                          // Gold member badge removed as requested
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.qr_code_rounded),
-                      onPressed: () {},
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-
-                // Orders Section
-                _buildSectionHeader(
-                  context.tr('profile_orders_title'), 
-                  context.tr('profile_view_all'),
-                  onActionTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const OrderListPage()),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  ),
+                  child: !isGuest
+                      ? ClipOval(
+                          child: Image.network(
+                            avatarUrl,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                            },
+                            errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
+                          ),
+                        )
+                      : Icon(Icons.person, size: 40, color: theme.colorScheme.primary),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        userName,
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                      if (email.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          email,
+                          style: TextStyle(
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: const [],
+          ),
+          body: RefreshIndicator(
+            onRefresh: () async {
+              HapticFeedback.mediumImpact();
+              // Simulating refresh action
+              await Future.delayed(const Duration(seconds: 1));
+            },
+            color: theme.colorScheme.primary,
+            backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+            child: isGuest
+                ? _buildGuestBody(context, theme, isDark)
+                : SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                // Unified Orders Section
+                Container(
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.darkCard : AppColors.lightCard,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildOrderAction(Icons.account_balance_wallet_outlined, context.tr('profile_order_pending'), isDark),
-                      _buildOrderAction(Icons.local_shipping_outlined, context.tr('profile_order_shipping'), isDark),
-                      _buildOrderAction(Icons.star_outline_rounded, context.tr('profile_order_review'), isDark),
-                      _buildOrderAction(Icons.sync_rounded, context.tr('profile_order_return'), isDark),
-                    ],
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16, top: 16, right: 16, bottom: 8),
+                          child: Text(
+                            context.tr('profile_orders'), 
+                            style: TextStyle(
+                              fontSize: 16, 
+                              fontWeight: FontWeight.bold, 
+                              color: isDark ? AppColors.darkTextSecondary : const Color(0xFF637381)
+                            )
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildOrderAction(Icons.pending_actions_rounded, context.tr('profile_order_pending'), isDark),
+                              _buildOrderAction(Icons.local_shipping_outlined, context.tr('profile_order_shipping'), isDark),
+                              _buildOrderAction(Icons.rate_review_outlined, context.tr('profile_order_review'), isDark),
+                            ],
+                          ),
+                        ),
+                        _buildDivider(isDark),
+                        _buildListItem(
+                          Icons.inventory_2_outlined, 
+                          context.tr('profile_orders_title'), 
+                          isDark, 
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const OrderListPage()),
+                            );
+                          },
+                        ),
+                        _buildDivider(isDark),
+                        _buildListItem(
+                          Icons.access_time_rounded, 
+                          context.tr('profile_transaction_history'), 
+                          isDark,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const OrderListPage()),
+                            );
+                          },
+                        ),
+                        _buildDivider(isDark),
+                        _buildListItem(
+                          Icons.shield_outlined, 
+                          context.tr('profile_warranty_info'), 
+                          isDark,
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 // Utilities Section
-                Text(context.tr('profile_utilities'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
                   child: Material(
-                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                     clipBehavior: Clip.antiAlias,
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16, top: 16, right: 16, bottom: 8),
+                          child: Text(
+                            context.tr('profile_utilities'), 
+                            style: TextStyle(
+                              fontSize: 16, 
+                              fontWeight: FontWeight.bold, 
+                              color: isDark ? AppColors.darkTextSecondary : const Color(0xFF637381)
+                            )
+                          ),
+                        ),
                       _buildListItem(
                         Icons.person_outline_rounded, 
                         context.tr('profile_account_info'), 
@@ -240,20 +302,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       _buildDivider(isDark),
                       _buildListItem(
-                        Icons.receipt_long_outlined, 
-                        context.tr('profile_transaction_history'), 
-                        isDark,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const OrderListPage()),
-                          );
-                        },
-                      ),
-                      _buildDivider(isDark),
-                      _buildListItem(Icons.local_offer_outlined, context.tr('profile_voucher'), isDark, trailingText: '5 ${context.tr('offers_count')}'),
-                      _buildDivider(isDark),
-                      _buildListItem(
                         Icons.location_on_outlined, 
                         context.tr('profile_address'), 
                         isDark,
@@ -264,8 +312,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           );
                         },
                       ),
-                      _buildDivider(isDark),
-                      _buildListItem(Icons.payment_rounded, context.tr('profile_payment_methods'), isDark),
                     ],
                   ),
                 ),
@@ -273,25 +319,37 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 24),
 
                 // Settings Section
-                Text(context.tr('profile_settings'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
                   child: Material(
-                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                     clipBehavior: Clip.antiAlias,
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16, top: 16, right: 16, bottom: 8),
+                          child: Text(
+                            context.tr('profile_settings'), 
+                            style: TextStyle(
+                              fontSize: 16, 
+                              fontWeight: FontWeight.bold, 
+                              color: isDark ? AppColors.darkTextSecondary : const Color(0xFF637381)
+                            )
+                          ),
+                        ),
                       ListTile(
                         leading: Container(
                           padding: const EdgeInsets.all(8),
@@ -301,7 +359,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                           child: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded, color: theme.colorScheme.primary),
                         ),
-                        title: Text(context.tr('theme'), style: const TextStyle(fontWeight: FontWeight.w500)),
+                        title: Text(context.tr('theme'), style: const TextStyle(fontWeight: FontWeight.bold)),
                         trailing: Switch(
                           value: isDark,
                           activeThumbColor: theme.colorScheme.primary,
@@ -346,6 +404,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
           ),
+          ),
         );
       },
     );
@@ -353,55 +412,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildGuestBody(BuildContext context, ThemeData theme, bool isDark) {
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header section with gradient
-          Container(
-            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 24, left: 24, right: 24, bottom: 40),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFFE8F5E9),
-                  isDark ? AppColors.darkBackground : AppColors.lightBackground,
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.grey.shade300,
-                  child: const Icon(Icons.person, size: 50, color: Colors.white),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Text(
-                    'Quý khách',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
-                    ],
-                  ),
-                  child: const Icon(Icons.notifications_none_rounded, color: Colors.black54),
-                ),
-              ],
-            ),
-          ),
-
           // Content section
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             child: Column(
               children: [
                 // Banner
@@ -611,12 +628,13 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildOrderAction(IconData icon, String label, bool isDark) {
     return Column(
       children: [
-        Icon(icon, size: 28, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+        Icon(icon, size: 34, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
         const SizedBox(height: 8),
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
             color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
           ),
         ),
@@ -634,7 +652,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         child: Icon(icon, color: AppColors.primary),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       trailing: trailingText != null
           ? Row(
               mainAxisSize: MainAxisSize.min,

@@ -36,7 +36,8 @@ class ApiConfig {
       return;
     }
 
-    const forceLocal = bool.fromEnvironment('USE_LOCAL_API');
+    // FORCE LOCAL FOR TESTING
+    const forceLocal = true; // bool.fromEnvironment('USE_LOCAL_API');
     if (forceLocal) {
       _baseUrl = await _resolveLocalBaseUrl();
       _log('USE_LOCAL_API');

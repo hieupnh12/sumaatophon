@@ -600,6 +600,9 @@ app.put('/api/addresses/:id/default', async (req, res) => {
   }
 });
 
+// --- ORDERS ---
+app.use('/api/orders', require('./orders/orders.routes'));
+
 app.get('/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');

@@ -136,6 +136,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   void _onOtpCompleted(String otp) {
+    if (context.read<AuthBloc>().state is AuthLoading) return;
     final phoneDisplay = _phoneController.text.trim();
     final phone = phoneDisplay.replaceAll(' ', '');
     context.read<AuthBloc>().add(OtpLoginSubmitted(phone: phone, otp: otp));
@@ -225,12 +226,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               setState(() => _showOtpStep = true);
             }
             _startTimers();
-            if (state.mockOtp != null) {
-              _otpController.text = state.mockOtp!;
-              Future.delayed(const Duration(milliseconds: 300), () {
-                _onOtpCompleted(state.mockOtp!);
-              });
-            }
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),

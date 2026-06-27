@@ -13,7 +13,9 @@ import 'core/l10n/app_localizations.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/data/datasources/auth_mock_datasource.dart';
 import 'features/auth/data/datasources/auth_remote_datasource.dart';
+import 'features/auth/data/datasources/auth_local_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/link_phone_page.dart';
@@ -46,7 +48,10 @@ import 'features/address/data/datasources/location_remote_datasource.dart';
 import 'features/address/data/repositories/address_repository_impl.dart';
 import 'features/address/domain/repositories/address_repository.dart';
 import 'features/address/presentation/bloc/address_bloc.dart';
-
+import 'features/orders/domain/repositories/order_repository.dart';
+import 'features/orders/data/datasources/order_remote_datasource.dart';
+import 'features/orders/data/repositories/order_repository_impl.dart';
+import 'features/orders/presentation/bloc/order_bloc.dart';
 final sl = GetIt.instance;
 
 void main() async {
@@ -66,6 +71,8 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton(() => ApiClient());
 
   // Datasources
+  sl.registerLazySingleton(() => const FlutterSecureStorage());
+  sl.registerLazySingleton(() => AuthLocalDataSource(sl()));
   sl.registerLazySingleton(() => AuthMockDataSource());
   sl.registerLazySingleton(() => AuthRemoteDataSource(sl(), sl()));
   sl.registerLazySingleton(() => ProductRemoteDataSource(sl()));
@@ -73,7 +80,7 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton(() => CartLocalDatasource(sl()));
 
   // Repositories
-  sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl<AuthRemoteDataSource>()));
+  sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl<AuthRemoteDataSource>(), sl<AuthLocalDataSource>()));
   sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(sl(), sl()));
   sl.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(sl()));
   
@@ -82,6 +89,10 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton<LocationRemoteDataSource>(() => LocationRemoteDataSourceImpl(client: sl()));
   sl.registerLazySingleton<AddressRemoteDataSource>(() => AddressRemoteDataSourceImpl(client: sl()));
   sl.registerLazySingleton<AddressRepository>(() => AddressRepositoryImpl(remoteDataSource: sl(), locationDataSource: sl()));
+
+  // Orders
+  sl.registerLazySingleton<OrderRemoteDataSource>(() => OrderRemoteDataSourceImpl(sl()));
+  sl.registerLazySingleton<OrderRepository>(() => OrderRepositoryImpl(sl()));
 
   // Blocs
   sl.registerLazySingleton(() => AuthBloc(authRepository: sl()));
@@ -92,6 +103,7 @@ Future<void> setupDependencyInjection() async {
   sl.registerFactory(() => ChatBloc());
   sl.registerFactory(() => NotificationBloc());
   sl.registerFactory(() => AddressBloc(repository: sl(), authBloc: sl()));
+  sl.registerFactory(() => OrderBloc(repository: sl()));
   
   // Theme & Language
   sl.registerLazySingleton(() => ThemeCubit());
@@ -112,7 +124,7 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => sl<AuthBloc>()),
+        BlocProvider(create: (_) => sl<AuthBloc>()..add(CheckAuthStatusEvent())),
         BlocProvider(create: (_) => sl<ProductBloc>()..add(LoadProductsEvent())),
         BlocProvider(create: (_) => sl<CartBloc>()..add(LoadCartEvent())),
         BlocProvider(create: (_) => sl<CheckoutBloc>()),
@@ -120,6 +132,7 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
         BlocProvider(create: (_) => sl<ChatBloc>()),
         BlocProvider(create: (_) => sl<NotificationBloc>()..add(LoadNotificationsEvent())),
         BlocProvider(create: (_) => sl<AddressBloc>()..add(LoadAddressesEvent())),
+        BlocProvider(create: (_) => sl<OrderBloc>()),
         BlocProvider(create: (_) => sl<ThemeCubit>()),
         BlocProvider(create: (_) => sl<LanguageCubit>()),
       ],
@@ -167,6 +180,9 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
             home: AppFeatureFlags.authRequired
                 ? BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, state) {
+                      if (state is AuthLoading) {
+                        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                      }
                       if (state is AuthenticatedState) {
                         return const AppMainPage();
                       }

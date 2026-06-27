@@ -26,7 +26,7 @@ class AddressRemoteDataSourceImpl implements AddressRemoteDataSource {
       final List<dynamic> jsonList = json.decode(response.body);
       return jsonList.map((json) => AddressModel.fromJson(json)).toList();
     } else {
-      throw Exception('Failed to load addresses');
+      throw Exception('Failed to load addresses: HTTP ${response.statusCode} - ${response.body}');
     }
   }
 
