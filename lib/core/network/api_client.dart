@@ -38,7 +38,7 @@ class ApiClient {
       uri,
       headers: _headers,
       body: body != null ? jsonEncode(body) : null,
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 10));
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body);
     }
@@ -53,6 +53,47 @@ class ApiClient {
       body: body != null ? jsonEncode(body) : null,
     );
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body);
+    }
+    throw ApiException(response.statusCode, response.body);
+  }
+
+  Future<dynamic> patch(String path, {Map<String, dynamic>? body}) async {
+    final uri = Uri.parse('${ApiEndpoints.baseUrl}$path');
+    final response = await _client.patch(
+      uri,
+      headers: _headers,
+      body: body != null ? jsonEncode(body) : null,
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.body.isEmpty) return null;
+      return jsonDecode(response.body);
+    }
+    throw ApiException(response.statusCode, response.body);
+  }
+
+  Future<dynamic> delete(
+    String path, {
+    Map<String, dynamic>? body,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    var uri = Uri.parse('${ApiEndpoints.baseUrl}$path');
+    if (queryParameters != null) {
+      final stringParams = <String, String>{};
+      queryParameters.forEach((key, value) {
+        stringParams[key] = value.toString();
+      });
+      uri = uri.replace(queryParameters: stringParams);
+    }
+    final request = http.Request('DELETE', uri);
+    request.headers.addAll(_headers);
+    if (body != null) {
+      request.body = jsonEncode(body);
+    }
+    final streamed = await _client.send(request);
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.body.isEmpty) return null;
       return jsonDecode(response.body);
     }
     throw ApiException(response.statusCode, response.body);

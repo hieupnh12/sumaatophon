@@ -28,6 +28,13 @@ class ApiEndpoints {
   static String chatThreadMessages(String threadId) =>
       '/chat/threads/$threadId/messages';
 
+  static const String notifications = '/notifications';
+  static const String notificationsReadAll = '/notifications/read-all';
+  static const String notificationsRegisterToken = '/notifications/register-token';
+  static const String notificationsUnregisterToken = '/notifications/unregister-token';
+  static String notificationRead(String id) => '/notifications/$id/read';
+  static String notificationDelete(String id) => '/notifications/$id';
+
   static String productById(String id) => '/products/$id';
   static String productFeedbacks(String id) => '/products/$id/feedbacks';
 

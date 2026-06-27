@@ -8,6 +8,8 @@ import '../../../../core/l10n/app_localizations.dart';
 import '../bloc/product_bloc.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
 import '../../../cart/presentation/cart_auth_helper.dart';
+import '../../../notifications/presentation/notification_helpers.dart';
+import '../../../notifications/presentation/widgets/notification_badge_icon.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
 import '../widgets/product_card.dart';
 import '../widgets/shimmer_product_card.dart';
@@ -26,21 +28,46 @@ class ProductListPage extends StatefulWidget {
 }
 
 class _ProductListPageState extends State<ProductListPage> {
+  static const double _priceSliderMin = 0;
+  static const double _priceSliderMax = 50000000;
+
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _selectedBrand = 'All';
 
   bool _isFilterExpanded = false;
-  double _currentMinPrice = 5000000;
-  double _currentMaxPrice = 30000000;
-  String _selectedRam = '8GB';
-  String _selectedRom = '256GB';
+  double _currentMinPrice = _priceSliderMin;
+  double _currentMaxPrice = _priceSliderMax;
+  String? _selectedRam;
+  String? _selectedRom;
 
   final List<String> _brandKeys = ['brand_all', 'Apple', 'Samsung', 'Google', 'Xiaomi'];
 
   @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients || !mounted) return;
+
+    final position = _scrollController.position;
+    if (position.pixels < position.maxScrollExtent - 280) return;
+
+    final bloc = context.read<ProductBloc>();
+    final state = bloc.state;
+    if (state is ProductLoaded && state.hasMore && !state.isLoadingMore) {
+      bloc.add(LoadMoreProductsEvent());
+    }
   }
 
   Future<void> _openSearchPage() async {
@@ -72,7 +99,24 @@ class _ProductListPageState extends State<ProductListPage> {
     setState(() {
       _selectedBrand = brand;
     });
-    context.read<ProductBloc>().add(FilterProductsEvent(brand: brand));
+    _applyFilters();
+  }
+
+  void _applyFilters() {
+    final minPrice =
+        _currentMinPrice > _priceSliderMin ? _currentMinPrice : null;
+    final maxPrice =
+        _currentMaxPrice < _priceSliderMax ? _currentMaxPrice : null;
+
+    context.read<ProductBloc>().add(
+          FilterProductsEvent(
+            brand: _selectedBrand,
+            minPrice: minPrice,
+            maxPrice: maxPrice,
+            ram: _selectedRam,
+            rom: _selectedRom,
+          ),
+        );
   }
 
   String _brandLabel(String brandKey) {
@@ -85,6 +129,42 @@ class _ProductListPageState extends State<ProductListPage> {
     setState(() {
       _isFilterExpanded = !_isFilterExpanded;
     });
+  }
+
+  Widget _buildBrandChip({
+    required ThemeData theme,
+    required bool isDark,
+    required String brandKey,
+    required bool isSelected,
+  }) {
+    return Material(
+      color: isSelected
+          ? theme.colorScheme.primary
+          : (isDark ? AppColors.darkSurface : const Color(0xFFEAE7E7)),
+      borderRadius: BorderRadius.circular(20),
+      elevation: isSelected ? 2 : 0,
+      shadowColor: theme.colorScheme.primary.withValues(alpha: 0.3),
+      child: InkWell(
+        onTap: () => _onBrandSelected(brandKey),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          height: 36,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            _brandLabel(brandKey),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              height: 1,
+              color: isSelected
+                  ? Colors.white
+                  : (isDark ? AppColors.darkTextSecondary : const Color(0xFF414753)),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildAdvancedFilter(ThemeData theme, bool isDark) {
@@ -117,8 +197,8 @@ class _ProductListPageState extends State<ProductListPage> {
                   ),
                   RangeSlider(
                     values: RangeValues(_currentMinPrice, _currentMaxPrice),
-                    min: 0,
-                    max: 50000000,
+                    min: _priceSliderMin,
+                    max: _priceSliderMax,
                     divisions: 50,
                     activeColor: theme.colorScheme.primary,
                     inactiveColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
@@ -128,6 +208,7 @@ class _ProductListPageState extends State<ProductListPage> {
                         _currentMaxPrice = values.end;
                       });
                     },
+                    onChangeEnd: (_) => _applyFilters(),
                   ),
                   const SizedBox(height: 16),
                   Text(context.tr('ram'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
@@ -135,25 +216,47 @@ class _ProductListPageState extends State<ProductListPage> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: rams.map((ram) {
-                      final isSelected = _selectedRam == ram;
-                      return ChoiceChip(
-                        label: Text(ram, style: const TextStyle(fontSize: 12)),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) setState(() => _selectedRam = ram);
+                    children: [
+                      ChoiceChip(
+                        label: Text(context.tr('brand_all'), style: const TextStyle(fontSize: 12)),
+                        selected: _selectedRam == null,
+                        onSelected: (_) {
+                          setState(() => _selectedRam = null);
+                          _applyFilters();
                         },
                         selectedColor: theme.colorScheme.primary,
                         backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
                         labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : (isDark ? AppColors.darkText : AppColors.lightText),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: _selectedRam == null
+                              ? Colors.white
+                              : (isDark ? AppColors.darkText : AppColors.lightText),
+                          fontWeight: _selectedRam == null ? FontWeight.bold : FontWeight.normal,
                         ),
                         showCheckmark: false,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         side: BorderSide.none,
-                      );
-                    }).toList(),
+                      ),
+                      ...rams.map((ram) {
+                        final isSelected = _selectedRam == ram;
+                        return ChoiceChip(
+                          label: Text(ram, style: const TextStyle(fontSize: 12)),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() => _selectedRam = selected ? ram : null);
+                            _applyFilters();
+                          },
+                          selectedColor: theme.colorScheme.primary,
+                          backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : (isDark ? AppColors.darkText : AppColors.lightText),
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          showCheckmark: false,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          side: BorderSide.none,
+                        );
+                      }),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Text(context.tr('rom'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
@@ -161,25 +264,47 @@ class _ProductListPageState extends State<ProductListPage> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: roms.map((rom) {
-                      final isSelected = _selectedRom == rom;
-                      return ChoiceChip(
-                        label: Text(rom, style: const TextStyle(fontSize: 12)),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) setState(() => _selectedRom = rom);
+                    children: [
+                      ChoiceChip(
+                        label: Text(context.tr('brand_all'), style: const TextStyle(fontSize: 12)),
+                        selected: _selectedRom == null,
+                        onSelected: (_) {
+                          setState(() => _selectedRom = null);
+                          _applyFilters();
                         },
                         selectedColor: theme.colorScheme.primary,
                         backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
                         labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : (isDark ? AppColors.darkText : AppColors.lightText),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: _selectedRom == null
+                              ? Colors.white
+                              : (isDark ? AppColors.darkText : AppColors.lightText),
+                          fontWeight: _selectedRom == null ? FontWeight.bold : FontWeight.normal,
                         ),
                         showCheckmark: false,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         side: BorderSide.none,
-                      );
-                    }).toList(),
+                      ),
+                      ...roms.map((rom) {
+                        final isSelected = _selectedRom == rom;
+                        return ChoiceChip(
+                          label: Text(rom, style: const TextStyle(fontSize: 12)),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() => _selectedRom = selected ? rom : null);
+                            _applyFilters();
+                          },
+                          selectedColor: theme.colorScheme.primary,
+                          backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : (isDark ? AppColors.darkText : AppColors.lightText),
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          showCheckmark: false,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          side: BorderSide.none,
+                        );
+                      }),
+                    ],
                   ),
                 ],
               ),
@@ -201,6 +326,7 @@ class _ProductListPageState extends State<ProductListPage> {
     return Scaffold(
       backgroundColor: pageBg,
       body: CustomScrollView(
+        controller: _scrollController,
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
@@ -234,13 +360,15 @@ class _ProductListPageState extends State<ProductListPage> {
                   );
                 },
               ),
-              IconButton(
-                icon: Icon(Icons.notifications_none_outlined, color: theme.colorScheme.onSurface),
-                onPressed: () {
-                  Navigator.push(
+              NotificationBadgeIcon(
+                icon: Icons.notifications_none_outlined,
+                color: theme.colorScheme.onSurface,
+                onPressed: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const NotificationsPage()),
                   );
+                  if (context.mounted) reloadNotifications(context, silent: true);
                 },
               ),
               BlocBuilder<CartBloc, CartState>(
@@ -341,46 +469,28 @@ class _ProductListPageState extends State<ProductListPage> {
 
                 _buildAdvancedFilter(theme, isDark),
 
-                SizedBox(
-                  height: 44,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _brandKeys.length,
-                    itemBuilder: (context, index) {
-                      final brandKey = _brandKeys[index];
-                      final brandValue = brandKey == 'brand_all' ? 'All' : brandKey;
-                      final isSelected = _selectedBrand == brandValue;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Material(
-                          color: isSelected
-                              ? theme.colorScheme.primary
-                              : (isDark ? AppColors.darkSurface : const Color(0xFFEAE7E7)),
-                          borderRadius: BorderRadius.circular(24),
-                          elevation: isSelected ? 2 : 0,
-                          shadowColor: theme.colorScheme.primary.withValues(alpha: 0.3),
-                          child: InkWell(
-                            onTap: () => _onBrandSelected(brandKey),
-                            borderRadius: BorderRadius.circular(24),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                              child: Text(
-                                _brandLabel(brandKey),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : (isDark ? AppColors.darkTextSecondary : const Color(0xFF414753)),
-                                ),
-                              ),
-                            ),
-                          ),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < _brandKeys.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 8),
+                        Builder(
+                          builder: (context) {
+                            final brandKey = _brandKeys[i];
+                            final brandValue = brandKey == 'brand_all' ? 'All' : brandKey;
+                            return _buildBrandChip(
+                              theme: theme,
+                              isDark: isDark,
+                              brandKey: brandKey,
+                              isSelected: _selectedBrand == brandValue,
+                            );
+                          },
                         ),
-                      );
-                    },
+                      ],
+                    ],
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -469,43 +579,18 @@ class _ProductListPageState extends State<ProductListPage> {
                         },
                       ),
                     ),
-                    if (state.hasMore)
+                    if (state.isLoadingMore)
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton(
-                              onPressed: state.isLoadingMore
-                                  ? null
-                                  : () {
-                                      context
-                                          .read<ProductBloc>()
-                                          .add(LoadMoreProductsEvent());
-                                    },
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                side: BorderSide(color: theme.colorScheme.primary),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                          child: Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: theme.colorScheme.primary,
                               ),
-                              child: state.isLoadingMore
-                                  ? SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                    )
-                                  : Text(
-                                      context.tr('product_load_more'),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                    ),
                             ),
                           ),
                         ),

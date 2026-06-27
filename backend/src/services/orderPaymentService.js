@@ -18,12 +18,17 @@ async function resolvePaymentMethodId(paymentMethodKey, conn) {
     throw new Error(`Unsupported payment method: ${paymentMethodKey}`);
   }
 
+  if (resolvePaymentMethodId.cache.has(methodType)) {
+    return resolvePaymentMethodId.cache.get(methodType);
+  }
+
   const [rows] = await conn.query(
     'SELECT payment_method_id FROM payment_methods WHERE payment_method_type = ? AND status = 1 LIMIT 1',
     [methodType],
   );
 
   if (rows.length > 0) {
+    resolvePaymentMethodId.cache.set(methodType, rows[0].payment_method_id);
     return rows[0].payment_method_id;
   }
 
@@ -32,8 +37,10 @@ async function resolvePaymentMethodId(paymentMethodKey, conn) {
     'INSERT INTO payment_methods (payment_method_type, provider, status) VALUES (?, ?, 1)',
     [methodType, provider],
   );
+  resolvePaymentMethodId.cache.set(methodType, result.insertId);
   return result.insertId;
 }
+resolvePaymentMethodId.cache = new Map();
 
 async function createPaymentTransaction({
   conn,
@@ -95,6 +102,13 @@ async function markPaymentSuccess(orderId, responseMessage, conn = null) {
       [orderId],
     );
 
+    const { notifyOrderStatusChange } = require('./notificationService');
+    try {
+      await notifyOrderStatusChange(connection, orderId, 'PAID');
+    } catch (err) {
+      console.error('[notifications] payment success:', err.message);
+    }
+
     const { sendOrderReceiptEmail } = require('./orderEmailService');
     try {
       await sendOrderReceiptEmail(orderId, connection);
@@ -124,6 +138,13 @@ async function markPaymentFailed(orderId, responseMessage, conn) {
     [responseMessage, orderId],
   );
   await conn.query("UPDATE orders SET status = 'CANCELED', is_paid = 0 WHERE order_id = ?", [orderId]);
+
+  const { notifyOrderStatusChange } = require('./notificationService');
+  try {
+    await notifyOrderStatusChange(conn, orderId, 'CANCELED');
+  } catch (err) {
+    console.error('[notifications] payment failed:', err.message);
+  }
 }
 
 async function revertOrderStock(orderId, conn) {

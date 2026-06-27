@@ -1,7 +1,6 @@
 const express = require('express');
 const pool = require('../../db');
 const {
-  fetchVersionStock,
   clearCustomerCart,
   removeCartItemsByVersionIds,
 } = require('../services/cartService');
@@ -23,6 +22,7 @@ function buildOrderNote({ address, shippingMethod, paymentMethod, note, delivery
 
 // POST /api/orders — tạo đơn, gán IMEI (product_items), payment_transactions
 router.post('/api/orders', async (req, res) => {
+  const startedAt = Date.now();
   const conn = await pool.getConnection();
   try {
     const {
@@ -79,11 +79,6 @@ router.post('/api/orders', async (req, res) => {
       const unitPrice = Number(item.unitPrice ?? 0);
       orderedVersionIds.push(productVersionId);
 
-      const stock = await fetchVersionStock(productVersionId, conn);
-      if (quantity > stock) {
-        throw new Error(`Insufficient IMEI stock for version ${productVersionId}`);
-      }
-
       const [detailResult] = await conn.query(
         'INSERT INTO order_details (order_id, product_version_id, unit_price_before, unit_price_after, quantity) VALUES (?, ?, ?, ?, ?)',
         [orderId, productVersionId, unitPrice, unitPrice, quantity],
@@ -106,10 +101,12 @@ router.post('/api/orders', async (req, res) => {
         throw new Error(`Insufficient IMEI stock for version ${productVersionId}`);
       }
 
-      for (const row of availableImeis) {
+      if (availableImeis.length > 0) {
+        const imeis = availableImeis.map((row) => row.imei);
+        const placeholders = imeis.map(() => '?').join(',');
         await conn.query(
-          "UPDATE product_items SET status = 'SOLD', order_detail_id = ? WHERE imei = ?",
-          [orderDetailId, row.imei],
+          `UPDATE product_items SET status = 'SOLD', order_detail_id = ? WHERE imei IN (${placeholders})`,
+          [orderDetailId, ...imeis],
         );
       }
     }
@@ -121,23 +118,16 @@ router.post('/api/orders', async (req, res) => {
       amount: orderTotal,
     });
 
-    if (isQrPayment) {
-      // QR: chỉ xóa cart sau khi PayOS webhook xác nhận thành công.
-    } else {
+    if (!isQrPayment) {
       await removeCartItemsByVersionIds(customerId, orderedVersionIds, conn);
     }
 
     await conn.commit();
 
-    if (!isQrPayment && wantsEmailReceipt === true) {
-      try {
-        await sendOrderReceiptEmail(orderId, conn);
-      } catch (err) {
-        console.error('[orderEmail] Gửi email xác nhận đơn thất bại:', err.message);
-      }
-    }
+    const elapsed = Date.now() - startedAt;
+    console.log(`[orders] #${orderId} committed in ${elapsed}ms (customer ${customerId})`);
 
-    res.json({
+    const responseBody = {
       id: String(orderId),
       orderId,
       status: 'PENDING',
@@ -147,6 +137,28 @@ router.post('/api/orders', async (req, res) => {
       shippingCost: Number(shippingCost ?? 0),
       discount: Number(discount ?? 0),
       requiresPayOs: isQrPayment,
+    };
+
+    res.json(responseBody);
+
+    const bgCustomerId = customerId;
+    const bgWantsEmail = wantsEmailReceipt === true;
+
+    setImmediate(async () => {
+      const { notifyOrderCreated } = require('../services/notificationService');
+      try {
+        await notifyOrderCreated(pool, orderId, paymentMethod, bgCustomerId);
+      } catch (err) {
+        console.error('[notifications] order created:', err.message);
+      }
+
+      if (!isQrPayment && bgWantsEmail) {
+        try {
+          await sendOrderReceiptEmail(orderId, pool);
+        } catch (err) {
+          console.error('[orderEmail] Gửi email xác nhận đơn thất bại:', err.message);
+        }
+      }
     });
   } catch (err) {
     await conn.rollback();

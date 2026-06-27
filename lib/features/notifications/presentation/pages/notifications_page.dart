@@ -1,273 +1,229 @@
 import 'package:flutter/material.dart';
-import '../../../../core/design_system/app_colors.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:get_it/get_it.dart';
+import 'package:intl/intl.dart';
 
-class NotificationsPage extends StatelessWidget {
+import '../../../../core/design_system/app_colors.dart';
+import '../../../../core/l10n/app_localizations.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/pages/login_page.dart';
+import '../../../chat/presentation/pages/chat_hub_page.dart';
+import '../../../orders/presentation/bloc/order_bloc.dart';
+import '../../../orders/presentation/pages/order_detail_page.dart';
+import '../../../products/presentation/pages/product_detail_page.dart';
+import '../../domain/entities/app_notification.dart';
+import '../notification_helpers.dart';
+import '../bloc/notification_bloc.dart';
+
+class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
+
+  @override
+  State<NotificationsPage> createState() => _NotificationsPageState();
+}
+
+class _NotificationsPageState extends State<NotificationsPage> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _reload() => reloadNotifications(context);
+
+  int? _customerId(BuildContext context) => notificationCustomerId(context);
+
+  void _onTapNotification(BuildContext context, AppNotification item) {
+    final customerId = _customerId(context);
+    if (customerId != null && !item.isRead) {
+      context.read<NotificationBloc>().add(MarkNotificationReadEvent(item.id, customerId));
+    }
+
+    switch (item.type) {
+      case NotificationType.productNew:
+        final productId = item.productId;
+        if (productId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ProductDetailPage(productId: productId)),
+          );
+        }
+        break;
+      case NotificationType.orderStatus:
+        final orderId = item.orderId;
+        if (orderId != null && customerId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BlocProvider(
+                create: (_) => GetIt.I<OrderBloc>(),
+                child: OrderDetailPage(orderId: orderId),
+              ),
+            ),
+          );
+        }
+        break;
+      case NotificationType.chatMessage:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ChatHubPage(openStaffTab: true)),
+        );
+        break;
+    }
+  }
+
+  void _onDeleteNotification(BuildContext context, AppNotification item) {
+    final customerId = _customerId(context);
+    if (customerId == null) return;
+    HapticFeedback.mediumImpact();
+    context.read<NotificationBloc>().add(DeleteNotificationEvent(item.id, customerId));
+  }
+
+  int _unreadCount(List<AppNotification> items) => items.where((n) => !n.isRead).length;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Thông báo', style: TextStyle(fontWeight: FontWeight.w700)),
-          centerTitle: true,
-          bottom: TabBar(
-            indicatorColor: theme.colorScheme.primary,
-            indicatorWeight: 3,
-            labelColor: theme.colorScheme.primary,
-            unselectedLabelColor: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
-            tabs: const [
-              Tab(text: 'Ưu đãi'),
-              Tab(text: 'Đơn hàng'),
-            ],
-          ),
-        ),
-        body: const TabBarView(
-          children: [
-            _PromotionsTab(),
-            _OrdersTab(),
-          ],
-        ),
+    return BlocListener<AuthBloc, AuthState>(
+      listenWhen: (prev, curr) {
+        if (curr is AuthenticatedState && prev is! AuthenticatedState) return true;
+        if (curr is! AuthenticatedState && prev is AuthenticatedState) return true;
+        if (curr is AuthenticatedState && prev is AuthenticatedState) {
+          return curr.user.id != prev.user.id;
+        }
+        return false;
+      },
+      listener: (context, state) {
+        if (state is! AuthenticatedState) {
+          context.read<NotificationBloc>().add(ClearNotificationsEvent());
+        } else {
+          _reload();
+        }
+      },
+      child: BlocBuilder<NotificationBloc, NotificationState>(
+        builder: (context, state) {
+          final productItems = state.items.where((n) => n.type == NotificationType.productNew).toList();
+          final orderItems = state.items
+              .where((n) => n.type == NotificationType.orderStatus || n.type == NotificationType.chatMessage)
+              .toList();
+
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(context.tr('notifications'), style: const TextStyle(fontWeight: FontWeight.w700)),
+              centerTitle: true,
+              actions: [
+                if (!state.requiresLogin && state.items.isNotEmpty)
+                  TextButton(
+                    onPressed: () {
+                      final customerId = _customerId(context);
+                      if (customerId != null) {
+                        context.read<NotificationBloc>().add(MarkAllNotificationsReadEvent(customerId));
+                      }
+                    },
+                    child: Text(context.tr('notifications_mark_all_read')),
+                  ),
+              ],
+              bottom: TabBar(
+                controller: _tabController,
+                indicatorColor: theme.colorScheme.primary,
+                indicatorWeight: 3,
+                labelColor: theme.colorScheme.primary,
+                unselectedLabelColor: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+                tabs: [
+                  Tab(
+                    child: _TabLabel(
+                      label: context.tr('notifications_tab_products'),
+                      unreadCount: _unreadCount(productItems),
+                    ),
+                  ),
+                  Tab(
+                    child: _TabLabel(
+                      label: context.tr('notifications_tab_orders'),
+                      unreadCount: _unreadCount(orderItems),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            body: state.requiresLogin
+                ? _LoginRequired(onLogin: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                  })
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _NotificationList(
+                        items: productItems,
+                        isLoading: state.isLoading,
+                        error: state.error,
+                        emptyIcon: Icons.phone_iphone_rounded,
+                        emptyTitle: context.tr('notifications_empty_products_title'),
+                        emptySubtitle: context.tr('notifications_empty_products_desc'),
+                        showTypeChip: false,
+                        onReload: _reload,
+                        onTap: (item) => _onTapNotification(context, item),
+                        onDelete: (item) => _onDeleteNotification(context, item),
+                      ),
+                      _NotificationList(
+                        items: orderItems,
+                        isLoading: state.isLoading,
+                        error: state.error,
+                        emptyIcon: Icons.local_shipping_outlined,
+                        emptyTitle: context.tr('notifications_empty_orders_title'),
+                        emptySubtitle: context.tr('notifications_empty_orders_desc'),
+                        showTypeChip: true,
+                        onReload: _reload,
+                        onTap: (item) => _onTapNotification(context, item),
+                        onDelete: (item) => _onDeleteNotification(context, item),
+                      ),
+                    ],
+                  ),
+          );
+        },
       ),
     );
   }
 }
 
-class _PromotionsTab extends StatelessWidget {
-  const _PromotionsTab();
+class _TabLabel extends StatelessWidget {
+  final String label;
+  final int unreadCount;
+
+  const _TabLabel({required this.label, required this.unreadCount});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    if (unreadCount <= 0) return Text(label);
 
-    final promotions = [
-      {
-        'title': '🔥 Flash Sale Đêm Khuya!',
-        'subtitle': 'Giảm tới 50% cho dòng iPhone 15 Pro Max và Samsung S24 Ultra. Nhập mã NIGHT50 ngay!',
-        'time': '2 giờ trước',
-        'icon': Icons.flash_on_rounded,
-        'color': Colors.orange,
-      },
-      {
-        'title': '🎉 Ưu Đãi Khách Hàng Mới',
-        'subtitle': 'Tặng bạn voucher giảm 20% cho đơn hàng đầu tiên. Mua sắm ngay!',
-        'time': '1 ngày trước',
-        'icon': Icons.card_giftcard_rounded,
-        'color': AppColors.primary,
-      },
-      {
-        'title': '💳 Mở thẻ tín dụng hoàn tiền 2 triệu',
-        'subtitle': 'Thanh toán qua thẻ đối tác để nhận hoàn tiền lên đến 2,000,000đ.',
-        'time': '3 ngày trước',
-        'icon': Icons.credit_card_rounded,
-        'color': Colors.blue,
-      },
-    ];
-
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      itemCount: promotions.length,
-      separatorBuilder: (context, index) => Divider(color: isDark ? AppColors.darkBorder : AppColors.lightBorder, height: 1),
-      itemBuilder: (context, index) {
-        final promo = promotions[index];
-        return InkWell(
-          onTap: () {},
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: (promo['color'] as Color).withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(promo['icon'] as IconData, color: promo['color'] as Color, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        promo['title'] as String,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        promo['subtitle'] as String,
-                        style: TextStyle(
-                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        promo['time'] as String,
-                        style: TextStyle(
-                          color: isDark ? AppColors.darkTextSecondary.withValues(alpha: 0.5) : AppColors.lightTextSecondary.withValues(alpha: 0.5),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _OrdersTab extends StatelessWidget {
-  const _OrdersTab();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final currentStep = 2; // Đang giao
-
-    final statuses = [
-      {
-        'title': 'Đơn hàng đang được giao',
-        'subtitle': 'Tài xế Nguyễn Văn A (0901234567) đang trên đường giao iPhone 15 Pro Max đến bạn.',
-        'time': 'Hôm nay, 09:15',
-        'icon': Icons.local_shipping_rounded,
-        'color': Colors.blue,
-      },
-      {
-        'title': 'Đã lấy hàng',
-        'subtitle': 'Đơn vị vận chuyển đã lấy hàng thành công từ người bán.',
-        'time': 'Hôm qua, 15:20',
-        'icon': Icons.inventory_2_rounded,
-        'color': Colors.orange,
-      },
-      {
-        'title': 'Đã xác nhận',
-        'subtitle': 'Hệ thống đã xác nhận đơn hàng #VN123457 và người bán đang đóng gói.',
-        'time': '2 ngày trước, 18:00',
-        'icon': Icons.receipt_long_rounded,
-        'color': AppColors.success,
-      },
-    ];
-
-    return Column(
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
+        Text(label),
+        const SizedBox(width: 6),
         Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCard : AppColors.lightCard,
-            border: Border(bottom: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder)),
+            color: AppColors.error,
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Mã đơn: #VN123457', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(
-                    'Xem chi tiết',
-                    style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              _DeliveryProgressBar(currentStep: currentStep, isDark: isDark),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            itemCount: statuses.length,
-            itemBuilder: (context, index) {
-              final status = statuses[index];
-              final isFirst = index == 0;
-              
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Timeline vertical line and dot
-                      Column(
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            margin: const EdgeInsets.only(top: 4, bottom: 4),
-                            decoration: BoxDecoration(
-                              color: isFirst ? (status['color'] as Color) : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-                              shape: BoxShape.circle,
-                              border: isFirst
-                                  ? Border.all(color: (status['color'] as Color).withValues(alpha: 0.3), width: 3)
-                                  : null,
-                            ),
-                          ),
-                          if (index != statuses.length - 1)
-                            Expanded(
-                              child: Container(
-                                width: 2,
-                                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(width: 16),
-                      // Content
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                status['title'] as String,
-                                style: TextStyle(
-                                  fontWeight: isFirst ? FontWeight.bold : FontWeight.w600,
-                                  fontSize: 16,
-                                  color: isFirst ? (isDark ? Colors.white : Colors.black87) : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                status['subtitle'] as String,
-                                style: TextStyle(
-                                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                  height: 1.4,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                status['time'] as String,
-                                style: TextStyle(
-                                  color: isDark ? AppColors.darkTextSecondary.withValues(alpha: 0.5) : AppColors.lightTextSecondary.withValues(alpha: 0.5),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+          child: Text(
+            unreadCount > 99 ? '99+' : '$unreadCount',
+            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
           ),
         ),
       ],
@@ -275,74 +231,285 @@ class _OrdersTab extends StatelessWidget {
   }
 }
 
-class _DeliveryProgressBar extends StatelessWidget {
-  final int currentStep;
-  final bool isDark;
+class _NotificationList extends StatelessWidget {
+  final List<AppNotification> items;
+  final bool isLoading;
+  final String? error;
+  final IconData emptyIcon;
+  final String emptyTitle;
+  final String emptySubtitle;
+  final bool showTypeChip;
+  final VoidCallback onReload;
+  final void Function(AppNotification item) onTap;
+  final void Function(AppNotification item) onDelete;
 
-  const _DeliveryProgressBar({required this.currentStep, required this.isDark});
+  const _NotificationList({
+    required this.items,
+    required this.isLoading,
+    required this.error,
+    required this.emptyIcon,
+    required this.emptyTitle,
+    required this.emptySubtitle,
+    required this.showTypeChip,
+    required this.onReload,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final steps = ['Xác nhận', 'Lấy hàng', 'Đang giao', 'Hoàn tất'];
+    if (isLoading && items.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: List.generate(steps.length, (index) {
-        final isActive = index <= currentStep;
-        final isLast = index == steps.length - 1;
+    if (error != null && items.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(error!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: onReload, child: Text(context.tr('notifications_retry'))),
+            ],
+          ),
+        ),
+      );
+    }
 
-        final content = Column(
-          crossAxisAlignment: isLast ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Row(
+    if (items.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(emptyIcon, size: 64, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)),
+              const SizedBox(height: 16),
+              Text(emptyTitle, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Text(
+                emptySubtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async => onReload(),
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return _NotificationTile(
+            item: item,
+            showTypeChip: showTypeChip,
+            onTap: () => onTap(item),
+            onDelete: () => onDelete(item),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _NotificationTile extends StatelessWidget {
+  final AppNotification item;
+  final bool showTypeChip;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  const _NotificationTile({
+    required this.item,
+    required this.showTypeChip,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  String _typeLabel(BuildContext context) {
+    switch (item.type) {
+      case NotificationType.productNew:
+        return context.tr('notifications_type_product');
+      case NotificationType.orderStatus:
+        return context.tr('notifications_type_order');
+      case NotificationType.chatMessage:
+        return context.tr('notifications_type_chat');
+    }
+  }
+
+  IconData get _icon {
+    switch (item.type) {
+      case NotificationType.productNew:
+        return Icons.phone_iphone_rounded;
+      case NotificationType.orderStatus:
+        return Icons.local_shipping_outlined;
+      case NotificationType.chatMessage:
+        return Icons.support_agent_outlined;
+    }
+  }
+
+  Color _iconColor() {
+    switch (item.type) {
+      case NotificationType.productNew:
+        return AppColors.primary;
+      case NotificationType.orderStatus:
+        return Colors.orange;
+      case NotificationType.chatMessage:
+        return Colors.blue;
+    }
+  }
+
+  String _formatTime(DateTime? dt) {
+    if (dt == null) return '';
+    final local = dt.toLocal();
+    final now = DateTime.now();
+    if (now.difference(local).inDays == 0) {
+      return DateFormat('HH:mm').format(local);
+    }
+    if (now.difference(local).inDays < 7) {
+      return DateFormat('EEE, HH:mm', 'vi').format(local);
+    }
+    return DateFormat('dd/MM/yyyy HH:mm').format(local);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final color = _iconColor();
+
+    return Slidable(
+      key: ValueKey(item.id),
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.22,
+        children: [
+          SlidableAction(
+            onPressed: (_) => onDelete(),
+            backgroundColor: AppColors.error,
+            foregroundColor: Colors.white,
+            icon: Icons.delete_outline_rounded,
+            label: context.tr('notifications_delete'),
+          ),
+        ],
+      ),
+      child: Material(
+        color: item.isRead
+            ? null
+            : (isDark ? AppColors.primary.withValues(alpha: 0.08) : AppColors.primary.withValues(alpha: 0.06)),
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 12,
-                  height: 12,
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: isActive ? AppColors.primary : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    color: color.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
-                    border: isActive
-                        ? Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 4)
-                        : null,
                   ),
+                  child: Icon(_icon, color: color, size: 22),
                 ),
-                if (!isLast)
-                  Expanded(
-                    child: Container(
-                      height: 2,
-                      color: isActive && index < currentStep
-                          ? AppColors.primary
-                          : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (showTypeChip)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                _typeLabel(context),
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+                              ),
+                            ),
+                        if (showTypeChip) const Spacer(),
+                        if (!item.isRead)
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                          ),
+                      ],
                     ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Transform.translate(
-              offset: isLast ? const Offset(8, 0) : const Offset(-4, 0),
-              child: Text(
-                steps[index],
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                  color: isActive
-                      ? (isDark ? Colors.white : Colors.black87)
-                      : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                    if (showTypeChip) const SizedBox(height: 6),
+                    Text(
+                      item.title,
+                      style: TextStyle(
+                        fontWeight: item.isRead ? FontWeight.w600 : FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.body,
+                      style: TextStyle(
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                    if (item.createdAt != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        _formatTime(item.createdAt),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary).withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    ),
+    );
+  }
+}
+
+class _LoginRequired extends StatelessWidget {
+  final VoidCallback onLogin;
+
+  const _LoginRequired({required this.onLogin});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.notifications_active_outlined, size: 56, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)),
+            const SizedBox(height: 16),
+            Text(
+              context.tr('notifications_login_required'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
+            const SizedBox(height: 24),
+            FilledButton(onPressed: onLogin, child: Text(context.tr('login_btn'))),
           ],
-        );
-
-        if (isLast) {
-          return content;
-        }
-
-        return Expanded(
-          child: content,
-        );
-      }),
+        ),
+      ),
     );
   }
 }

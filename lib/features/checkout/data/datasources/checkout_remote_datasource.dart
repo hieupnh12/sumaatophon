@@ -1,5 +1,4 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../domain/entities/create_order_result.dart';
 
@@ -74,24 +73,16 @@ abstract class CheckoutRemoteDataSource {
 }
 
 class CheckoutRemoteDataSourceImpl implements CheckoutRemoteDataSource {
-  final http.Client client;
+  final ApiClient apiClient;
 
-  CheckoutRemoteDataSourceImpl({required this.client});
+  CheckoutRemoteDataSourceImpl({required this.apiClient});
 
   @override
   Future<CreateOrderResult> createOrder(CreateOrderPayload payload) async {
-    final response = await client.post(
-      Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.orders}'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(payload.toJson()),
+    final body = await apiClient.post(
+      ApiEndpoints.orders,
+      body: payload.toJson(),
     );
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return CreateOrderResult.fromJson(json.decode(response.body) as Map<String, dynamic>);
-    }
-
-    final body = json.decode(response.body);
-    final message = body is Map<String, dynamic> ? body['message'] as String? : null;
-    throw Exception(message ?? 'Order create failed');
+    return CreateOrderResult.fromJson(body as Map<String, dynamic>);
   }
 }

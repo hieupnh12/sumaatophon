@@ -5,13 +5,17 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../chatbot/presentation/pages/chatbot_page.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../../../../core/network/api_config.dart';
+import '../../data/datasources/chat_remote_datasource.dart';
 import '../bloc/chat_bloc.dart';
 import 'admin_inbox_page.dart';
 import 'chat_conversation_page.dart';
 
 /// Concierge — 2 tab: Bot tư vấn | Chat nhân viên realtime.
 class ChatHubPage extends StatefulWidget {
-  const ChatHubPage({super.key});
+  final bool openStaffTab;
+
+  const ChatHubPage({super.key, this.openStaffTab = false});
 
   @override
   State<ChatHubPage> createState() => _ChatHubPageState();
@@ -23,22 +27,28 @@ class _ChatHubPageState extends State<ChatHubPage> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.openStaffTab ? 1 : 0);
     _tabController.addListener(_onTabChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initChatIfNeeded());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncChatWithAuth());
   }
 
-  void _initChatIfNeeded() {
+  void _syncChatWithAuth() {
     if (!mounted) return;
     final authState = context.read<AuthBloc>().state;
+    final chatBloc = context.read<ChatBloc>();
     if (authState is AuthenticatedState && authState.user.canUseStaffChat) {
-      context.read<ChatBloc>().add(InitChatEvent(authState.user));
+      chatBloc.add(InitChatEvent(authState.user));
+    } else if (authState is! AuthenticatedState) {
+      chatBloc.add(const DisconnectChatEvent());
     }
   }
 
   void _onTabChanged() {
     if (!_tabController.indexIsChanging) {
       setState(() {});
+      if (_tabController.index == 1) {
+        _syncChatWithAuth();
+      }
     }
   }
 
@@ -60,42 +70,41 @@ class _ChatHubPageState extends State<ChatHubPage> with SingleTickerProviderStat
         }
         return false;
       },
-      listener: (context, authState) {
-        final chatBloc = context.read<ChatBloc>();
-        if (authState is AuthenticatedState && authState.user.canUseStaffChat) {
-          chatBloc.add(InitChatEvent(authState.user));
-        } else {
-          chatBloc.add(const DisconnectChatEvent());
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(context.tr('chat_support')),
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: [
-              Tab(
-                icon: const Icon(Icons.smart_toy_outlined),
-                text: context.tr('chat_bot_tab'),
+      listener: (context, authState) => _syncChatWithAuth(),
+      child: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, authState) {
+          final sessionKey = authState is AuthenticatedState
+              ? authState.user.id
+              : 'guest';
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(context.tr('chat_support')),
+              bottom: TabBar(
+                controller: _tabController,
+                tabs: [
+                  Tab(
+                    icon: const Icon(Icons.smart_toy_outlined),
+                    text: context.tr('chat_bot_tab'),
+                  ),
+                  Tab(
+                    icon: const Icon(Icons.support_agent_outlined),
+                    text: context.tr('chat_staff_tab'),
+                  ),
+                ],
               ),
-              Tab(
-                icon: const Icon(Icons.support_agent_outlined),
-                text: context.tr('chat_staff_tab'),
-              ),
-            ],
-          ),
-        ),
-        // IndexedStack giữ state cả 2 tab (TabBarView hay dispose tab ẩn → mất tin bot).
-        body: IndexedStack(
-          index: _tabController.index,
-          children: [
-            ChatbotPage(
-              key: const PageStorageKey('chatbot_tab'),
-              onTransferToStaff: () => _tabController.animateTo(1),
             ),
-            const _StaffChatTab(),
-          ],
-        ),
+            body: IndexedStack(
+              index: _tabController.index,
+              children: [
+                ChatbotPage(
+                  key: ValueKey('chatbot_$sessionKey'),
+                  onTransferToStaff: () => _tabController.animateTo(1),
+                ),
+                const _StaffChatTab(),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -150,13 +159,14 @@ class _StaffChatTab extends StatelessWidget {
             }
 
             if (state.error != null && state.activeThread == null && !state.showInbox) {
+              final errorText = _formatChatError(context, state.error!);
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(state.error!, textAlign: TextAlign.center),
+                      Text(errorText, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: () {
@@ -179,5 +189,32 @@ class _StaffChatTab extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _formatChatError(BuildContext context, Object raw) {
+    final text = raw.toString();
+    if (raw is ChatSocketException) {
+      switch (raw.code) {
+        case ChatSocketErrorCode.timeout:
+        case ChatSocketErrorCode.ackTimeout:
+        case ChatSocketErrorCode.notConnected:
+          return '${context.tr('chat_error_socket_timeout')}\n\n'
+              '${context.tr('chat_error_socket_debug_hint')}';
+        case ChatSocketErrorCode.badHandshake:
+          final isProduction = ApiConfig.baseUrl.startsWith('https://');
+          return '${context.tr('chat_error_socket_handshake')}\n'
+              '${raw.socketUrl ?? ApiConfig.baseUrl}\n\n'
+              '${isProduction ? context.tr('chat_error_socket_production_hint') : context.tr('chat_error_socket_debug_hint')}';
+      }
+    }
+    if (text.contains('TimeoutException') || text.contains('Future not completed')) {
+      return '${context.tr('chat_error_socket_timeout')}\n\n'
+          '${context.tr('chat_error_socket_debug_hint')}';
+    }
+    if (text.contains('404') || text.contains('Cannot GET /chat')) {
+      return '${context.tr('chat_error_socket_handshake')}\n\n'
+          '${context.tr('chat_error_socket_production_hint')}';
+    }
+    return text;
   }
 }

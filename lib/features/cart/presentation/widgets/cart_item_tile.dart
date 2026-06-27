@@ -5,6 +5,9 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 import '../../../../../core/design_system/app_colors.dart';
 import '../../../../../core/l10n/app_localizations.dart';
+import '../../../../../main.dart';
+import '../../../products/presentation/bloc/product_bloc.dart';
+import '../../../products/presentation/pages/product_detail_page.dart';
 import '../../domain/entities/cart_item.dart';
 import '../bloc/cart_bloc.dart';
 
@@ -18,6 +21,21 @@ class CartItemTile extends StatelessWidget {
     required this.cartItem,
     required this.isSelected,
   });
+
+  void _openProductDetail(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BlocProvider(
+          create: (_) => sl<ProductBloc>(),
+          child: ProductDetailPage(
+            productId: cartItem.product.id,
+            heroImageUrl: cartItem.product.imageUrl,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,12 +95,15 @@ class CartItemTile extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 ),
               ),
-              SizedBox(
-                width: 72,
-                height: 88,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(product.imageUrl, fit: BoxFit.cover),
+              GestureDetector(
+                onTap: () => _openProductDetail(context),
+                child: SizedBox(
+                  width: 72,
+                  height: 88,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(product.imageUrl, fit: BoxFit.cover),
+                  ),
                 ),
               ),
             const SizedBox(width: 12),
@@ -90,53 +111,62 @@ class CartItemTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      height: 1.3,
+                  GestureDetector(
+                    onTap: () => _openProductDetail(context),
+                    behavior: HitTestBehavior.opaque,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          version.displayLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          ),
+                        ),
+                        if (version.stockQuantity > 0) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            context.tr('cart_version_stock').replaceAll('{count}', '${version.stockQuantity}'),
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 6),
+                        Text(
+                          currencyFormatter.format(cartItem.unitPrice),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.error,
+                          ),
+                        ),
+                        if (product.hasDiscount) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            currencyFormatter.format(product.originalPrice),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                              decoration: TextDecoration.lineThrough,
+                              decorationColor:
+                                  isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    version.displayLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                    ),
-                  ),
-                  if (version.stockQuantity > 0) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      context.tr('cart_version_stock').replaceAll('{count}', '${version.stockQuantity}'),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  Text(
-                    currencyFormatter.format(cartItem.unitPrice),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.error,
-                    ),
-                  ),
-                  if (product.hasDiscount) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      currencyFormatter.format(product.originalPrice),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                        decoration: TextDecoration.lineThrough,
-                        decorationColor:
-                            isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerRight,

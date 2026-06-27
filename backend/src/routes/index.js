@@ -6,6 +6,7 @@ const cartRouter = require('./cart');
 const ordersRouter = require('./orders');
 const paymentsRouter = require('./payments');
 const healthRouter = require('./health');
+const notificationsRouter = require('./notifications');
 
 function registerRoutes(app) {
   app.use(productsRouter);
@@ -15,6 +16,7 @@ function registerRoutes(app) {
   app.use(cartRouter);
   app.use(ordersRouter);
   app.use(paymentsRouter);
+  app.use(notificationsRouter);
   app.use(healthRouter);
 }
 

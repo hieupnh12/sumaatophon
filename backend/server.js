@@ -20,6 +20,7 @@ setupChatbot(app, pool);
 
 server.listen(port, () => {
   console.log(`PhoneShop API listening on http://localhost:${port}`);
+  console.log('Push notifications: FCM enabled (firebase-admin/messaging)');
   console.log('Chat: REST /chat/* + Socket.IO enabled');
   console.log('Chatbot: REST /chatbot/* enabled');
 }).on('error', (err) => {
