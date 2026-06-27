@@ -1,4 +1,4 @@
-const pool = require('../db');
+const pool = require('../../db');
 
 function formatCurrency(amount) {
   if (!amount) return '0đ';
@@ -153,8 +153,7 @@ const getOrderDetails = async (req, res) => {
     `, [id]);
 
     const formattedId = `#ORD${String(order.order_id).padStart(6, '0')}`;
-    
-    // Giả lập logic tính timeline
+
     const timeline = [];
     timeline.push({ title: 'Đặt hàng thành công', date: order.create_datetime, isDone: true });
     timeline.push({ title: 'Sẵn sàng', date: null, isDone: order.status !== 'PENDING' });
@@ -175,15 +174,14 @@ const getOrderDetails = async (req, res) => {
       },
       paymentInfo: {
         totalItems: details.length,
-        subtotal: formatCurrency(order.total_amount), 
-        discount: '-0đ', 
+        subtotal: formatCurrency(order.total_amount),
+        discount: '-0đ',
         shippingFee: 'Miễn phí',
         totalVat: formatCurrency(order.total_amount),
         amountPaid: order.is_paid === 1 ? formatCurrency(order.total_amount) : '0đ',
         amountRemaining: order.is_paid === 1 ? '0đ' : formatCurrency(order.total_amount),
       },
       items: details.map(d => {
-        // Tự động cộng số tháng bảo hành vào ngày hiện tại (mô phỏng)
         const wDate = new Date();
         wDate.setMonth(wDate.getMonth() + (Number(d.warranty_period) || 12));
 
@@ -207,5 +205,5 @@ const getOrderDetails = async (req, res) => {
 
 module.exports = {
   getOrders,
-  getOrderDetails
+  getOrderDetails,
 };

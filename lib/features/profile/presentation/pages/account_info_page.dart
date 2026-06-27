@@ -33,6 +33,17 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
            _gender != _initialGender;
   }
 
+  String _genderLabel(BuildContext context) {
+    switch (_gender) {
+      case 'Male':
+        return context.tr('gender_male');
+      case 'Female':
+        return context.tr('gender_female');
+      default:
+        return context.tr('gender_other');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -162,7 +173,10 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
             );
           } else if (state is AuthenticatedState) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Lưu thông tin thành công'), backgroundColor: AppColors.success),
+              SnackBar(
+                content: Text(context.tr('account_info_save_success')),
+                backgroundColor: AppColors.success,
+              ),
             );
             setState(() {
               _isEditing = false;
@@ -186,9 +200,9 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                 if (!_isEditing)
                   TextButton(
                     onPressed: () => setState(() => _isEditing = true),
-                    child: const Text(
-                      'Sửa',
-                      style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 16),
+                    child: Text(
+                      context.tr('account_info_edit'),
+                      style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                   )
                 else
@@ -197,7 +211,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                     child: isLoading 
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                         : Text(
-                            'Lưu',
+                            context.tr('account_info_save_btn'),
                             style: TextStyle(
                               color: _hasChanges ? AppColors.primary : Colors.grey, 
                               fontWeight: FontWeight.bold, 
@@ -217,9 +231,9 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Thông tin tài khoản',
-                          style: TextStyle(
+                        Text(
+                          context.tr('profile_account_info'),
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: Colors.blueGrey,
@@ -241,7 +255,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                           padding: const EdgeInsets.all(16),
                           child: Form(
                             key: _formKey,
-                            child: _isEditing ? _buildEditForm(isDark) : _buildViewMode(isDark),
+                            child: _isEditing ? _buildEditForm(context, isDark) : _buildViewMode(context, isDark),
                           ),
                         ),
                         const SizedBox(height: 32),
@@ -339,49 +353,49 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     );
   }
 
-  Widget _buildViewMode(bool isDark) {
+  Widget _buildViewMode(BuildContext context, bool isDark) {
     return Column(
       children: [
-        _buildViewRow('Họ và tên', _nameController.text, isDark),
+        _buildViewRow(context.tr('address_name_label'), _nameController.text, isDark),
         _buildDivider(),
-        _buildViewRow('Email', _emailController.text.isNotEmpty ? _emailController.text : '-', isDark),
+        _buildViewRow(context.tr('account_info_email'), _emailController.text.isNotEmpty ? _emailController.text : '-', isDark),
         _buildDivider(),
-        _buildViewRow('Số điện thoại', _phoneController.text, isDark),
+        _buildViewRow(context.tr('account_info_phone'), _phoneController.text, isDark),
         _buildDivider(),
-        _buildViewRow('Ngày sinh', _dobController.text.isNotEmpty ? _dobController.text : '-', isDark),
+        _buildViewRow(context.tr('account_info_dob'), _dobController.text.isNotEmpty ? _dobController.text : '-', isDark),
         _buildDivider(),
-        _buildViewRow('Giới tính', _gender == 'Male' ? 'Nam' : (_gender == 'Female' ? 'Nữ' : 'Khác'), isDark, isLast: true),
+        _buildViewRow(context.tr('account_info_gender'), _genderLabel(context), isDark, isLast: true),
       ],
     );
   }
 
-  Widget _buildEditForm(bool isDark) {
+  Widget _buildEditForm(BuildContext context, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildFieldLabel('Họ và tên'),
+        _buildFieldLabel(context.tr('address_name_label')),
         const SizedBox(height: 8),
-        _buildTextField(_nameController, isDark, hint: 'Nhập họ và tên'),
+        _buildTextField(context, _nameController, isDark, hint: context.tr('account_info_name_hint')),
         const SizedBox(height: 16),
-        _buildFieldLabel('Email'),
+        _buildFieldLabel(context.tr('account_info_email')),
         const SizedBox(height: 8),
-        _buildTextField(_emailController, isDark, hint: 'Nhập Email', keyboardType: TextInputType.emailAddress),
+        _buildTextField(context, _emailController, isDark, hint: context.tr('account_info_email_hint'), keyboardType: TextInputType.emailAddress),
         const SizedBox(height: 16),
-        _buildFieldLabel('Số điện thoại'),
+        _buildFieldLabel(context.tr('account_info_phone')),
         const SizedBox(height: 8),
-        _buildTextField(_phoneController, isDark, readOnly: true, prefixIcon: Icons.phone_outlined, fillColor: isDark ? AppColors.darkBackground : const Color(0xFFF5F6F8)),
+        _buildTextField(context, _phoneController, isDark, readOnly: true, prefixIcon: Icons.phone_outlined, fillColor: isDark ? AppColors.darkBackground : const Color(0xFFF5F6F8)),
         const SizedBox(height: 16),
-        _buildFieldLabel('Ngày sinh'),
+        _buildFieldLabel(context.tr('account_info_dob')),
         const SizedBox(height: 8),
-        _buildTextField(_dobController, isDark, readOnly: true, suffixIcon: Icons.calendar_today_outlined, onTap: () => _selectDate(context)),
+        _buildTextField(context, _dobController, isDark, readOnly: true, suffixIcon: Icons.calendar_today_outlined, onTap: () => _selectDate(context)),
         const SizedBox(height: 16),
-        _buildFieldLabel('Giới tính'),
+        _buildFieldLabel(context.tr('account_info_gender')),
         const SizedBox(height: 8),
         Row(
           children: [
-            _buildRadio('Male', 'Nam'),
+            _buildRadio('Male', context.tr('gender_male')),
             const SizedBox(width: 24),
-            _buildRadio('Female', 'Nữ'),
+            _buildRadio('Female', context.tr('gender_female')),
           ],
         ),
       ],
@@ -442,6 +456,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   }
 
   Widget _buildTextField(
+    BuildContext context,
     TextEditingController controller, 
     bool isDark, 
     {
@@ -487,7 +502,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       ),
       validator: (value) {
         if (!readOnly && (value == null || value.isEmpty)) {
-          return 'Không được để trống';
+          return context.tr('account_info_required');
         }
         return null;
       },

@@ -16,6 +16,23 @@ class OrderDetailPage extends StatefulWidget {
 }
 
 class _OrderDetailPageState extends State<OrderDetailPage> {
+  String _statusLabel(BuildContext context, String status) {
+    switch (status) {
+      case 'pending':
+        return context.tr('order_status_pending');
+      case 'shipping':
+        return context.tr('order_status_shipping');
+      case 'completed':
+        return context.tr('order_status_completed');
+      case 'cancelled':
+        return context.tr('order_status_cancelled');
+      case 'return':
+        return context.tr('order_status_return');
+      default:
+        return status;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -124,7 +141,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                   children: [
                     RichText(
                       text: TextSpan(
-                        text: 'Đơn hàng: ',
+                        text: '${context.tr('order_label')} ',
                         style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, fontSize: 13),
                         children: [
                           TextSpan(
@@ -157,7 +174,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  detail.statusText,
+                  _statusLabel(context, detail.status),
                   style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
                 ),
               ),
