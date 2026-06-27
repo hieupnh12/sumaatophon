@@ -341,7 +341,7 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
                       left: 16,
                       child: IconButton(
                         icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : Colors.black),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.maybePop(context),
                       ),
                     ),
 

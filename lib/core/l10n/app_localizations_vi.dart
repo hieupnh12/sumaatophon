@@ -44,12 +44,14 @@ const Map<String, String> viLocalizations = {
 
   // Home / Product List
   'search_hint': 'Tìm kiếm điện thoại, hãng...',
+  'search_trends_title': '🔥 Xu hướng tìm kiếm',
   'price_range': 'Mức giá',
   'million': 'Tr',
   'ram': 'Dung lượng RAM',
   'rom': 'Bộ nhớ trong (ROM)',
   'not_found_title': 'Không tìm thấy sản phẩm',
   'not_found_desc': 'Thử tìm kiếm với một từ khóa khác nhé.',
+  'product_load_more': 'Xem thêm',
   'home': 'Trang chủ',
   'explore': 'Khám phá',
   'brand_all': 'Tất cả',

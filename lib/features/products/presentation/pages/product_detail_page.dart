@@ -33,6 +33,7 @@ class ProductDetailPage extends StatefulWidget {
 class _ProductDetailPageState extends State<ProductDetailPage> {
   String _selectedColor = '';
   String _selectedRamRom = '';
+  String? _selectionInitializedForProductId;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _specsKey = GlobalKey();
 
@@ -160,44 +161,42 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
-  void _ensureSelection(Product product) {
+  void _initializeSelectionIfNeeded(Product product) {
+    if (_selectionInitializedForProductId == product.id) return;
+    _selectionInitializedForProductId = product.id;
+    _selectedColor = '';
+    _selectedRamRom = '';
+    _applyDefaultSelection(product);
+  }
+
+  void _applyDefaultSelection(Product product) {
     final availableColors = product.distinctColors;
 
     if (product.versions.isNotEmpty) {
       final inStockVersion = product.firstInStockVersion;
-      final currentInStock = product.isVersionInStock(
-        color: _selectedColor,
-        ramRom: _selectedRamRom,
-      );
 
-      if (!currentInStock) {
+      if (_selectedColor.isEmpty && availableColors.isNotEmpty) {
         if (inStockVersion != null) {
           _selectedColor = inStockVersion.color;
           _selectedRamRom = inStockVersion.ramRom;
-        } else if (product.versions.isNotEmpty) {
-          _selectedColor = product.versions.first.color;
-          _selectedRamRom = product.versions.first.ramRom;
+        } else {
+          _selectedColor = availableColors.first;
+          final options = product.ramRomOptionsForColor(_selectedColor);
+          _selectedRamRom = options.isNotEmpty ? options.first : '';
         }
       }
 
-      if (_selectedColor.isEmpty && availableColors.isNotEmpty) {
-        final firstAvailableColor = availableColors.firstWhere(
-          (color) => !product.isColorFullyOutOfStock(color),
-          orElse: () => availableColors.first,
-        );
-        _selectedColor = firstAvailableColor;
-      }
-
-      final ramRomOptions = product.ramRomOptionsForColor(_selectedColor);
-      if (_selectedRamRom.isEmpty && ramRomOptions.isNotEmpty) {
-        final firstInStockRamRom = ramRomOptions.firstWhere(
-          (option) => product.isVersionInStock(
-            color: _selectedColor,
-            ramRom: option,
-          ),
-          orElse: () => ramRomOptions.first,
-        );
-        _selectedRamRom = firstInStockRamRom;
+      if (_selectedColor.isNotEmpty && _selectedRamRom.isEmpty) {
+        final ramRomOptions = product.ramRomOptionsForColor(_selectedColor);
+        if (ramRomOptions.isNotEmpty) {
+          _selectedRamRom = ramRomOptions.firstWhere(
+            (option) => product.isVersionInStock(
+              color: _selectedColor,
+              ramRom: option,
+            ),
+            orElse: () => ramRomOptions.first,
+          );
+        }
       }
       return;
     }
@@ -207,17 +206,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     }
     if (_selectedRamRom.isEmpty && product.ramRomOptions.isNotEmpty) {
       _selectedRamRom = product.ramRomOptions.first;
-    }
-
-    final matched = product.findVersion(
-      color: _selectedColor,
-      ramRom: _selectedRamRom,
-    );
-    if (matched == null) {
-      final colorVersion = product.findVersionForColor(_selectedColor);
-      if (colorVersion != null && colorVersion.ramRom.isNotEmpty) {
-        _selectedRamRom = colorVersion.ramRom;
-      }
     }
   }
 
@@ -246,11 +234,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
-    _ensureSelection(product);
+    _initializeSelectionIfNeeded(product);
     final availableColors = product.distinctColors;
-    final ramRomOptions = product.versions.isNotEmpty
-        ? product.ramRomOptionsForColor(_selectedColor)
-        : product.ramRomOptions;
+    final ramRomOptions = product.ramRomOptions;
 
     final selectedVersion = _selectedVersion(product);
     final canPurchase = selectedVersion.inStock;
@@ -455,61 +441,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      if (availableColors.isNotEmpty) ...[
-                        Text(
-                          context.tr('color'),
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                        ),
-                        const SizedBox(height: 12),
-                        ...availableColors.map((colorName) {
-                          final isSelected = _selectedColor == colorName;
-                          final isOutOfStock = product.isColorFullyOutOfStock(colorName);
-                          final colorVersion = product.findVersionForColor(colorName);
-                          final colorRamRom = colorVersion?.ramRom ?? _selectedRamRom;
-                          final colorImage = product.thumbnailForColor(
-                            color: colorName,
-                            ramRom: colorRamRom,
-                          );
-                          final colorPrice = product.priceForVersion(
-                            color: colorName,
-                            ramRom: colorRamRom,
-                          );
-                          return ProductColorOptionTile(
-                            colorName: colorName,
-                            imageUrl: colorImage,
-                            priceLabel: currencyFormatter.format(colorPrice),
-                            isSelected: isSelected,
-                            isDark: isDark,
-                            enabled: !isOutOfStock,
-                            statusLabel: isOutOfStock
-                                ? context.tr('product_version_out_of_stock')
-                                : null,
-                            onTap: () {
-                              if (isOutOfStock) return;
-                              HapticFeedback.selectionClick();
-                              setState(() {
-                                _selectedColor = colorName;
-                                final options =
-                                    product.ramRomOptionsForColor(colorName);
-                                if (options.isNotEmpty) {
-                                  final firstInStock = options.firstWhere(
-                                    (option) => product.isVersionInStock(
-                                      color: colorName,
-                                      ramRom: option,
-                                    ),
-                                    orElse: () => options.first,
-                                  );
-                                  _selectedRamRom = firstInStock;
-                                } else if (colorVersion != null &&
-                                    colorVersion.ramRom.isNotEmpty) {
-                                  _selectedRamRom = colorVersion.ramRom;
-                                }
-                              });
-                            },
-                          );
-                        }),
-                        const SizedBox(height: 14),
-                      ],
                       if (ramRomOptions.isNotEmpty) ...[
                         Text(
                           context.tr('storage'),
@@ -520,7 +451,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           spacing: 12,
                           runSpacing: 12,
                           children: ramRomOptions.map((option) {
-                            final isSelected = _selectedRamRom == option;
+                            final isSelected = Product.normalizeRamRom(_selectedRamRom) ==
+                                Product.normalizeRamRom(option);
                             final isOutOfStock = !product.isVersionInStock(
                               color: _selectedColor,
                               ramRom: option,
@@ -583,6 +515,84 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                               ),
                             );
                           }).toList(),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      if (availableColors.isNotEmpty) ...[
+                        Text(
+                          context.tr('color'),
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                        const SizedBox(height: 12),
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: availableColors.length,
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            mainAxisExtent: 72,
+                          ),
+                          itemBuilder: (context, index) {
+                            final colorName = availableColors[index];
+                            final isSelected = _selectedColor == colorName;
+                            final versionOption = _selectedRamRom.isNotEmpty
+                                ? product.findVersion(
+                                    color: colorName,
+                                    ramRom: _selectedRamRom,
+                                  )
+                                : product.findVersionForColor(colorName);
+                            final isOutOfStock =
+                                versionOption == null || !versionOption.inStock;
+                            final ramRomForDisplay = _selectedRamRom.isNotEmpty
+                                ? _selectedRamRom
+                                : (versionOption?.ramRom ?? '');
+                            final colorImage = product.thumbnailForColor(
+                              color: colorName,
+                              ramRom: ramRomForDisplay,
+                            );
+                            final colorPrice =
+                                versionOption?.price ?? product.price;
+                            return ProductColorOptionTile(
+                              key: ValueKey('${colorName}_$_selectedRamRom'),
+                              colorName: colorName,
+                              imageUrl: colorImage,
+                              priceLabel: currencyFormatter.format(colorPrice),
+                              isSelected: isSelected,
+                              isDark: isDark,
+                              enabled: !isOutOfStock,
+                              statusLabel: isOutOfStock
+                                  ? context.tr('product_version_out_of_stock')
+                                  : null,
+                              onTap: () {
+                                if (isOutOfStock) return;
+                                HapticFeedback.selectionClick();
+                                setState(() {
+                                  _selectedColor = colorName;
+                                  final options =
+                                      product.ramRomOptionsForColor(colorName);
+                                  if (_selectedRamRom.isNotEmpty &&
+                                      options.contains(_selectedRamRom)) {
+                                    return;
+                                  }
+                                  if (options.isNotEmpty) {
+                                    final firstInStock = options.firstWhere(
+                                      (option) => product.isVersionInStock(
+                                        color: colorName,
+                                        ramRom: option,
+                                      ),
+                                      orElse: () => options.first,
+                                    );
+                                    _selectedRamRom = firstInStock;
+                                  } else if (versionOption != null &&
+                                      versionOption.ramRom.isNotEmpty) {
+                                    _selectedRamRom = versionOption.ramRom;
+                                  }
+                                });
+                              },
+                            );
+                          },
                         ),
                         const SizedBox(height: 32),
                       ],
