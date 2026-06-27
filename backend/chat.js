@@ -125,8 +125,8 @@ async function getOrCreateThreadForCustomer(pool, customerId) {
         customer.customer_id,
         idKey,
         customer.full_name ?? 'Khách hàng',
-        customer.email,
-        customer.phone_number,
+        customer.email ?? '',
+        customer.phone_number ?? null,
         existing[0].id,
       ],
     );
@@ -143,8 +143,8 @@ async function getOrCreateThreadForCustomer(pool, customerId) {
       customer.customer_id,
       idKey,
       customer.full_name ?? 'Khách hàng',
-      customer.email,
-      customer.phone_number,
+      customer.email ?? '',
+      customer.phone_number ?? null,
     ],
   );
 

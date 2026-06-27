@@ -50,6 +50,26 @@ class ApiConfig {
       return;
     }
 
+    // Emulator/simulator: luôn dùng backend local khi debug (Debug.isDebuggerConnected hay false).
+    if (!kIsWeb) {
+      if (Platform.isAndroid) {
+        final isEmulator = await _invokeBool('isEmulator');
+        if (isEmulator) {
+          _baseUrl = 'http://10.0.2.2:3000';
+          _log('android emulator → local');
+          return;
+        }
+      }
+      if (Platform.isIOS) {
+        final isSimulator = await _invokeBool('isSimulator');
+        if (isSimulator) {
+          _baseUrl = 'http://127.0.0.1:3000';
+          _log('ios simulator → local');
+          return;
+        }
+      }
+    }
+
     final debuggerAttached = await _isDebuggerAttached();
     if (debuggerAttached) {
       _baseUrl = await _resolveLocalBaseUrl();
