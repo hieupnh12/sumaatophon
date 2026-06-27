@@ -11,7 +11,9 @@ import 'chat_conversation_page.dart';
 
 /// Concierge — 2 tab: Bot tư vấn | Chat nhân viên realtime.
 class ChatHubPage extends StatefulWidget {
-  const ChatHubPage({super.key});
+  final bool openStaffTab;
+
+  const ChatHubPage({super.key, this.openStaffTab = false});
 
   @override
   State<ChatHubPage> createState() => _ChatHubPageState();
@@ -23,7 +25,7 @@ class _ChatHubPageState extends State<ChatHubPage> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.openStaffTab ? 1 : 0);
     _tabController.addListener(_onTabChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncChatWithAuth());
   }

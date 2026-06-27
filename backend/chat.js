@@ -362,6 +362,26 @@ function setupChat(app, io, pool) {
           imageUrl: payload?.imageUrl ?? null,
         });
 
+        if (isSupportStaff(user)) {
+          try {
+            const [threadRows] = await pool.query(
+              'SELECT customer_id FROM chat_threads WHERE id = ?',
+              [threadId],
+            );
+            if (threadRows[0]?.customer_id) {
+              const { notifyStaffChatReply } = require('./src/services/notificationService');
+              await notifyStaffChatReply(pool, {
+                threadId,
+                customerId: threadRows[0].customer_id,
+                messageText: text,
+                staffName: user.userName,
+              });
+            }
+          } catch (notifyErr) {
+            console.error('[notifications] staff chat reply:', notifyErr.message);
+          }
+        }
+
         io.to(`thread:${threadId}`).emit('new_message', message);
 
         const threads = await listThreadsForAdmin(pool);

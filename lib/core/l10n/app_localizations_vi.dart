@@ -219,6 +219,7 @@ const Map<String, String> viLocalizations = {
   'checkout_payment_zalopay': 'ZaloPay',
   'checkout_payment_card': 'Thẻ tín dụng/Ghi nợ',
   'checkout_submit_error': 'Thanh toán thất bại. Vui lòng thử lại.',
+  'checkout_connection_error': 'Không kết nối được server. Chạy backend (npm run restart) và thử lại.',
   'checkout_payment_cancelled': 'Bạn đã hủy thanh toán. Đơn hàng chưa được thanh toán.',
   'checkout_payos_pending': 'Chưa nhận được xác nhận thanh toán. Vui lòng kiểm tra lại sau.',
   'checkout_payos_webview_title': 'Thanh toán PayOS',

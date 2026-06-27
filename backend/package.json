@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "restart": "powershell -ExecutionPolicy Bypass -File restart-backend.ps1",
     "test:db": "node test-db.js"
   },
   "dependencies": {

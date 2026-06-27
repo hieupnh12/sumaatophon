@@ -217,6 +217,10 @@ class ClearCheckoutErrorEvent extends CheckoutEvent {}
 
 class ClearCheckoutSuccessEvent extends CheckoutEvent {}
 
+class ClearCheckoutProcessingEvent extends CheckoutEvent {
+  const ClearCheckoutProcessingEvent();
+}
+
 class SubmitOrderEvent extends CheckoutEvent {
   final String customerId;
   final List<CheckoutOrderItemPayload> items;
@@ -511,6 +515,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     on<ContinueToPaymentEvent>(_onContinueToPayment);
     on<ClearCheckoutErrorEvent>((event, emit) => emit(state.copyWith(error: null)));
     on<ClearCheckoutSuccessEvent>((event, emit) => emit(state.copyWith(isSuccess: false)));
+    on<ClearCheckoutProcessingEvent>((event, emit) => emit(state.copyWith(isProcessing: false)));
     on<ClearPayOsCheckoutEvent>((event, emit) => emit(state.copyWith(clearPayOsCheckout: true)));
     on<CompletePayOsPaymentEvent>(_onCompletePayOsPayment);
     on<SubmitOrderEvent>(_onSubmitOrder);
@@ -783,6 +788,12 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     if (message.contains('stock') || message.contains('Insufficient')) {
       return 'checkout_submit_stock_error';
     }
+    if (message.contains('TimeoutException') || message.contains('timed out')) {
+      return 'checkout_connection_error';
+    }
+    if (message.contains('SocketException') || message.contains('Connection refused')) {
+      return 'checkout_connection_error';
+    }
     return 'checkout_submit_error';
   }
 
@@ -853,7 +864,11 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         return;
       }
 
-      emit(state.copyWith(isProcessing: false, isSuccess: true));
+      emit(state.copyWith(
+        isProcessing: false,
+        isSuccess: true,
+        pendingOrderId: orderResult.orderId,
+      ));
     } catch (e) {
       emit(state.copyWith(isProcessing: false, error: _mapCheckoutError(e)));
     }
@@ -882,7 +897,11 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       }
 
       if (status?.isPaid == true) {
-        emit(state.copyWith(isProcessing: false, isSuccess: true));
+        emit(state.copyWith(
+          isProcessing: false,
+          isSuccess: true,
+          pendingOrderId: event.orderId,
+        ));
         return;
       }
 
