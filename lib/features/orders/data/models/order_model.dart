@@ -19,7 +19,7 @@ class OrderModel extends Order {
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
       id: json['id'] as String? ?? '',
-      realId: json['realId'] as int? ?? 0,
+      realId: (json['realId'] as num?)?.toInt() ?? 0,
       status: json['status'] as String? ?? 'pending',
       statusText: json['statusText'] as String? ?? '',
       items: json['items'] as int? ?? 0,

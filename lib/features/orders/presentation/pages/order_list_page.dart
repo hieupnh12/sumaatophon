@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../domain/entities/order.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -52,8 +53,13 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
   void initState() {
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
-    // TODO: get real customer id from AuthBloc. Using 33 for testing.
-    context.read<OrderBloc>().add(const LoadOrdersEvent(33));
+    final auth = context.read<AuthBloc>().state;
+    final customerId = auth is AuthenticatedState
+        ? int.tryParse(auth.user.id) ?? 0
+        : 0;
+    if (customerId > 0) {
+      context.read<OrderBloc>().add(LoadOrdersEvent(customerId));
+    }
   }
 
   @override
