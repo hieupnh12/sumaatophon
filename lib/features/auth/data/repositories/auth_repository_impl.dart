@@ -12,16 +12,16 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<UserEntity> login(String email, String password) async {
-    final userModel = await remoteDataSource.login(email, password);
-    await saveSession(userModel.toEntity());
-    return userModel.toEntity();
+    final userEntity = await remoteDataSource.login(email, password);
+    await saveSession(userEntity);
+    return userEntity;
   }
 
   @override
   Future<UserEntity> register(String name, String email, String password) async {
-    final userModel = await remoteDataSource.register(name, email, password);
-    await saveSession(userModel.toEntity());
-    return userModel.toEntity();
+    final userEntity = await remoteDataSource.register(name, email, password);
+    await saveSession(userEntity);
+    return userEntity;
   }
 
   @override
