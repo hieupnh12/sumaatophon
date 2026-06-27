@@ -35,6 +35,14 @@ class MarkAllNotificationsReadEvent extends NotificationEvent {
   List<Object?> get props => [customerId];
 }
 
+class DeleteNotificationEvent extends NotificationEvent {
+  final String notificationId;
+  final int customerId;
+  const DeleteNotificationEvent(this.notificationId, this.customerId);
+  @override
+  List<Object?> get props => [notificationId, customerId];
+}
+
 class ClearNotificationsEvent extends NotificationEvent {}
 
 class NotificationState extends Equatable {
@@ -80,6 +88,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     on<LoadNotificationsEvent>(_onLoad);
     on<MarkNotificationReadEvent>(_onMarkRead);
     on<MarkAllNotificationsReadEvent>(_onMarkAllRead);
+    on<DeleteNotificationEvent>(_onDelete);
     on<ClearNotificationsEvent>(_onClear);
   }
 
@@ -147,6 +156,18 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
           .toList();
       emit(state.copyWith(items: items, unreadCount: 0));
     } catch (_) {}
+  }
+
+  Future<void> _onDelete(DeleteNotificationEvent event, Emitter<NotificationState> emit) async {
+    final previous = state;
+    final items = state.items.where((n) => n.id != event.notificationId).toList();
+    final unread = items.where((n) => !n.isRead).length;
+    emit(state.copyWith(items: items, unreadCount: unread));
+    try {
+      await repository.delete(event.notificationId, event.customerId);
+    } catch (_) {
+      emit(previous);
+    }
   }
 
   void _onClear(ClearNotificationsEvent event, Emitter<NotificationState> emit) {

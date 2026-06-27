@@ -2,6 +2,7 @@ package com.example.sumaatophon
 
 import android.os.Build
 import android.os.Debug
+import android.view.View
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.FlutterSurfaceView
 import io.flutter.embedding.engine.FlutterEngine
@@ -9,6 +10,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val channelName = "com.example.sumaatophon/debug"
+    private var flutterSurfaceView: FlutterSurfaceView? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -24,12 +26,19 @@ class MainActivity : FlutterActivity() {
 
     override fun onFlutterSurfaceViewCreated(flutterSurfaceView: FlutterSurfaceView) {
         super.onFlutterSurfaceViewCreated(flutterSurfaceView)
-        // Fallback cho LTPO / MIUI khi refresh_rate plugin chưa kịp gắn Activity.
+        this.flutterSurfaceView = flutterSurfaceView
+        applyMaxRefreshRate()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // MIUI hay reset refresh rate khi app resume hoặc sau tiết kiệm pin.
         applyMaxRefreshRate()
     }
 
     private fun applyMaxRefreshRate() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+
         val display = display ?: return
         val currentMode = display.mode
         val targetMode = display.supportedModes
@@ -39,10 +48,31 @@ class MainActivity : FlutterActivity() {
             }
             .maxByOrNull { it.refreshRate }
             ?: return
+
         if (targetMode.refreshRate <= 60f) return
+
         window.attributes = window.attributes.also {
             it.preferredDisplayModeId = targetMode.modeId
             it.preferredRefreshRate = targetMode.refreshRate
+        }
+
+        if (Build.VERSION.SDK_INT >= 35) {
+            try {
+                window.setFrameRateBoostOnTouchEnabled(true)
+                window.decorView.setRequestedFrameRate(
+                    View.REQUESTED_FRAME_RATE_CATEGORY_HIGH.toFloat(),
+                )
+            } catch (_: Exception) {
+            }
+        }
+
+        if (Build.VERSION.SDK_INT >= 35) {
+            try {
+                flutterSurfaceView?.setRequestedFrameRate(
+                    View.REQUESTED_FRAME_RATE_CATEGORY_HIGH.toFloat(),
+                )
+            } catch (_: Exception) {
+            }
         }
     }
 

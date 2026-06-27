@@ -64,7 +64,7 @@ void showFreshNotificationsAsBanner(
   if (previous == null || current.isLoading || current.requiresLogin) return;
   final prevIds = previous.items.map((e) => e.id).toSet();
   final fresh = current.items
-      .where((n) => !prevIds.contains(n.id) && !n.isRead && n.type != NotificationType.orderStatus)
+      .where((n) => !prevIds.contains(n.id) && !n.isRead && _shouldShowAsBanner(n))
       .toList();
   if (fresh.isEmpty) return;
   final n = fresh.first;
@@ -73,4 +73,11 @@ void showFreshNotificationsAsBanner(
     body: n.body,
     id: n.id.hashCode,
   );
+}
+
+/// Đơn mới (PENDING) đã có banner từ checkout — chỉ banner khi đổi trạng thái sau đó.
+bool _shouldShowAsBanner(AppNotification n) {
+  if (n.type != NotificationType.orderStatus) return true;
+  final status = n.payload?['status']?.toString().toUpperCase();
+  return status != null && status != 'PENDING';
 }

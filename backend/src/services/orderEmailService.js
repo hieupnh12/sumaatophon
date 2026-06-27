@@ -61,7 +61,7 @@ function formatPaymentMethod(paymentMethodKey) {
 async function fetchOrderEmailContext(orderId, conn) {
   const [orders] = await conn.query(
   `
-      SELECT o.order_id, o.total_amount, o.status, o.note, o.is_paid, o.created_at,
+      SELECT o.order_id, o.total_amount, o.status, o.note, o.is_paid, o.create_datetime,
              c.full_name, c.email AS customer_email
       FROM orders o
       LEFT JOIN customers c ON c.customer_id = o.customer_id
@@ -132,8 +132,8 @@ function buildReceiptHtml({ order, items, paymentMethodKey }) {
     })
     .join('');
 
-  const paidAt = order.created_at
-    ? new Date(order.created_at).toLocaleString('vi-VN')
+  const paidAt = order.create_datetime
+    ? new Date(order.create_datetime).toLocaleString('vi-VN')
     : new Date().toLocaleString('vi-VN');
 
   return `

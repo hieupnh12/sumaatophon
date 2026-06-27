@@ -119,30 +119,106 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
 
     final shouldPop = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.tr('account_info_unsaved_title')),
-        content: Text(context.tr('account_info_unsaved_desc')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(context.tr('account_info_discard'), style: const TextStyle(color: AppColors.error)),
+      builder: (dialogContext) {
+        final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Align(
+                  alignment: Alignment.topRight,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(dialogContext, false), // Keep editing
+                    child: Icon(
+                      Icons.close_rounded,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    ),
+                  ),
+                ),
+                Image.asset(
+                  'assets/images/guest_illustration.png',
+                  height: 140,
+                  errorBuilder: (_, __, ___) => Icon(
+                    Icons.help_outline_rounded,
+                    size: 80,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  context.tr('account_info_unsaved_title'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.darkText : AppColors.lightText,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  context.tr('account_info_unsaved_desc'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(dialogContext, false), // Ở lại chỉnh sửa
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(color: AppColors.error),
+                      foregroundColor: AppColors.error,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: Text(
+                      context.tr('account_info_keep_editing'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(dialogContext, true), // Lưu & Thoát
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: Text(
+                      context.tr('account_info_save_exit'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(context.tr('account_info_keep_editing')),
-          ),
-        ],
-      ),
+        );
+      },
     );
     if (shouldPop == true) {
-      setState(() {
-        _isEditing = false;
-        _nameController.text = _initialName;
-        _emailController.text = _initialEmail;
-        _dobController.text = _initialDob;
-        _gender = _initialGender;
-      });
-      return false; // Prevent popping, just exit edit mode
+      _onSave();
+      return false; // Prevent popping immediately, wait for save success
     }
     return false;
   }

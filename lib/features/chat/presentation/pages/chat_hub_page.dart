@@ -5,6 +5,8 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../chatbot/presentation/pages/chatbot_page.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../../../../core/network/api_config.dart';
+import '../../data/datasources/chat_remote_datasource.dart';
 import '../bloc/chat_bloc.dart';
 import 'admin_inbox_page.dart';
 import 'chat_conversation_page.dart';
@@ -157,7 +159,7 @@ class _StaffChatTab extends StatelessWidget {
             }
 
             if (state.error != null && state.activeThread == null && !state.showInbox) {
-              final errorText = _formatChatError(state.error!);
+              final errorText = _formatChatError(context, state.error!);
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -189,11 +191,30 @@ class _StaffChatTab extends StatelessWidget {
     );
   }
 
-  String _formatChatError(String raw) {
-    if (raw.contains('404') || raw.contains('Cannot GET /chat')) {
-      return 'Chat nhân viên chưa khả dụng trên server production.\n'
-          'Hãy chạy backend local (npm start) và mở app trên emulator.';
+  String _formatChatError(BuildContext context, Object raw) {
+    final text = raw.toString();
+    if (raw is ChatSocketException) {
+      switch (raw.code) {
+        case ChatSocketErrorCode.timeout:
+        case ChatSocketErrorCode.ackTimeout:
+        case ChatSocketErrorCode.notConnected:
+          return '${context.tr('chat_error_socket_timeout')}\n\n'
+              '${context.tr('chat_error_socket_debug_hint')}';
+        case ChatSocketErrorCode.badHandshake:
+          final isProduction = ApiConfig.baseUrl.startsWith('https://');
+          return '${context.tr('chat_error_socket_handshake')}\n'
+              '${raw.socketUrl ?? ApiConfig.baseUrl}\n\n'
+              '${isProduction ? context.tr('chat_error_socket_production_hint') : context.tr('chat_error_socket_debug_hint')}';
+      }
     }
-    return raw;
+    if (text.contains('TimeoutException') || text.contains('Future not completed')) {
+      return '${context.tr('chat_error_socket_timeout')}\n\n'
+          '${context.tr('chat_error_socket_debug_hint')}';
+    }
+    if (text.contains('404') || text.contains('Cannot GET /chat')) {
+      return '${context.tr('chat_error_socket_handshake')}\n\n'
+          '${context.tr('chat_error_socket_production_hint')}';
+    }
+    return text;
   }
 }

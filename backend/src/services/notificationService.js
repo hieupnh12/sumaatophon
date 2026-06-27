@@ -306,6 +306,17 @@ async function markAllRead(pool, customerId) {
   );
 }
 
+async function deleteNotification(pool, notificationId, customerId) {
+  const [result] = await pool.query(
+    `
+      DELETE FROM notifications
+      WHERE id = ? AND (customer_id = ? OR customer_id IS NULL)
+    `,
+    [notificationId, customerId],
+  );
+  return result.affectedRows > 0;
+}
+
 async function notifyProductPublished(pool, productId) {
   const [products] = await pool.query(
     `
@@ -487,6 +498,7 @@ module.exports = {
   countUnread,
   markRead,
   markAllRead,
+  deleteNotification,
   notifyProductPublished,
   notifyOrderCreated,
   notifyOrderStatusChange,

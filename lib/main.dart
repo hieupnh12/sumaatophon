@@ -1,7 +1,7 @@
 // lib/main.dart
 
 import 'package:badges/badges.dart' as badges;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -78,6 +78,10 @@ void main() async {
   }
   await ApiConfig.init();
   await setupDependencyInjection();
+  if (!kIsWeb) {
+    // Gọi sớm; plugin sẽ áp lại khi Activity/Surface sẵn sàng (xem _PhoneShopAppState).
+    RefreshRate.enable();
+  }
   runApp(const PhoneShopApp());
 }
 
@@ -134,8 +138,17 @@ Future<void> setupDependencyInjection() async {
   sl.registerFactory(() => OrderBloc(repository: sl()));
   
   // Theme & Language
-  sl.registerLazySingleton(() => ThemeCubit());
-  sl.registerLazySingleton(() => LanguageCubit());
+  final storage = sl<FlutterSecureStorage>();
+  
+  final themeStr = await storage.read(key: 'theme_mode');
+  final initialTheme = ThemeMode.values.firstWhere(
+    (e) => e.name == themeStr,
+    orElse: () => ThemeMode.system,
+  );
+  sl.registerLazySingleton(() => ThemeCubit(initialTheme, storage));
+
+  final langCode = await storage.read(key: 'language_code') ?? 'vi';
+  sl.registerLazySingleton(() => LanguageCubit(langCode, storage));
 }
 
 class PhoneShopApp extends StatefulWidget {
@@ -145,7 +158,7 @@ class PhoneShopApp extends StatefulWidget {
   State<PhoneShopApp> createState() => _PhoneShopAppState();
 }
 
-class _PhoneShopAppState extends State<PhoneShopApp> {
+class _PhoneShopAppState extends State<PhoneShopApp> with WidgetsBindingObserver {
   bool _showOnboarding = true;
   NotificationState? _prevNotificationState;
 
@@ -157,21 +170,53 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
       final ctx = context;
       if (ctx.mounted) reloadNotifications(ctx, silent: true);
     };
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _applyHighRefreshRate());
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _applyHighRefreshRate();
+    }
+  }
+
   Future<void> _applyHighRefreshRate() async {
+    if (kIsWeb) return;
+
     RefreshRate.enable();
     RefreshRate.preferMax();
     RefreshRate.setTouchBoost(true);
-    final info = await RefreshRate.refresh();
-    assert(() {
+    RefreshRate.category(RateCategory.high);
+
+    var info = await RefreshRate.refresh();
+    if (kDebugMode) {
       debugPrint(
         '[RefreshRate] current=${info.currentRate}Hz max=${info.maxRate}Hz '
-        'supported=${info.supportedRates}',
+        'supported=${info.supportedRates} lowPower=${RefreshRate.isLowPowerMode}',
       );
-      return true;
-    }());
+    }
+
+    // MIUI/LTPO: Surface đôi khi chưa gắn xong ở frame đầu — thử lại sau 300ms.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+
+    RefreshRate.enable();
+    RefreshRate.preferMax();
+    RefreshRate.setTouchBoost(true);
+    RefreshRate.category(RateCategory.high);
+    info = await RefreshRate.refresh();
+    if (kDebugMode) {
+      debugPrint(
+        '[RefreshRate] retry current=${info.currentRate}Hz max=${info.maxRate}Hz',
+      );
+    }
   }
 
   @override
@@ -179,18 +224,19 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => sl<AuthBloc>()..add(CheckAuthStatusEvent())),
-        BlocProvider(create: (_) => sl<ProductBloc>()..add(LoadProductsEvent())),
+        BlocProvider(create: (_) => sl<ProductBloc>()),
         BlocProvider(create: (_) => sl<CartBloc>()),
         BlocProvider(create: (_) => sl<CheckoutBloc>()),
-        BlocProvider(create: (_) => sl<StoreLocatorBloc>()..add(LoadStoresEvent())),
+        BlocProvider(create: (_) => sl<StoreLocatorBloc>()),
         BlocProvider(create: (_) => sl<ChatBloc>()),
         BlocProvider(create: (_) => sl<NotificationBloc>()),
-        BlocProvider(create: (_) => sl<AddressBloc>()..add(LoadAddressesEvent())),
+        BlocProvider(create: (_) => sl<AddressBloc>()),
         BlocProvider(create: (_) => sl<OrderBloc>()),
         BlocProvider(create: (_) => sl<ThemeCubit>()),
         BlocProvider(create: (_) => sl<LanguageCubit>()),
       ],
-      child: BlocBuilder<ThemeCubit, ThemeMode>(
+      child: _ApiLifecycleHandler(
+        child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) {
           return MaterialApp(
             title: 'phoneShop Premium',
@@ -280,8 +326,84 @@ class _PhoneShopAppState extends State<PhoneShopApp> {
           );
         },
       ),
+      ),
     );
   }
+}
+
+/// Debug: khi rút USB / app resume, probe lại local vs production và reload data.
+class _ApiLifecycleHandler extends StatefulWidget {
+  final Widget child;
+
+  const _ApiLifecycleHandler({required this.child});
+
+  @override
+  State<_ApiLifecycleHandler> createState() => _ApiLifecycleHandlerState();
+}
+
+class _ApiLifecycleHandlerState extends State<_ApiLifecycleHandler>
+    with WidgetsBindingObserver {
+  bool _startupLoadDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startupApiLoad());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _recheckApiOnResume();
+    }
+  }
+
+  Future<void> _startupApiLoad() async {
+    if (_startupLoadDone || !mounted) return;
+    _startupLoadDone = true;
+
+    if (!kReleaseMode && !kIsWeb) {
+      await ApiConfig.recheckBaseUrl();
+    }
+    if (!mounted) return;
+    _reloadAppData();
+  }
+
+  Future<void> _recheckApiOnResume() async {
+    if (kReleaseMode || kIsWeb || !mounted) return;
+
+    final changed = await ApiConfig.recheckBaseUrl();
+    if (!mounted) return;
+    if (changed) {
+      _reloadAppData();
+    }
+  }
+
+  void _reloadAppData() {
+    context.read<ProductBloc>().add(LoadProductsEvent());
+    context.read<StoreLocatorBloc>().add(LoadStoresEvent());
+    context.read<AddressBloc>().add(LoadAddressesEvent());
+    reloadNotifications(context, silent: true);
+
+    final auth = context.read<AuthBloc>().state;
+    if (auth is AuthenticatedState && isRealAuthenticatedUser(auth.user)) {
+      context.read<CartBloc>().add(LoadCartEvent());
+      final customerId = int.tryParse(auth.user.id);
+      if (customerId != null) {
+        context.read<OrderBloc>().add(LoadOrdersEvent(customerId));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class AppMainPage extends StatefulWidget {
@@ -325,7 +447,9 @@ class _AppMainPageState extends State<AppMainPage> {
           const StoreLocationPage(),
           const ChatHubPage(),
           const NotificationsPage(),
-          const ProfilePage(),
+          ProfilePage(
+            onLoginSuccess: () => _onNavTap(0),
+          ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
