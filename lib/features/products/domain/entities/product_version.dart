@@ -5,6 +5,7 @@ class ProductVersion extends Equatable {
   final String color;
   final String ram;
   final String rom;
+  final String ramRomLabel;
   final double price;
   final int stockQuantity;
   final String imageUrl;
@@ -15,6 +16,7 @@ class ProductVersion extends Equatable {
     required this.color,
     required this.ram,
     required this.rom,
+    this.ramRomLabel = '',
     required this.price,
     required this.stockQuantity,
     this.imageUrl = '',
@@ -22,6 +24,7 @@ class ProductVersion extends Equatable {
   });
 
   String get ramRom {
+    if (ramRomLabel.isNotEmpty) return ramRomLabel;
     final parts = <String>[];
     if (ram.isNotEmpty) parts.add(ram);
     if (rom.isNotEmpty) parts.add(rom);
@@ -33,5 +36,6 @@ class ProductVersion extends Equatable {
   bool get inStock => stockQuantity > 0;
 
   @override
-  List<Object?> get props => [id, color, ram, rom, price, stockQuantity, imageUrl, galleryImages];
+  List<Object?> get props =>
+      [id, color, ram, rom, ramRomLabel, price, stockQuantity, imageUrl, galleryImages];
 }
