@@ -1,27 +1,33 @@
-# Nginx: Flutter API (Node.js) trên VPS maclenin.io.vn
-# DNS: api-mobile.maclenin.io.vn → A record → 35.221.155.202
-# Copy vào /etc/nginx/sites-available/ rồi enable + certbot.
-
-server {
-    listen 80;
-    server_name api-mobile.maclenin.io.vn;
-    return 301 https://$host$request_uri;
-}
+# Nginx: API Flutter (Node.js) tại path /mobile trên maclenin.io.vn
+# VPS: 35.221.155.202
+# DNS: maclenin.io.vn → A record → 35.221.155.202
+#
+# App Flutter gọi:
+#   https://maclenin.io.vn/mobile/health
+#   https://maclenin.io.vn/mobile/api/orders
+#   https://maclenin.io.vn/mobile/api/payments/payos/webhook  (PayOS webhook)
+#
+# Docker flutter-api bind: 127.0.0.1:3001 → container :3000
+# Copy block location /mobile/ vào server block HTTPS của maclenin.io.vn
 
 server {
     listen 443 ssl http2;
-    server_name api-mobile.maclenin.io.vn;
+    server_name maclenin.io.vn;
 
-    # certbot sẽ tạo sau: certbot --nginx -d api-mobile.maclenin.io.vn
-    # ssl_certificate /etc/letsencrypt/live/api-mobile.maclenin.io.vn/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/api-mobile.maclenin.io.vn/privkey.pem;
+    # ssl_certificate /etc/letsencrypt/live/maclenin.io.vn/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/maclenin.io.vn/privkey.pem;
 
-    location / {
+    # Bỏ prefix /mobile khi chuyển sang Node (Express route gốc: /health, /api/...)
+    location /mobile/ {
+        rewrite ^/mobile/?(.*)$ /$1 break;
         proxy_pass http://127.0.0.1:3001;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
     }
+
+    # ... các location khác của site maclenin.io.vn (admin, static, ...)
 }

@@ -210,7 +210,9 @@ File nen co:
 
 ```text
 backend/db.js
-backend/server.js
+backend/server.js          # entry: npm start
+backend/src/routes/        # Express routers theo feature
+backend/src/services/      # helper/query dung lai
 lib/core/network/api_client.dart
 lib/core/network/api_endpoints.dart
 lib/features/products/data/datasources/product_remote_datasource.dart
@@ -391,6 +393,60 @@ Quy tac giao dien:
 - Loading state nen co skeleton/shimmer neu feature la list san pham.
 - Error state phai co message than thien va cach thu lai neu phu hop.
 - Empty state phai co icon, title, description, action neu can.
+
+### Popup xac nhan chuan (`AppConfirmDialog`)
+
+Moi popup xac nhan quan trong (dang xuat, yeu cau dang nhap, xoa du lieu...) phai dung component chung:
+
+```text
+lib/core/design_system/app_confirm_dialog.dart
+```
+
+Khong dung `AlertDialog` mac dinh cho cac popup xac nhan nay.
+
+API:
+
+```dart
+final confirmed = await showAppConfirmDialog(
+  context,
+  title: context.tr('feature_confirm_title'),
+  message: context.tr('feature_confirm_message'),
+  dismissLabel: context.tr('close'),
+  confirmLabel: context.tr('feature_confirm_action'),
+  imageAsset: 'assets/images/guest_illustration.png',
+  accentColor: AppColors.primary,
+);
+```
+
+Hoac dung shortcut da co san:
+
+- `showCartLoginConfirmDialog(context)` — yeu cau dang nhap truoc khi dung gio hang.
+- `showLogoutConfirmDialog(context)` — xac nhan dang xuat.
+
+Cau truc UI bat buoc:
+
+- `Dialog` nen trong suot, `insetPadding` ngang 24.
+- Container nen `AppColors.darkSurface` / `AppColors.lightSurface`, bo goc 24, padding 24.
+- Icon `close_rounded` goc tren phai — tra ve `false`.
+- Anh minh hoa (mascot) cao ~120px neu co.
+- Tieu de bold 20px, mo ta center 14px.
+- Hai nut ngang:
+  - Trai: `ElevatedButton` filled, mau `accentColor`, label dong/huy — tra ve `false`.
+  - Phai: `OutlinedButton` vien `accentColor`, label hanh dong chinh — tra ve `true`.
+
+Mau `accentColor`:
+
+- Hanh dong tieu cuc / nguy hiem (dang xuat, xoa): `AppColors.error`.
+- Hanh dong chinh binh thuong (dang nhap, tiep tuc): `AppColors.primary`.
+
+Anh minh hoa goi y:
+
+- Dang xuat: `assets/images/logout_mascot.png`
+- Yeu cau dang nhap / guest: `assets/images/guest_illustration.png`
+
+Moi text trong popup phai qua `context.tr(...)` hoac `context.trRead(...)` (dung `trRead` trong event handler / ham goi dialog), khong hard-code.
+
+Khi can yeu cau dang nhap truoc thao tac gio hang, goi `requireAuthForCart(context, confirmBeforeLogin: true)` thay vi tu ve `AlertDialog`.
 
 Khong nen:
 

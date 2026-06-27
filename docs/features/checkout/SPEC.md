@@ -43,9 +43,15 @@ Khong bao gom:
 
 ## 5. UI/UX
 
-- Page co AppBar title.
-- Section rieng cho address, shipping, payment, order summary.
-- Bottom confirm button co loading indicator khi processing.
+- Page co AppBar title `checkout_payment_info_title` (Thong tin thanh toan).
+- Hai tab chinh: **Thong tin** va **Thanh toan**.
+- Tab Thong tin gom:
+  - Thong tin khach hang (ten, SDT, badge, email + ghi chu VAT).
+  - Thong tin nhan hang voi 2 lua chon: **Nhan tai cua hang** / **Giao hang tan noi**.
+  - Nhan tai cua hang: tinh/thanh, quan/huyen, cua hang, ghi chu.
+  - Giao tan noi: nguoi nhan, dia chi (tinh/quan/phuong/dia chi nha), ghi chu, luu so dia chi, chon toc do giao hang, hoa don cong ty.
+- Tab Thanh toan: placeholder tam thoi, se cap nhat theo thiet ke tiep theo.
+- Bottom bar co tong tien tam tinh, tiet kiem, nut Tiep tuc thanh toan / Xac nhan dat hang.
 - Success dialog/screen co action quay ve home hoac orders.
 - Tat ca text UI phai dung `context.tr()`.
 - UI dung `AppColors`, `Theme.of(context)`, light/dark mode.

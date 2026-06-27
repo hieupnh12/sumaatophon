@@ -5,7 +5,7 @@ class RemoveFromCart {
 
   RemoveFromCart(this.repository);
 
-  Future<void> call(String productVersionId) {
-    return repository.removeItem(productVersionId);
+  Future<void> call(String customerId, String productVersionId) {
+    return repository.removeItem(customerId, productVersionId);
   }
 }

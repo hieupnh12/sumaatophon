@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../../domain/entities/address.dart';
-import '../../../../main.dart'; // optional if not used
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 
@@ -27,7 +26,7 @@ class AddressCard extends StatelessWidget {
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthenticatedState) {
       if (name.isEmpty) name = authState.user.name;
-      if (phone.isEmpty) phone = authState.user.phone ?? '';
+      if (phone.isEmpty) phone = authState.user.phoneNumber ?? '';
     }
 
     return Container(

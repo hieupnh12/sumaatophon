@@ -46,7 +46,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
 
     if (authState is AuthenticatedState) {
       name = authState.user.name;
-      phone = authState.user.phone ?? '';
+      phone = authState.user.phoneNumber ?? '';
       email = authState.user.email;
       dob = authState.user.dob ?? '';
       address = authState.user.address ?? '';
