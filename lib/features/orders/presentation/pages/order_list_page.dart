@@ -6,6 +6,7 @@ import '../../domain/entities/order.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../bloc/order_bloc.dart';
+import '../utils/order_display_helpers.dart';
 import 'order_detail_page.dart';
 
 class OrderListPage extends StatefulWidget {
@@ -96,7 +97,7 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
           if (state is OrderLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is OrderError) {
-            return Center(child: Text(state.message, style: const TextStyle(color: Colors.red)));
+            return Center(child: Text(context.tr('order_error_load'), style: const TextStyle(color: Colors.red)));
           } else if (state is OrdersLoaded) {
             final orders = state.orders;
             return TabBarView(
@@ -295,7 +296,7 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        order.product,
+                                        orderProductLabel(context, order.product),
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
