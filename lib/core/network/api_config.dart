@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -7,12 +8,11 @@ import 'package:flutter/services.dart';
 ///
 /// | Môi trường | URL |
 /// |------------|-----|
-/// | Release (mọi nền tảng) | https://maclenin.io.vn/mobile (VPS 35.221.155.202) |
-/// | Web debug (`flutter run -d chrome`) | localhost:3000 |
-/// | Web release | VPS production |
-/// | Emulator + USB debug | 10.0.2.2:3000 (Android) / 127.0.0.1:3000 (iOS) |
-/// | Máy thật + USB debug | 127.0.0.1:3000 (cần `adb reverse`) hoặc LOCAL_API_HOST |
-/// | Máy thật mở app bình thường | VPS production |
+/// | Release (mọi nền tảng) | https://maclenin.io.vn/mobile (VPS) |
+/// | Web debug | localhost:3000 |
+/// | Emulator | 10.0.2.2:3000 / 127.0.0.1:3000 |
+/// | Máy thật + USB (`adb reverse`) | 127.0.0.1:3000 (chỉ khi debugger gắn) |
+/// | Máy thật không USB | production (nếu `/health` trả `{ok:true}`) |
 class ApiConfig {
   static const _channel = MethodChannel('com.example.sumaatophon/debug');
 
@@ -22,17 +22,9 @@ class ApiConfig {
 
   static String get baseUrl => _baseUrl;
 
-  /// Socket.IO cần origin và path tách riêng khi REST API có prefix (vd. `/mobile`).
-  ///
-  /// Client mặc định gọi `/socket.io/` ở root domain — sai khi API nằm sau Nginx
-  /// tại `https://maclenin.io.vn/mobile`. USB debug (`http://127.0.0.1:3000`) không
-  /// có prefix nên path vẫn là `/socket.io`.
   static ApiSocketConfig get socketConfig {
     final uri = Uri.parse(_baseUrl);
-    final defaultPort = uri.scheme == 'https' ? 443 : 80;
-    final portSuffix =
-        uri.hasPort && uri.port != defaultPort ? ':${uri.port}' : '';
-    final origin = '${uri.scheme}://${uri.host}$portSuffix';
+    final origin = _socketOrigin(uri);
 
     var prefix = uri.path;
     if (prefix.endsWith('/')) {
@@ -42,6 +34,36 @@ class ApiConfig {
         prefix.isEmpty || prefix == '/' ? '/socket.io' : '$prefix/socket.io';
 
     return ApiSocketConfig(origin: origin, path: path);
+  }
+
+  static String _socketOrigin(Uri uri) {
+    final port = _explicitPort(uri);
+    if (port == null) {
+      return Uri(scheme: uri.scheme, host: uri.host).toString();
+    }
+    return Uri(scheme: uri.scheme, host: uri.host, port: port).toString();
+  }
+
+  static int? _explicitPort(Uri uri) {
+    if (!uri.hasPort) return null;
+    final port = uri.port;
+    if (port <= 0) return null;
+    final defaultPort =
+        uri.scheme == 'https' || uri.scheme == 'wss' ? 443 : 80;
+    if (port == defaultPort) return null;
+    return port;
+  }
+
+  /// Probe lại URL (resume app, rút USB, mở tab Chat…).
+  static Future<bool> recheckBaseUrl() async {
+    if (kReleaseMode || kIsWeb) return false;
+
+    const override = String.fromEnvironment('API_BASE_URL');
+    if (override.isNotEmpty) return false;
+
+    final before = _baseUrl;
+    await _resolveAndApplyBaseUrl();
+    return before != _baseUrl;
   }
 
   static Future<void> init() async {
@@ -58,45 +80,74 @@ class ApiConfig {
       return;
     }
 
+    await _resolveAndApplyBaseUrl();
+  }
+
+  static Future<void> _resolveAndApplyBaseUrl() async {
     const forceLocal = bool.fromEnvironment('USE_LOCAL_API');
     if (forceLocal) {
       _baseUrl = await _resolveLocalBaseUrl();
-      _log('USE_LOCAL_API');
+      _log('USE_LOCAL_API → $_baseUrl');
       return;
     }
 
-    // Web debug: flutter run -d chrome → backend local trên PC
     if (kIsWeb) {
       _baseUrl = 'http://localhost:3000';
       _log('web debug → localhost');
       return;
     }
 
-    // Emulator/simulator: luôn dùng host local (10.0.2.2 / 127.0.0.1).
     if (await _isEmulatorOrSimulator()) {
       _baseUrl = await _resolveLocalBaseUrl();
-      _log('emulator/simulator → local ($_baseUrl)');
+      _log('emulator/simulator → $_baseUrl');
       return;
     }
 
-    // Máy thật: probe backend local — ổn định hơn Debug.isDebuggerConnected() (hay false trên MIUI…).
-    // USB + `adb reverse tcp:3000 tcp:3000` + `npm start` → /health OK → dùng local.
-    // Mở app từ launcher (không reverse) → probe fail → VPS production.
+    await _applyPhysicalDeviceBaseUrl();
+  }
+
+  /// Máy thật: 127.0.0.1 chỉ khi debugger gắn (USB/adb reverse).
+  /// Không USB → production nếu API thật; tránh giữ localhost sau rút cáp.
+  static Future<void> _applyPhysicalDeviceBaseUrl() async {
+    const lanHost = String.fromEnvironment('LOCAL_API_HOST');
     final localUrl = await _resolveLocalBaseUrl();
-    if (localUrl == productionBaseUrl) {
-      _baseUrl = productionBaseUrl;
-      _log('no local host → production');
+    final isLoopback = _isLoopbackUrl(localUrl);
+
+    if (lanHost.isNotEmpty && await _isBackendReachable(localUrl)) {
+      _baseUrl = localUrl;
+      _log('LOCAL_API_HOST reachable → $localUrl');
       return;
     }
 
-    if (await _isLocalBackendReachable(localUrl)) {
+    if (isLoopback) {
+      final debuggerConnected = await _invokeBool('isDebuggerConnected');
+      if (debuggerConnected && await _isBackendReachable(localUrl)) {
+        _baseUrl = localUrl;
+        _log('USB debug (adb reverse) → $localUrl');
+        return;
+      }
+    } else if (await _isBackendReachable(localUrl)) {
       _baseUrl = localUrl;
-      _log('local backend reachable → $localUrl');
+      _log('local reachable → $localUrl');
+      return;
+    }
+
+    if (await _isBackendReachable(productionBaseUrl)) {
+      _baseUrl = productionBaseUrl;
+      _log('production API ok → $productionBaseUrl');
       return;
     }
 
     _baseUrl = productionBaseUrl;
-    _log('local unreachable → production (USB dev: adb reverse tcp:3000 tcp:3000 + npm start)');
+    _log(
+      'production chưa trả {ok:true} (nginx /mobile/ hoặc Node API?) — '
+      'USB dev: adb reverse + npm start | WiFi: --dart-define=LOCAL_API_HOST=<IP_PC>',
+    );
+  }
+
+  static bool _isLoopbackUrl(String url) {
+    final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+    return host == '127.0.0.1' || host == 'localhost';
   }
 
   static Future<bool> _isEmulatorOrSimulator() async {
@@ -109,10 +160,6 @@ class ApiConfig {
     return false;
   }
 
-  /// Android emulator: 10.0.2.2
-  /// Android máy thật + USB: 127.0.0.1 (chạy `adb reverse tcp:3000 tcp:3000`)
-  /// iOS simulator: 127.0.0.1
-  /// iOS máy thật + USB: LOCAL_API_HOST = IP LAN của Mac
   static Future<String> _resolveLocalBaseUrl() async {
     const lanHost = String.fromEnvironment('LOCAL_API_HOST');
     if (lanHost.isNotEmpty) {
@@ -124,7 +171,6 @@ class ApiConfig {
       if (isEmulator) {
         return 'http://10.0.2.2:3000';
       }
-      // Máy thật + USB: adb reverse tcp:3000 tcp:3000
       return 'http://127.0.0.1:3000';
     }
 
@@ -133,23 +179,34 @@ class ApiConfig {
       if (isSimulator) {
         return 'http://127.0.0.1:3000';
       }
-      // iPhone thật không gọi được localhost của Mac — dùng VPS hoặc LOCAL_API_HOST
       return productionBaseUrl;
     }
 
     return 'http://127.0.0.1:3000';
   }
 
-  /// Gọi GET /health với timeout ngắn — phát hiện adb reverse + backend local đang chạy.
-  static Future<bool> _isLocalBackendReachable(String baseUrl) async {
+  /// Chỉ chấp nhận JSON `{ok:true}` — tránh nginx SPA trả HTML 200.
+  static Future<bool> _isBackendReachable(String baseUrl) async {
     final client = HttpClient();
     try {
-      client.connectionTimeout = const Duration(seconds: 2);
+      client.connectionTimeout = const Duration(milliseconds: 800);
       final request = await client
           .getUrl(Uri.parse('$baseUrl/health'))
-          .timeout(const Duration(seconds: 2));
-      final response = await request.close().timeout(const Duration(seconds: 2));
-      return response.statusCode >= 200 && response.statusCode < 300;
+          .timeout(const Duration(milliseconds: 800));
+      final response =
+          await request.close().timeout(const Duration(milliseconds: 800));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return false;
+      }
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(milliseconds: 800));
+      final lower = body.toLowerCase();
+      if (lower.contains('<html') || lower.contains('<!doctype')) {
+        return false;
+      }
+      return body.contains('"ok":true') || body.contains('"ok": true');
     } catch (_) {
       return false;
     } finally {

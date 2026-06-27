@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
@@ -81,6 +83,13 @@ class _NotificationsPageState extends State<NotificationsPage> with SingleTicker
     }
   }
 
+  void _onDeleteNotification(BuildContext context, AppNotification item) {
+    final customerId = _customerId(context);
+    if (customerId == null) return;
+    HapticFeedback.mediumImpact();
+    context.read<NotificationBloc>().add(DeleteNotificationEvent(item.id, customerId));
+  }
+
   int _unreadCount(List<AppNotification> items) => items.where((n) => !n.isRead).length;
 
   @override
@@ -113,7 +122,7 @@ class _NotificationsPageState extends State<NotificationsPage> with SingleTicker
 
           return Scaffold(
             appBar: AppBar(
-              title: const Text('Thông báo', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: Text(context.tr('notifications'), style: const TextStyle(fontWeight: FontWeight.w700)),
               centerTitle: true,
               actions: [
                 if (!state.requiresLogin && state.items.isNotEmpty)
@@ -124,7 +133,7 @@ class _NotificationsPageState extends State<NotificationsPage> with SingleTicker
                         context.read<NotificationBloc>().add(MarkAllNotificationsReadEvent(customerId));
                       }
                     },
-                    child: const Text('Đọc tất cả'),
+                    child: Text(context.tr('notifications_mark_all_read')),
                   ),
               ],
               bottom: TabBar(
@@ -138,13 +147,13 @@ class _NotificationsPageState extends State<NotificationsPage> with SingleTicker
                 tabs: [
                   Tab(
                     child: _TabLabel(
-                      label: 'Sản phẩm mới',
+                      label: context.tr('notifications_tab_products'),
                       unreadCount: _unreadCount(productItems),
                     ),
                   ),
                   Tab(
                     child: _TabLabel(
-                      label: 'Đơn hàng',
+                      label: context.tr('notifications_tab_orders'),
                       unreadCount: _unreadCount(orderItems),
                     ),
                   ),
@@ -163,22 +172,24 @@ class _NotificationsPageState extends State<NotificationsPage> with SingleTicker
                         isLoading: state.isLoading,
                         error: state.error,
                         emptyIcon: Icons.phone_iphone_rounded,
-                        emptyTitle: 'Chưa có sản phẩm mới',
-                        emptySubtitle: 'Khi có sản phẩm được duyệt lên kệ, bạn sẽ thấy thông báo ở đây.',
+                        emptyTitle: context.tr('notifications_empty_products_title'),
+                        emptySubtitle: context.tr('notifications_empty_products_desc'),
                         showTypeChip: false,
                         onReload: _reload,
                         onTap: (item) => _onTapNotification(context, item),
+                        onDelete: (item) => _onDeleteNotification(context, item),
                       ),
                       _NotificationList(
                         items: orderItems,
                         isLoading: state.isLoading,
                         error: state.error,
                         emptyIcon: Icons.local_shipping_outlined,
-                        emptyTitle: 'Chưa có thông báo đơn hàng',
-                        emptySubtitle: 'Cập nhật trạng thái đơn, thanh toán và tin nhắn nhân viên sẽ hiện ở đây.',
+                        emptyTitle: context.tr('notifications_empty_orders_title'),
+                        emptySubtitle: context.tr('notifications_empty_orders_desc'),
                         showTypeChip: true,
                         onReload: _reload,
                         onTap: (item) => _onTapNotification(context, item),
+                        onDelete: (item) => _onDeleteNotification(context, item),
                       ),
                     ],
                   ),
@@ -230,6 +241,7 @@ class _NotificationList extends StatelessWidget {
   final bool showTypeChip;
   final VoidCallback onReload;
   final void Function(AppNotification item) onTap;
+  final void Function(AppNotification item) onDelete;
 
   const _NotificationList({
     required this.items,
@@ -241,6 +253,7 @@ class _NotificationList extends StatelessWidget {
     required this.showTypeChip,
     required this.onReload,
     required this.onTap,
+    required this.onDelete,
   });
 
   @override
@@ -258,7 +271,7 @@ class _NotificationList extends StatelessWidget {
             children: [
               Text(error!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
-              FilledButton(onPressed: onReload, child: const Text('Thử lại')),
+              FilledButton(onPressed: onReload, child: Text(context.tr('notifications_retry'))),
             ],
           ),
         ),
@@ -294,10 +307,12 @@ class _NotificationList extends StatelessWidget {
         itemCount: items.length,
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (context, index) {
+          final item = items[index];
           return _NotificationTile(
-            item: items[index],
+            item: item,
             showTypeChip: showTypeChip,
-            onTap: () => onTap(items[index]),
+            onTap: () => onTap(item),
+            onDelete: () => onDelete(item),
           );
         },
       ),
@@ -309,21 +324,23 @@ class _NotificationTile extends StatelessWidget {
   final AppNotification item;
   final bool showTypeChip;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   const _NotificationTile({
     required this.item,
     required this.showTypeChip,
     required this.onTap,
+    required this.onDelete,
   });
 
-  String get _typeLabel {
+  String _typeLabel(BuildContext context) {
     switch (item.type) {
       case NotificationType.productNew:
-        return 'Sản phẩm mới';
+        return context.tr('notifications_type_product');
       case NotificationType.orderStatus:
-        return 'Đơn hàng';
+        return context.tr('notifications_type_order');
       case NotificationType.chatMessage:
-        return 'Hỗ trợ';
+        return context.tr('notifications_type_chat');
     }
   }
 
@@ -368,44 +385,59 @@ class _NotificationTile extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final color = _iconColor();
 
-    return Material(
-      color: item.isRead
-          ? null
-          : (isDark ? AppColors.primary.withValues(alpha: 0.08) : AppColors.primary.withValues(alpha: 0.06)),
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
+    return Slidable(
+      key: ValueKey(item.id),
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.22,
+        children: [
+          SlidableAction(
+            onPressed: (_) => onDelete(),
+            backgroundColor: AppColors.error,
+            foregroundColor: Colors.white,
+            icon: Icons.delete_outline_rounded,
+            label: context.tr('notifications_delete'),
+          ),
+        ],
+      ),
+      child: Material(
+        color: item.isRead
+            ? null
+            : (isDark ? AppColors.primary.withValues(alpha: 0.08) : AppColors.primary.withValues(alpha: 0.06)),
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(_icon, color: color, size: 22),
                 ),
-                child: Icon(_icon, color: color, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (showTypeChip)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (showTypeChip)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                _typeLabel(context),
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+                              ),
                             ),
-                            child: Text(
-                              _typeLabel,
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
-                            ),
-                          ),
                         if (showTypeChip) const Spacer(),
                         if (!item.isRead)
                           Container(
@@ -448,6 +480,7 @@ class _NotificationTile extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }
@@ -468,7 +501,7 @@ class _LoginRequired extends StatelessWidget {
             Icon(Icons.notifications_active_outlined, size: 56, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)),
             const SizedBox(height: 16),
             Text(
-              'Đăng nhập để xem thông báo sản phẩm mới và đơn hàng',
+              context.tr('notifications_login_required'),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium,
             ),

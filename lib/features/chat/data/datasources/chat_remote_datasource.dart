@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import '../../../../core/network/api_client.dart';
@@ -29,14 +32,27 @@ class ChatRemoteDataSource {
     await disconnect();
     _user = user;
 
+    if (kDebugMode) {
+      await ApiConfig.recheckBaseUrl();
+    }
+
     final socketConfig = ApiConfig.socketConfig;
+    if (kDebugMode) {
+      debugPrint(
+        '[Chat] Socket.IO → ${socketConfig.origin}${socketConfig.path}',
+      );
+    }
+
+    await _preflightSocketHandshake(socketConfig);
 
     _socket = io.io(
       socketConfig.origin,
       io.OptionBuilder()
           .setPath(socketConfig.path)
-          .setTransports(['websocket', 'polling'])
-          .enableAutoConnect()
+          .setTransports(['polling', 'websocket'])
+          .setTimeout(12000)
+          .disableAutoConnect()
+          .enableForceNew()
           .enableReconnection()
           .setQuery({
             'userId': user.id,
@@ -53,11 +69,25 @@ class ChatRemoteDataSource {
     final connected = Completer<void>();
     _socket!
       ..on('connect', (_) {
+        if (kDebugMode) debugPrint('[Chat] Socket connected');
         if (!connected.isCompleted) connected.complete();
       })
       ..on('connect_error', (error) {
+        if (kDebugMode) debugPrint('[Chat] connect_error: $error');
         if (!connected.isCompleted) {
           connected.completeError(Exception('Socket connect failed: $error'));
+        }
+      })
+      ..on('error', (error) {
+        if (!connected.isCompleted) {
+          connected.completeError(Exception('Socket error: $error'));
+        }
+      })
+      ..on('disconnect', (reason) {
+        if (!connected.isCompleted) {
+          connected.completeError(
+            Exception('Socket disconnected before ready: $reason'),
+          );
         }
       })
       ..on('new_message', (data) {
@@ -79,13 +109,29 @@ class ChatRemoteDataSource {
         }
       });
 
-    await connected.future.timeout(const Duration(seconds: 12));
+    _socket!.connect();
+
+    try {
+      await connected.future.timeout(const Duration(seconds: 12));
+    } on TimeoutException {
+      throw ChatSocketException(
+        code: ChatSocketErrorCode.timeout,
+        socketUrl: '${socketConfig.origin}${socketConfig.path}',
+      );
+    }
   }
 
   Future<void> disconnect() async {
-    _socket?.dispose();
+    final socket = _socket;
     _socket = null;
     _user = null;
+    if (socket == null) return;
+    try {
+      if (socket.connected) socket.disconnect();
+      socket.dispose();
+    } catch (_) {
+      // ignore cleanup errors
+    }
   }
 
   Future<List<ChatThreadEntity>> getThreads() async {
@@ -126,15 +172,20 @@ class ChatRemoteDataSource {
   }
 
   Future<void> joinThread(String threadId) async {
+    _ensureSocketConnected();
     final completer = Completer<void>();
-    _socket?.emitWithAck('join_thread', {'threadId': threadId}, ack: (response) {
+    _socket!.emitWithAck('join_thread', {'threadId': threadId}, ack: (response) {
       if (response is Map && response['ok'] == true) {
         completer.complete();
       } else {
         completer.completeError(Exception('Failed to join thread'));
       }
     });
-    return completer.future.timeout(const Duration(seconds: 10));
+    try {
+      await completer.future.timeout(const Duration(seconds: 10));
+    } on TimeoutException {
+      throw ChatSocketException(code: ChatSocketErrorCode.ackTimeout);
+    }
   }
 
   Future<ChatMessageEntity> sendMessage({
@@ -142,8 +193,9 @@ class ChatRemoteDataSource {
     required String text,
     String? imageUrl,
   }) async {
+    _ensureSocketConnected();
     final completer = Completer<ChatMessageEntity>();
-    _socket?.emitWithAck(
+    _socket!.emitWithAck(
       'send_message',
       {
         'threadId': threadId,
@@ -164,6 +216,76 @@ class ChatRemoteDataSource {
         }
       },
     );
-    return completer.future.timeout(const Duration(seconds: 10));
+    try {
+      return await completer.future.timeout(const Duration(seconds: 10));
+    } on TimeoutException {
+      throw ChatSocketException(code: ChatSocketErrorCode.ackTimeout);
+    }
   }
+
+  void _ensureSocketConnected() {
+    if (_socket?.connected != true) {
+      throw ChatSocketException(code: ChatSocketErrorCode.notConnected);
+    }
+  }
+
+  /// Socket.IO polling handshake phải bắt đầu bằng `0{` — HTML/404 = nginx hoặc URL sai.
+  static Future<void> _preflightSocketHandshake(ApiSocketConfig config) async {
+    final uri = Uri.parse('${config.origin}${config.path}/')
+        .replace(queryParameters: const {'EIO': '4', 'transport': 'polling'});
+    final client = HttpClient();
+    try {
+      client.connectionTimeout = const Duration(seconds: 5);
+      final request = await client.getUrl(uri).timeout(const Duration(seconds: 5));
+      final response = await request.close().timeout(const Duration(seconds: 5));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ChatSocketException(
+          code: ChatSocketErrorCode.badHandshake,
+          statusCode: response.statusCode,
+          socketUrl: '${config.origin}${config.path}',
+        );
+      }
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 5));
+      if (!body.startsWith('0{')) {
+        throw ChatSocketException(
+          code: ChatSocketErrorCode.badHandshake,
+          socketUrl: '${config.origin}${config.path}',
+        );
+      }
+    } on ChatSocketException {
+      rethrow;
+    } catch (_) {
+      throw ChatSocketException(
+        code: ChatSocketErrorCode.badHandshake,
+        socketUrl: '${config.origin}${config.path}',
+      );
+    } finally {
+      client.close(force: true);
+    }
+  }
+}
+
+enum ChatSocketErrorCode {
+  timeout,
+  ackTimeout,
+  notConnected,
+  badHandshake,
+}
+
+class ChatSocketException implements Exception {
+  final ChatSocketErrorCode code;
+  final String? socketUrl;
+  final int? statusCode;
+
+  const ChatSocketException({
+    required this.code,
+    this.socketUrl,
+    this.statusCode,
+  });
+
+  @override
+  String toString() => 'ChatSocketException($code, url=$socketUrl)';
 }

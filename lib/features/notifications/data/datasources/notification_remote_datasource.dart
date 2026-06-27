@@ -6,6 +6,7 @@ abstract class NotificationRemoteDataSource {
   Future<({List<NotificationModel> items, int unreadCount})> fetchNotifications(int customerId);
   Future<void> markRead(String notificationId, int customerId);
   Future<void> markAllRead(int customerId);
+  Future<void> delete(String notificationId, int customerId);
 }
 
 class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
@@ -42,6 +43,14 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
     await apiClient.patch(
       ApiEndpoints.notificationsReadAll,
       body: {'customerId': customerId},
+    );
+  }
+
+  @override
+  Future<void> delete(String notificationId, int customerId) async {
+    await apiClient.delete(
+      ApiEndpoints.notificationDelete(notificationId),
+      queryParameters: {'customerId': customerId},
     );
   }
 }
