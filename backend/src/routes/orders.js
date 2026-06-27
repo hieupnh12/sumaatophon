@@ -156,4 +156,10 @@ router.post('/api/orders', async (req, res) => {
   }
 });
 
+// GET /api/orders
+router.get('/api/orders', require('../../orders/orders.controller').getOrders);
+
+// GET /api/orders/:id
+router.get('/api/orders/:id', require('../../orders/orders.controller').getOrderDetails);
+
 module.exports = router;
