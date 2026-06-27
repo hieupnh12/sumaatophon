@@ -431,27 +431,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 children: [
                   GestureDetector(
                     onTap: () async {
-                      const url = 'https://zalo.me/0982481094';
-                      if (await canLaunchUrlString(url)) {
-                        await launchUrlString(url, mode: LaunchMode.externalApplication);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        children: [
-                          Text('Zalo', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () async {
                       const url = 'tel:0982481094';
                       if (await canLaunchUrlString(url)) {
                         await launchUrlString(url);
@@ -477,19 +456,27 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             ],
           ),
           _buildDivider(isDark),
-          Row(
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
-                child: const Center(child: Text('Zalo', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold))),
-              ),
-              const SizedBox(width: 8),
-              Text(context.tr('order_contact_zalo'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(width: 4),
-              const Icon(Icons.open_in_new, size: 16, color: AppColors.error),
-            ],
+          GestureDetector(
+            onTap: () async {
+              const url = 'https://zalo.me/0982481094';
+              if (await canLaunchUrlString(url)) {
+                await launchUrlString(url, mode: LaunchMode.externalApplication);
+              }
+            },
+            child: Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
+                  child: const Center(child: Text('Zalo', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold))),
+                ),
+                const SizedBox(width: 8),
+                Text(context.tr('order_contact_zalo'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(width: 4),
+                const Icon(Icons.open_in_new, size: 16, color: Colors.blue),
+              ],
+            ),
           ),
         ],
       ),
