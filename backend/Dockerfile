@@ -21,8 +21,17 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json package-lock.json server.js db.js ./
-COPY src ./src
+# Copy toàn bộ source runtime (trừ mục trong .dockerignore).
+COPY . .
+
+# Smoke test: fail build sớm nếu thiếu module runtime.
+RUN node -e "\
+  require('./auth'); \
+  require('./chat'); \
+  require('./chatbot'); \
+  require('./src/controllers/ordersController'); \
+  require('./src/routes/orders'); \
+  console.log('runtime module check ok');"
 
 EXPOSE 3000
 
