@@ -42,6 +42,9 @@ class UserEntity extends Equatable {
     return int.tryParse(id) != null;
   }
 
+  /// Alias cho feature address (merge main).
+  String? get phone => phoneNumber;
+
   @override
   List<Object?> get props => [
         id,

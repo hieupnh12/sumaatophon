@@ -49,10 +49,17 @@ class MainActivity : FlutterActivity() {
     private fun isEmulator(): Boolean {
         return Build.FINGERPRINT.startsWith("generic")
             || Build.FINGERPRINT.startsWith("unknown")
-            || Build.MODEL.contains("google_sdk")
-            || Build.MODEL.contains("Emulator")
-            || Build.MODEL.contains("Android SDK built for x86")
-            || Build.MANUFACTURER.contains("Genymotion")
+            || Build.FINGERPRINT.contains("emulator", ignoreCase = true)
+            || Build.FINGERPRINT.contains("sdk_gphone", ignoreCase = true)
+            || Build.MODEL.contains("google_sdk", ignoreCase = true)
+            || Build.MODEL.contains("Emulator", ignoreCase = true)
+            || Build.MODEL.contains("Android SDK built for x86", ignoreCase = true)
+            || Build.MODEL.contains("sdk_gphone", ignoreCase = true)
+            || Build.HARDWARE.contains("goldfish", ignoreCase = true)
+            || Build.HARDWARE.contains("ranchu", ignoreCase = true)
+            || Build.PRODUCT.contains("sdk_gphone", ignoreCase = true)
+            || Build.PRODUCT.contains("emulator", ignoreCase = true)
+            || Build.MANUFACTURER.contains("Genymotion", ignoreCase = true)
             || (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
             || Build.PRODUCT == "google_sdk"
     }

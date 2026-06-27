@@ -219,6 +219,7 @@ const Map<String, String> enLocalizations = {
   'checkout_payment_zalopay': 'ZaloPay',
   'checkout_payment_card': 'Credit/Debit card',
   'checkout_submit_error': 'Payment failed. Please try again.',
+  'checkout_connection_error': 'Cannot reach server. Start backend (npm run restart) and try again.',
   'checkout_payment_cancelled': 'Payment was cancelled. Your order has not been paid.',
   'checkout_payos_pending': 'Payment confirmation not received yet. Please check again later.',
   'checkout_payos_webview_title': 'PayOS Payment',

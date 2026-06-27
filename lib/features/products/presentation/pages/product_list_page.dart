@@ -8,6 +8,8 @@ import '../../../../core/l10n/app_localizations.dart';
 import '../bloc/product_bloc.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
 import '../../../cart/presentation/cart_auth_helper.dart';
+import '../../../notifications/presentation/notification_helpers.dart';
+import '../../../notifications/presentation/widgets/notification_badge_icon.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
 import '../widgets/product_card.dart';
 import '../widgets/shimmer_product_card.dart';
@@ -293,13 +295,15 @@ class _ProductListPageState extends State<ProductListPage> {
                   );
                 },
               ),
-              IconButton(
-                icon: Icon(Icons.notifications_none_outlined, color: theme.colorScheme.onSurface),
-                onPressed: () {
-                  Navigator.push(
+              NotificationBadgeIcon(
+                icon: Icons.notifications_none_outlined,
+                color: theme.colorScheme.onSurface,
+                onPressed: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const NotificationsPage()),
                   );
+                  if (context.mounted) reloadNotifications(context, silent: true);
                 },
               ),
               BlocBuilder<CartBloc, CartState>(

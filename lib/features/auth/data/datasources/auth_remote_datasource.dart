@@ -1,5 +1,4 @@
 import '../../../../core/network/api_client.dart';
-import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../domain/entities/user_entity.dart';
 import '../models/user_model.dart';

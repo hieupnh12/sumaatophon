@@ -11,6 +11,8 @@ import '../bloc/checkout_bloc.dart';
 import '../widgets/checkout_bottom_bar.dart';
 import '../widgets/checkout_info_tab.dart';
 import '../widgets/checkout_payment_tab.dart';
+import '../../../notifications/presentation/notification_helpers.dart';
+import '../../../../core/notifications/push_notification_service.dart';
 import '../widgets/checkout_step_tabs.dart';
 import 'payos_qr_payment_page.dart';
 
@@ -37,6 +39,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           );
     }
     context.read<CheckoutBloc>().add(const ApplyDefaultPickupStoreEvent());
+    context.read<CheckoutBloc>().add(const ClearCheckoutProcessingEvent());
   }
 
   void _handleBack(BuildContext context, CheckoutState checkoutState) {
@@ -121,8 +124,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
         }
 
         if (state.isSuccess) {
+          final orderId = state.pendingOrderId;
+          final orderLabel = orderId != null && orderId.isNotEmpty
+              ? '#ORD${orderId.padLeft(6, '0')}'
+              : null;
+
           context.read<CheckoutBloc>().add(ClearCheckoutSuccessEvent());
-          context.read<CartBloc>().add(LoadCartEvent());
+
+          // Dialog ngay — không chờ sync giỏ hàng / thông báo.
           showDialog(
             context: context,
             barrierDismissible: false,
@@ -165,6 +174,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
               ),
             ),
           );
+
+          // Banner + sync chạy nền, không block UI.
+          Future<void>.delayed(const Duration(milliseconds: 400), () {
+            if (!context.mounted) return;
+            PushNotificationService.showLocal(
+              title: orderLabel != null
+                  ? '$orderLabel — ${context.tr('checkout_order_success_title')}'
+                  : context.tr('checkout_order_success_title'),
+              body: context.tr('checkout_order_success_desc'),
+              id: orderId?.hashCode ?? 0,
+            );
+            context.read<CartBloc>().add(LoadCartEvent());
+            reloadNotifications(context, silent: true);
+          });
         } else if (state.error != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

@@ -150,8 +150,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   void _onOtpCompleted(String otp) {
     if (context.read<AuthBloc>().state is AuthLoading) return;
-    final phoneDisplay = _phoneController.text.trim();
-    final phone = phoneDisplay.replaceAll(' ', '');
+    final phone = normalizePhone(_phoneController.text);
     context.read<AuthBloc>().add(OtpLoginSubmitted(phone: phone, otp: otp));
   }
 
@@ -165,8 +164,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   void _onResendOtpPressed() {
     if (_resendSeconds == 0) {
-      final phoneDisplay = _phoneController.text.trim();
-      final phone = phoneDisplay.replaceAll(' ', '');
+      final phone = normalizePhone(_phoneController.text);
       context.read<AuthBloc>().add(OtpRequested(phone: phone));
     }
   }

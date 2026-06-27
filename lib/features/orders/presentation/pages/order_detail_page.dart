@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../domain/entities/order_detail.dart';
 import '../bloc/order_bloc.dart';
 import '../utils/order_display_helpers.dart';
@@ -37,8 +38,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   @override
   void initState() {
     super.initState();
-    // TODO: get real customer id from AuthBloc. Using 33 for testing.
-    context.read<OrderBloc>().add(LoadOrderDetailEvent(widget.orderId, 33));
+    final auth = context.read<AuthBloc>().state;
+    final customerId = auth is AuthenticatedState
+        ? int.tryParse(auth.user.id) ?? 0
+        : 0;
+    context.read<OrderBloc>().add(LoadOrderDetailEvent(widget.orderId, customerId));
   }
 
   @override

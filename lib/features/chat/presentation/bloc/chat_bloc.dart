@@ -136,7 +136,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       return;
     }
 
-    emit(state.copyWith(isLoading: true, clearError: true, user: event.user));
+    emit(ChatState(isLoading: true, user: event.user));
 
     try {
       await _messageSub?.cancel();

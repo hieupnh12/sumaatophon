@@ -219,6 +219,7 @@ const Map<String, String> jaLocalizations = {
   'checkout_payment_zalopay': 'ZaloPay',
   'checkout_payment_card': 'クレジット/デビットカード',
   'checkout_submit_error': '決済に失敗しました。もう一度お試しください。',
+  'checkout_connection_error': 'サーバーに接続できません。backend (npm run restart) を起動して再試行してください。',
   'checkout_payment_cancelled': '支払いがキャンセルされました。注文は未払いです。',
   'checkout_payos_pending': '支払い確認をまだ受信していません。後でもう一度確認してください。',
   'checkout_payos_webview_title': 'PayOS支払い',
