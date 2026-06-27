@@ -86,7 +86,7 @@ Future<bool?> showAppConfirmDialog(
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(24),
                         ),
                       ),
                       child: Text(
@@ -104,7 +104,7 @@ Future<bool?> showAppConfirmDialog(
                         side: BorderSide(color: accentColor),
                         foregroundColor: accentColor,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(24),
                         ),
                       ),
                       child: Text(

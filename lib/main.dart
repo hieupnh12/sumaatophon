@@ -138,8 +138,17 @@ Future<void> setupDependencyInjection() async {
   sl.registerFactory(() => OrderBloc(repository: sl()));
   
   // Theme & Language
-  sl.registerLazySingleton(() => ThemeCubit());
-  sl.registerLazySingleton(() => LanguageCubit());
+  final storage = sl<FlutterSecureStorage>();
+  
+  final themeStr = await storage.read(key: 'theme_mode');
+  final initialTheme = ThemeMode.values.firstWhere(
+    (e) => e.name == themeStr,
+    orElse: () => ThemeMode.system,
+  );
+  sl.registerLazySingleton(() => ThemeCubit(initialTheme, storage));
+
+  final langCode = await storage.read(key: 'language_code') ?? 'vi';
+  sl.registerLazySingleton(() => LanguageCubit(langCode, storage));
 }
 
 class PhoneShopApp extends StatefulWidget {
@@ -438,7 +447,9 @@ class _AppMainPageState extends State<AppMainPage> {
           const StoreLocationPage(),
           const ChatHubPage(),
           const NotificationsPage(),
-          const ProfilePage(),
+          ProfilePage(
+            onLoginSuccess: () => _onNavTap(0),
+          ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(

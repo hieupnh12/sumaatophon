@@ -1,23 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ThemeCubit extends Cubit<ThemeMode> {
-  // Bắt đầu với ThemeMode.system để tôn trọng cài đặt hệ thống
-  // Nhưng cho phép người dùng thay đổi thủ công.
-  ThemeCubit() : super(ThemeMode.system);
+  final FlutterSecureStorage _storage;
+  static const String _themeKey = 'theme_mode';
 
-  void toggleTheme() {
+  ThemeCubit(ThemeMode initialMode, this._storage) : super(initialMode);
+
+  void toggleTheme() async {
+    ThemeMode nextMode;
     if (state == ThemeMode.light) {
-      emit(ThemeMode.dark);
+      nextMode = ThemeMode.dark;
     } else if (state == ThemeMode.dark) {
-      emit(ThemeMode.light);
+      nextMode = ThemeMode.light;
     } else {
-      // Nếu đang là system, dựa vào brightness hiện tại của device để switch
-      // Nhưng do ở trong Cubit không có context để check MediaQuery, 
-      // ta có thể mặc định đổi sang dark hoặc light tùy ý, ở đây mặc định sang Dark.
-      emit(ThemeMode.dark);
+      nextMode = ThemeMode.dark;
     }
+    
+    await _storage.write(key: _themeKey, value: nextMode.name);
+    emit(nextMode);
   }
 
-  void setTheme(ThemeMode mode) => emit(mode);
+  void setTheme(ThemeMode mode) async {
+    await _storage.write(key: _themeKey, value: mode.name);
+    emit(mode);
+  }
 }

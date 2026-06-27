@@ -7,6 +7,9 @@ import '../../domain/entities/order_detail.dart';
 import '../bloc/order_bloc.dart';
 import '../utils/order_display_helpers.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import '../../../products/presentation/pages/product_detail_page.dart';
+import '../../../../main.dart';
+import '../../../products/presentation/bloc/product_bloc.dart';
 
 class OrderDetailPage extends StatefulWidget {
   final int orderId;
@@ -18,22 +21,6 @@ class OrderDetailPage extends StatefulWidget {
 }
 
 class _OrderDetailPageState extends State<OrderDetailPage> {
-  String _statusLabel(BuildContext context, String status) {
-    switch (status) {
-      case 'pending':
-        return context.tr('order_status_pending');
-      case 'shipping':
-        return context.tr('order_status_shipping');
-      case 'completed':
-        return context.tr('order_status_completed');
-      case 'cancelled':
-        return context.tr('order_status_cancelled');
-      case 'return':
-        return context.tr('order_status_return');
-      default:
-        return status;
-    }
-  }
 
   @override
   void initState() {
@@ -124,10 +111,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   }
 
   Widget _buildOverviewSection(BuildContext context, bool isDark, OrderDetail detail) {
-    Color statusColor = Colors.blue;
-    if (detail.status == 'pending') statusColor = AppColors.warning;
-    if (detail.status == 'completed') statusColor = const Color(0xFF229E54);
-    if (detail.status == 'cancelled') statusColor = const Color(0xFFD32F2F);
+    final statusColor = orderStatusColor(detail.status);
 
     return _buildCard(
       isDark: isDark,
@@ -179,7 +163,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  _statusLabel(context, detail.status),
+                  orderStatusLabel(context, detail.status),
                   style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
                 ),
               ),
@@ -193,6 +177,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             return _buildProductItem(
               context: context,
               isDark: isDark,
+              productId: item.productId,
               name: item.name,
               price: item.price,
               warranty: item.warrantyUntil,
@@ -209,6 +194,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   Widget _buildProductItem({
     required BuildContext context,
     required bool isDark,
+    required String productId,
     required String name,
     required String price,
     required String warranty,
@@ -231,7 +217,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               child: image.isNotEmpty
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(image, fit: BoxFit.cover),
+                      child: Image.network(
+                        image, 
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image_outlined, color: Colors.grey),
+                      ),
                     )
                   : const Icon(Icons.inventory_2_outlined, color: Colors.grey),
             ),
@@ -256,7 +246,17 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         Align(
           alignment: Alignment.centerRight,
           child: OutlinedButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider(
+                    create: (_) => sl<ProductBloc>(),
+                    child: ProductDetailPage(productId: productId),
+                  ),
+                ),
+              );
+            },
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: AppColors.error),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -433,24 +433,20 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Icon(Icons.phone_in_talk_outlined, color: AppColors.error, size: 20),
                   const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(context.tr('order_contact_phone'), style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, fontSize: 13)),
-                      const SizedBox(height: 4),
-                      const Text('0982481094', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(context.tr('order_contact_phone'), style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, fontSize: 13)),
+                        const SizedBox(height: 4),
+                        const Text('0982481094', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
                   GestureDetector(
                     onTap: () async {
                       const url = 'tel:0982481094';

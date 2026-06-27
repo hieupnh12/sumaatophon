@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../../../../core/design_system/app_colors.dart';
 
 String orderProductLabel(BuildContext context, String product) {
   if (product.isEmpty || product == 'Sản phẩm') {
@@ -62,4 +63,40 @@ String orderCustomerNote(String rawNote) {
   }
 
   return rawNote;
+}
+
+String orderStatusLabel(BuildContext context, String status) {
+  switch (status) {
+    case 'pending':
+      return context.tr('order_status_pending');
+    case 'paid':
+      return context.tr('order_status_paid');
+    case 'shipping':
+      return context.tr('order_status_shipping');
+    case 'completed':
+      return context.tr('order_status_completed');
+    case 'cancelled':
+      return context.tr('order_status_cancelled');
+    case 'return':
+      return context.tr('order_status_return');
+    default:
+      return status;
+  }
+}
+
+Color orderStatusColor(String status) {
+  switch (status) {
+    case 'pending':
+      return AppColors.warning;
+    case 'paid':
+      return Colors.blueAccent; // Choose a color for paid, perhaps distinct from shipping
+    case 'shipping':
+      return Colors.blue;
+    case 'completed':
+      return const Color(0xFF229E54); // Green matches mockup
+    case 'cancelled':
+      return const Color(0xFFD32F2F); // Red matches mockup
+    default:
+      return Colors.grey;
+  }
 }
