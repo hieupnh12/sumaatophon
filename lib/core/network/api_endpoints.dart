@@ -32,7 +32,6 @@ class ApiEndpoints {
   static String productFeedbacks(String id) => '/products/$id/feedbacks';
 
   // Orders
-  static const String orders = '/api/orders';
   static String orderById(String id) => '/api/orders/$id';
   static String cartItemByVersionId(String productVersionId) => '/api/cart/items/$productVersionId';
 }

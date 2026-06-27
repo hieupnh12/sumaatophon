@@ -87,7 +87,7 @@ class ChatRemoteDataSource {
   Future<List<ChatThreadEntity>> getThreads() async {
     final data = await apiClient.get(
       ApiEndpoints.chatThreads,
-      queryParams: {'role': 'staff', 'accountType': 'employee'},
+      queryParameters: {'role': 'staff', 'accountType': 'employee'},
     );
     if (data is! List) return [];
     return data
@@ -99,7 +99,7 @@ class ChatRemoteDataSource {
   Future<ChatThreadEntity> getOrCreateMyThread(UserEntity user) async {
     final data = await apiClient.get(
       ApiEndpoints.chatThreadsMine,
-      queryParams: {
+      queryParameters: {
         'customerId': user.id,
       },
     );
@@ -112,7 +112,7 @@ class ChatRemoteDataSource {
   }) async {
     final data = await apiClient.get(
       ApiEndpoints.chatThreadMessages(threadId),
-      queryParams: {'role': user.canSupportChat ? 'staff' : 'user'},
+      queryParameters: {'role': user.canSupportChat ? 'staff' : 'user'},
     );
     if (data is! List) return [];
     return data

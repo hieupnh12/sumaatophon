@@ -12,23 +12,23 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<UserEntity> login(String email, String password) async {
-    final user = await remoteDataSource.login(email, password);
-    await saveSession(user);
-    return user;
+    final userModel = await remoteDataSource.login(email, password);
+    await saveSession(userModel.toEntity());
+    return userModel.toEntity();
   }
 
   @override
   Future<UserEntity> register(String name, String email, String password) async {
-    final user = await remoteDataSource.register(name, email, password);
-    await saveSession(user);
-    return user;
+    final userModel = await remoteDataSource.register(name, email, password);
+    await saveSession(userModel.toEntity());
+    return userModel.toEntity();
   }
 
   @override
   Future<UserEntity> syncAuth(String idToken) async {
-    final user = await remoteDataSource.syncAuth(idToken);
-    await saveSession(user);
-    return user;
+    final userModel = await remoteDataSource.syncAuth(idToken);
+    await saveSession(userModel.toEntity());
+    return userModel.toEntity();
   }
 
   @override
@@ -38,16 +38,16 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<UserEntity> verifyOtp(String phone, String otp) async {
-    final user = await remoteDataSource.verifyOtp(phone, otp);
-    await saveSession(user);
-    return user;
+    final userModel = await remoteDataSource.verifyOtp(phone, otp);
+    await saveSession(userModel.toEntity());
+    return userModel.toEntity();
   }
 
   @override
   Future<UserEntity> linkPhone(String phone, String otp, {bool force = false}) async {
     final userModel = await remoteDataSource.linkPhone(phone, otp, force: force);
-    await saveSession(userModel);
-    return userModel;
+    await saveSession(userModel.toEntity());
+    return userModel.toEntity();
   }
 
   @override
@@ -65,8 +65,8 @@ class AuthRepositoryImpl implements AuthRepository {
       dob: dob,
       address: address,
     );
-    await saveSession(userModel);
-    return userModel;
+    await saveSession(userModel.toEntity());
+    return userModel.toEntity();
   }
 
   @override
@@ -76,27 +76,26 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> saveSession(UserEntity user) async {
-    UserModel model;
-    if (user is UserModel) {
-      model = user;
-    } else {
-      model = UserModel(
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-        phone: user.phone,
-        gender: user.gender,
-        dob: user.dob,
-        address: user.address,
-      );
-    }
+    final model = UserModel(
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+      phoneNumber: user.phoneNumber,
+      gender: user.gender,
+      dob: user.dob,
+      address: user.address,
+      role: user.role == UserRole.staff ? 'staff' : 'user',
+      accountType: user.accountType == AccountType.employee ? 'employee' : 'customer',
+      employeeRoles: user.employeeRoles,
+    );
     await localDataSource.saveUser(model);
   }
 
   @override
   Future<UserEntity?> getSession() async {
-    return await localDataSource.getUser();
+    final model = await localDataSource.getUser();
+    return model?.toEntity();
   }
 
   @override
@@ -104,4 +103,3 @@ class AuthRepositoryImpl implements AuthRepository {
     await localDataSource.clearUser();
   }
 }
-
