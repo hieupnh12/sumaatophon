@@ -246,6 +246,17 @@ const Map<String, String> viLocalizations = {
   'stores': 'Địa chỉ ',
   'concierge': 'Hỗ trợ',
   'notifications': 'Thông báo',
+  'notification_mark_all_read': 'Đọc tất cả',
+  'notification_tab_product_new': 'Sản phẩm mới',
+  'notification_tab_orders': 'Đơn hàng',
+  'notification_empty_product_title': 'Chưa có sản phẩm mới',
+  'notification_empty_product_subtitle': 'Khi có sản phẩm được duyệt lên kệ, bạn sẽ thấy thông báo ở đây.',
+  'notification_empty_orders_title': 'Chưa có thông báo đơn hàng',
+  'notification_empty_orders_subtitle': 'Cập nhật trạng thái đơn, thanh toán và tin nhắn nhân viên sẽ hiện ở đây.',
+  'notification_type_product_new': 'Sản phẩm mới',
+  'notification_type_order': 'Đơn hàng',
+  'notification_type_support': 'Hỗ trợ',
+  'notification_login_required': 'Đăng nhập để xem thông báo sản phẩm mới và đơn hàng',
 
   // Profile
   'theme': 'Giao diện (Dark/Light)',

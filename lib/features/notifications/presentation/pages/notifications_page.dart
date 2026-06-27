@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../../../../core/theme/language_cubit.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../chat/presentation/pages/chat_hub_page.dart';
@@ -113,7 +114,7 @@ class _NotificationsPageState extends State<NotificationsPage> with SingleTicker
 
           return Scaffold(
             appBar: AppBar(
-              title: const Text('Thông báo', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: Text(context.tr('notifications'), style: const TextStyle(fontWeight: FontWeight.w700)),
               centerTitle: true,
               actions: [
                 if (!state.requiresLogin && state.items.isNotEmpty)
@@ -124,7 +125,7 @@ class _NotificationsPageState extends State<NotificationsPage> with SingleTicker
                         context.read<NotificationBloc>().add(MarkAllNotificationsReadEvent(customerId));
                       }
                     },
-                    child: const Text('Đọc tất cả'),
+                    child: Text(context.tr('notification_mark_all_read')),
                   ),
               ],
               bottom: TabBar(
@@ -138,13 +139,13 @@ class _NotificationsPageState extends State<NotificationsPage> with SingleTicker
                 tabs: [
                   Tab(
                     child: _TabLabel(
-                      label: 'Sản phẩm mới',
+                      label: context.tr('notification_tab_product_new'),
                       unreadCount: _unreadCount(productItems),
                     ),
                   ),
                   Tab(
                     child: _TabLabel(
-                      label: 'Đơn hàng',
+                      label: context.tr('notification_tab_orders'),
                       unreadCount: _unreadCount(orderItems),
                     ),
                   ),
@@ -163,8 +164,8 @@ class _NotificationsPageState extends State<NotificationsPage> with SingleTicker
                         isLoading: state.isLoading,
                         error: state.error,
                         emptyIcon: Icons.phone_iphone_rounded,
-                        emptyTitle: 'Chưa có sản phẩm mới',
-                        emptySubtitle: 'Khi có sản phẩm được duyệt lên kệ, bạn sẽ thấy thông báo ở đây.',
+                        emptyTitle: context.tr('notification_empty_product_title'),
+                        emptySubtitle: context.tr('notification_empty_product_subtitle'),
                         showTypeChip: false,
                         onReload: _reload,
                         onTap: (item) => _onTapNotification(context, item),
@@ -174,8 +175,8 @@ class _NotificationsPageState extends State<NotificationsPage> with SingleTicker
                         isLoading: state.isLoading,
                         error: state.error,
                         emptyIcon: Icons.local_shipping_outlined,
-                        emptyTitle: 'Chưa có thông báo đơn hàng',
-                        emptySubtitle: 'Cập nhật trạng thái đơn, thanh toán và tin nhắn nhân viên sẽ hiện ở đây.',
+                        emptyTitle: context.tr('notification_empty_orders_title'),
+                        emptySubtitle: context.tr('notification_empty_orders_subtitle'),
                         showTypeChip: true,
                         onReload: _reload,
                         onTap: (item) => _onTapNotification(context, item),
@@ -258,7 +259,7 @@ class _NotificationList extends StatelessWidget {
             children: [
               Text(error!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
-              FilledButton(onPressed: onReload, child: const Text('Thử lại')),
+              FilledButton(onPressed: onReload, child: Text(context.tr('chat_retry'))),
             ],
           ),
         ),
@@ -316,14 +317,14 @@ class _NotificationTile extends StatelessWidget {
     required this.onTap,
   });
 
-  String get _typeLabel {
+  String _typeLabel(BuildContext context) {
     switch (item.type) {
       case NotificationType.productNew:
-        return 'Sản phẩm mới';
+        return context.tr('notification_type_product_new');
       case NotificationType.orderStatus:
-        return 'Đơn hàng';
+        return context.tr('notification_type_order');
       case NotificationType.chatMessage:
-        return 'Hỗ trợ';
+        return context.tr('notification_type_support');
     }
   }
 
@@ -349,15 +350,17 @@ class _NotificationTile extends StatelessWidget {
     }
   }
 
-  String _formatTime(DateTime? dt) {
+  String _formatTime(BuildContext context, DateTime? dt) {
     if (dt == null) return '';
     final local = dt.toLocal();
     final now = DateTime.now();
     if (now.difference(local).inDays == 0) {
       return DateFormat('HH:mm').format(local);
     }
+    final lang = context.read<LanguageCubit>().state;
+    final dateLocale = lang == 'ja' ? 'ja' : (lang == 'en' ? 'en' : 'vi');
     if (now.difference(local).inDays < 7) {
-      return DateFormat('EEE, HH:mm', 'vi').format(local);
+      return DateFormat('EEE, HH:mm', dateLocale).format(local);
     }
     return DateFormat('dd/MM/yyyy HH:mm').format(local);
   }
@@ -402,7 +405,7 @@ class _NotificationTile extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              _typeLabel,
+                              _typeLabel(context),
                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
                             ),
                           ),
@@ -434,7 +437,7 @@ class _NotificationTile extends StatelessWidget {
                     if (item.createdAt != null) ...[
                       const SizedBox(height: 6),
                       Text(
-                        _formatTime(item.createdAt),
+                        _formatTime(context, item.createdAt),
                         style: TextStyle(
                           fontSize: 12,
                           color: (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary).withValues(alpha: 0.7),
@@ -468,7 +471,7 @@ class _LoginRequired extends StatelessWidget {
             Icon(Icons.notifications_active_outlined, size: 56, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)),
             const SizedBox(height: 16),
             Text(
-              'Đăng nhập để xem thông báo sản phẩm mới và đơn hàng',
+              context.tr('notification_login_required'),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium,
             ),

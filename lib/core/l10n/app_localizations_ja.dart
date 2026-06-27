@@ -246,6 +246,17 @@ const Map<String, String> jaLocalizations = {
   'stores': '店舗',
   'concierge': 'サポート',
   'notifications': '通知',
+  'notification_mark_all_read': 'すべて既読',
+  'notification_tab_product_new': '新商品',
+  'notification_tab_orders': '注文',
+  'notification_empty_product_title': '新商品の通知はまだありません',
+  'notification_empty_product_subtitle': '商品が公開されると、ここに通知が表示されます。',
+  'notification_empty_orders_title': '注文の通知はまだありません',
+  'notification_empty_orders_subtitle': '注文状況、支払い、スタッフからのメッセージがここに表示されます。',
+  'notification_type_product_new': '新商品',
+  'notification_type_order': '注文',
+  'notification_type_support': 'サポート',
+  'notification_login_required': 'ログインして新商品と注文の通知を表示',
 
   // Profile
   'theme': 'テーマ (Dark/Light)',

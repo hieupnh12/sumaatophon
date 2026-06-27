@@ -246,6 +246,17 @@ const Map<String, String> enLocalizations = {
   'stores': 'Stores',
   'concierge': 'Concierge',
   'notifications': 'Notifications',
+  'notification_mark_all_read': 'Mark all read',
+  'notification_tab_product_new': 'New products',
+  'notification_tab_orders': 'Orders',
+  'notification_empty_product_title': 'No new products yet',
+  'notification_empty_product_subtitle': 'When a product is published, you will see a notification here.',
+  'notification_empty_orders_title': 'No order notifications yet',
+  'notification_empty_orders_subtitle': 'Order updates, payments, and staff messages will appear here.',
+  'notification_type_product_new': 'New product',
+  'notification_type_order': 'Order',
+  'notification_type_support': 'Support',
+  'notification_login_required': 'Sign in to view new product and order notifications',
 
   // Profile
   'theme': 'Theme (Dark/Light)',
