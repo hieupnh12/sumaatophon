@@ -26,8 +26,17 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # Socket.IO WebSocket upgrade (chat nhân viên real-time)
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
         proxy_read_timeout 120s;
     }
+
+    # map $http_upgrade $connection_upgrade — thêm vào http { } block của nginx.conf:
+    # map $http_upgrade $connection_upgrade {
+    #     default upgrade;
+    #     ''      close;
+    # }
 
     # ... các location khác của site maclenin.io.vn (admin, static, ...)
 }

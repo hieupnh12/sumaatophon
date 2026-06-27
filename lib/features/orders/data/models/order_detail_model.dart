@@ -66,13 +66,15 @@ class OrderProductItemModel extends OrderProductItem {
 
 class OrderTimelineItemModel extends OrderTimelineItem {
   const OrderTimelineItemModel({
-    required super.title,
+    super.step,
+    super.title,
     super.date,
     required super.isDone,
   });
 
   factory OrderTimelineItemModel.fromJson(Map<String, dynamic> json) {
     return OrderTimelineItemModel(
+      step: json['step'] as String?,
       title: json['title'] as String? ?? '',
       date: json['date'] as String?,
       isDone: json['isDone'] as bool? ?? false,

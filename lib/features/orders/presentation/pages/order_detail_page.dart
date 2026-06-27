@@ -4,6 +4,7 @@ import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../../domain/entities/order_detail.dart';
 import '../bloc/order_bloc.dart';
+import '../utils/order_display_helpers.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 class OrderDetailPage extends StatefulWidget {
@@ -59,7 +60,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           if (state is OrderLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is OrderError) {
-            return Center(child: Text(state.message, style: const TextStyle(color: Colors.red)));
+            return Center(child: Text(context.tr('order_error_load'), style: const TextStyle(color: Colors.red)));
           } else if (state is OrderDetailLoaded) {
             final detail = state.orderDetail;
             return SingleChildScrollView(
@@ -235,7 +236,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text(orderProductLabel(context, name), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   const SizedBox(height: 4),
                   Text(price, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                   const SizedBox(height: 4),
@@ -278,7 +279,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           final idx = entry.key;
           final item = entry.value;
           return _buildTimelineItem(
-            item.title,
+            orderTimelineLabel(context, step: item.step, title: item.title),
             isDark,
             isFirst: idx == 0,
             isLast: idx == timeline.length - 1,
@@ -332,13 +333,13 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         children: [
           _buildSectionTitle(context.tr('order_customer_info'), isDark),
           const SizedBox(height: 16),
-          _buildInfoRow(context.tr('order_customer_name'), customer.name, isDark),
+          _buildInfoRow(context.tr('order_customer_name'), orderCustomerName(context, customer.name), isDark),
           _buildDivider(isDark),
           _buildInfoRow(context.tr('order_customer_phone'), customer.phone, isDark),
           _buildDivider(isDark),
           _buildInfoRow(context.tr('order_customer_address'), customer.address, isDark),
           _buildDivider(isDark),
-          _buildInfoRow(context.tr('order_customer_note'), customer.note, isDark),
+          _buildInfoRow(context.tr('order_customer_note'), orderCustomerNote(customer.note), isDark),
         ],
       ),
     );
@@ -371,7 +372,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 _buildDivider(isDark),
                 _buildInfoRow(context.tr('order_discount'), paymentInfo.discount, isDark, valueColor: const Color(0xFF229E54)),
                 _buildDivider(isDark),
-                _buildInfoRow(context.tr('order_shipping_fee'), paymentInfo.shippingFee, isDark, valueColor: const Color(0xFF229E54)),
+                _buildInfoRow(context.tr('order_shipping_fee'), orderShippingFeeLabel(context, paymentInfo.shippingFee), isDark, valueColor: const Color(0xFF229E54)),
               ],
             ),
           ),
@@ -417,7 +418,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                   children: [
                     Text(context.tr('order_store_address'), style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, fontSize: 13)),
                     const SizedBox(height: 4),
-                    const Text('244 Phạm Văn Đồng, P. Cổ Nhuế, Q. Bắc Từ Liêm, Hà Nội', style: TextStyle(fontSize: 13)),
+                    Text(context.tr('order_store_address_value'), style: const TextStyle(fontSize: 13)),
                   ],
                 ),
               ),

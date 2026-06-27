@@ -70,18 +70,20 @@ class OrderProductItem extends Equatable {
 }
 
 class OrderTimelineItem extends Equatable {
+  final String? step;
   final String title;
   final String? date;
   final bool isDone;
 
   const OrderTimelineItem({
-    required this.title,
+    this.step,
+    this.title = '',
     this.date,
     required this.isDone,
   });
 
   @override
-  List<Object?> get props => [title, date, isDone];
+  List<Object?> get props => [step, title, date, isDone];
 }
 
 class OrderDetail extends Equatable {

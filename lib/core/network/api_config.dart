@@ -22,6 +22,28 @@ class ApiConfig {
 
   static String get baseUrl => _baseUrl;
 
+  /// Socket.IO cần origin và path tách riêng khi REST API có prefix (vd. `/mobile`).
+  ///
+  /// Client mặc định gọi `/socket.io/` ở root domain — sai khi API nằm sau Nginx
+  /// tại `https://maclenin.io.vn/mobile`. USB debug (`http://127.0.0.1:3000`) không
+  /// có prefix nên path vẫn là `/socket.io`.
+  static ApiSocketConfig get socketConfig {
+    final uri = Uri.parse(_baseUrl);
+    final defaultPort = uri.scheme == 'https' ? 443 : 80;
+    final portSuffix =
+        uri.hasPort && uri.port != defaultPort ? ':${uri.port}' : '';
+    final origin = '${uri.scheme}://${uri.host}$portSuffix';
+
+    var prefix = uri.path;
+    if (prefix.endsWith('/')) {
+      prefix = prefix.substring(0, prefix.length - 1);
+    }
+    final path =
+        prefix.isEmpty || prefix == '/' ? '/socket.io' : '$prefix/socket.io';
+
+    return ApiSocketConfig(origin: origin, path: path);
+  }
+
   static Future<void> init() async {
     if (kReleaseMode) {
       _baseUrl = productionBaseUrl;
@@ -142,7 +164,20 @@ class ApiConfig {
 
   static void _log(String reason) {
     if (kDebugMode) {
-      debugPrint('API baseUrl = $_baseUrl ($reason)');
+      final socket = socketConfig;
+      debugPrint(
+        'API baseUrl = $_baseUrl ($reason) | Socket.IO ${socket.origin}${socket.path}',
+      );
     }
   }
+}
+
+class ApiSocketConfig {
+  final String origin;
+  final String path;
+
+  const ApiSocketConfig({
+    required this.origin,
+    required this.path,
+  });
 }

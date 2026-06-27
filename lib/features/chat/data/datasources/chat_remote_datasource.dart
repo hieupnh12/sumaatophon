@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/api_config.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../domain/entities/chat_message_entity.dart';
@@ -28,9 +29,12 @@ class ChatRemoteDataSource {
     await disconnect();
     _user = user;
 
+    final socketConfig = ApiConfig.socketConfig;
+
     _socket = io.io(
-      ApiEndpoints.baseUrl,
+      socketConfig.origin,
       io.OptionBuilder()
+          .setPath(socketConfig.path)
           .setTransports(['websocket', 'polling'])
           .enableAutoConnect()
           .enableReconnection()
