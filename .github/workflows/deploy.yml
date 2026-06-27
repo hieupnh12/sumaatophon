@@ -18,7 +18,6 @@ jobs:
       # BUILD NODE API
       - name: Build Flutter API
         run: |
-          ls -R
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/flutter-api:latest ./backend
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/flutter-api:latest
 

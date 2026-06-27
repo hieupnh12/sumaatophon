@@ -6,12 +6,17 @@ npm-debug.log
 .git
 .gitignore
 *.md
+# Script dev / migrate — không cần trong image production
 test-db.js
 migrate-db.js
+migrate-addresses.js
 dump-schema.js
 create_users_table.sql
+# Firebase mount từ VPS qua docker-compose volume, không bake vào image
 firebase-service-account.json
 firebase-service-account.example.json
+# Docker meta files
 Dockerfile
 docker-compose.yml
 .dockerignore
+deploy

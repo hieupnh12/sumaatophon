@@ -9,7 +9,12 @@ import '../bloc/order_bloc.dart';
 import 'order_detail_page.dart';
 
 class OrderListPage extends StatefulWidget {
-  const OrderListPage({super.key});
+  final String titleKey;
+
+  const OrderListPage({
+    super.key,
+    this.titleKey = 'profile_orders_title',
+  });
 
   @override
   State<OrderListPage> createState() => _OrderListPageState();
@@ -20,9 +25,26 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
   DateTime? _startDate;
   DateTime? _endDate;
 
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'Chọn ngày';
+  String _formatDate(BuildContext context, DateTime? date) {
+    if (date == null) return context.tr('order_pick_date');
     return DateFormat('dd/MM/yyyy').format(date);
+  }
+
+  String _statusLabel(BuildContext context, String status) {
+    switch (status) {
+      case 'pending':
+        return context.tr('order_status_pending');
+      case 'shipping':
+        return context.tr('order_status_shipping');
+      case 'completed':
+        return context.tr('order_status_completed');
+      case 'cancelled':
+        return context.tr('order_status_cancelled');
+      case 'return':
+        return context.tr('order_status_return');
+      default:
+        return status;
+    }
   }
 
   @override
@@ -47,7 +69,7 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
       appBar: AppBar(
-        title: Text(context.tr('profile_orders_title')),
+        title: Text(context.tr(widget.titleKey)),
         backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
         elevation: 0,
         bottom: TabBar(
@@ -141,9 +163,9 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(_formatDate(_startDate), style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
+                Text(_formatDate(context, _startDate), style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
                 Icon(Icons.arrow_forward_rounded, size: 20, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                Text(_formatDate(_endDate), style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
+                Text(_formatDate(context, _endDate), style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
                 Icon(Icons.calendar_today_outlined, size: 20, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
               ],
             ),
@@ -209,7 +231,7 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
                                     children: [
                                       RichText(
                                         text: TextSpan(
-                                          text: 'Đơn hàng: ',
+                                          text: '${context.tr('order_label')} ',
                                           style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, fontSize: 13),
                                           children: [
                                             TextSpan(
@@ -242,7 +264,7 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    order.statusText,
+                                    _statusLabel(context, order.status),
                                     style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
                                   ),
                                 ),

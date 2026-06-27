@@ -24,7 +24,6 @@ class _ProfilePageState extends State<ProfilePage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final currentLang = context.read<LanguageCubit>().state;
-    final languages = {'vi': 'Tiếng Việt', 'en': 'English', 'ja': '日本語'};
 
     showModalBottomSheet(
       context: context,
@@ -33,6 +32,11 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
+        final languages = {
+          'vi': ctx.tr('lang_vi'),
+          'en': ctx.tr('lang_en'),
+          'ja': ctx.tr('lang_ja'),
+        };
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
           child: Column(
@@ -241,7 +245,11 @@ class _ProfilePageState extends State<ProfilePage> {
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const OrderListPage()),
+                              MaterialPageRoute(
+                                builder: (_) => const OrderListPage(
+                                  titleKey: 'profile_transaction_history',
+                                ),
+                              ),
                             );
                           },
                         ),
@@ -375,7 +383,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         Icons.language_rounded, 
                         context.tr('language'), 
                         isDark, 
-                        trailingText: {'vi': 'Tiếng Việt', 'en': 'English', 'ja': '日本語'}[context.watch<LanguageCubit>().state],
+                        trailingText: {
+                          'vi': context.tr('lang_vi'),
+                          'en': context.tr('lang_en'),
+                          'ja': context.tr('lang_ja'),
+                        }[context.watch<LanguageCubit>().state],
                         onTap: _showLanguageSelector,
                       ),
                       _buildDivider(isDark),
@@ -460,10 +472,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         errorBuilder: (ctx, err, stack) => const Icon(Icons.card_giftcard, size: 80, color: Colors.grey), // Reduced icon size
                       ),
                       const SizedBox(height: 16), // Reduced from 32
-                      _buildGuestFeatureItem('Theo dõi đơn hàng mọi lúc, nhận cập nhật tức thì', false),
-                      _buildGuestFeatureItem('Tích điểm & nhận ưu đãi dành riêng cho bạn', false),
-                      _buildGuestFeatureItem('Xem thông tin bảo hành nhanh chóng, chính xác', false),
-                      _buildGuestFeatureItem('Tra cứu lịch sử giao dịch đầy đủ, rõ ràng', false),
+                      _buildGuestFeatureItem(context.tr('profile_guest_feature_1'), isDark),
+                      _buildGuestFeatureItem(context.tr('profile_guest_feature_2'), isDark),
+                      _buildGuestFeatureItem(context.tr('profile_guest_feature_3'), isDark),
+                      _buildGuestFeatureItem(context.tr('profile_guest_feature_4'), isDark),
                     ],
                   ),
                 ),
@@ -487,7 +499,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  child: const Text('Đăng nhập ngay!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    context.tr('profile_login_now'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
                 const SizedBox(height: 24), // Reduced from 40
               ],
