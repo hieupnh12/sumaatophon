@@ -122,89 +122,104 @@ class _ChatbotPageState extends State<ChatbotPage> with AutomaticKeepAliveClient
 
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
+        final maxHeight = MediaQuery.sizeOf(ctx).height * 0.6;
+
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.quiz_outlined,
-                        size: 20,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        context.tr('chatbot_suggestions_label'),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.quiz_outlined,
+                          size: 20,
+                          color: theme.colorScheme.primary,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.5),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  itemCount: _suggestions.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, index) {
-                    final q = _suggestions[index];
-                    return Material(
-                      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                      borderRadius: BorderRadius.circular(14),
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _send(q);
-                        },
-                        borderRadius: BorderRadius.circular(14),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.chat_bubble_outline_rounded,
-                                size: 18,
-                                color: theme.colorScheme.primary.withValues(alpha: 0.85),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(q, style: const TextStyle(fontSize: 15, height: 1.3)),
-                              ),
-                              Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                size: 14,
-                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                              ),
-                            ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          ctx.tr('chatbot_suggestions_label'),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                Flexible(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: _suggestions.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, index) {
+                      final q = _suggestions[index];
+                      return Material(
+                        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                        borderRadius: BorderRadius.circular(14),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _send(q);
+                          },
+                          borderRadius: BorderRadius.circular(14),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Icon(
+                                    Icons.chat_bubble_outline_rounded,
+                                    size: 18,
+                                    color: theme.colorScheme.primary.withValues(alpha: 0.85),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    q,
+                                    style: const TextStyle(fontSize: 15, height: 1.35),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Icon(
+                                    Icons.arrow_forward_ios_rounded,
+                                    size: 14,
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -234,16 +249,19 @@ class _ChatbotPageState extends State<ChatbotPage> with AutomaticKeepAliveClient
                   color: theme.colorScheme.primary.withValues(alpha: 0.9),
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  context.tr('chatbot_suggestions_label'),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.2,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                Expanded(
+                  child: Text(
+                    context.tr('chatbot_suggestions_label'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    ),
                   ),
                 ),
-                const Spacer(),
                 if (hasMore)
                   InkWell(
                     onTap: _isSending ? null : _openAllSuggestions,
@@ -265,7 +283,7 @@ class _ChatbotPageState extends State<ChatbotPage> with AutomaticKeepAliveClient
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: 38,
+            height: 40,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -507,16 +525,19 @@ class _SuggestionChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final maxChipWidth = MediaQuery.sizeOf(context).width * 0.78;
+
     return Material(
-      elevation: isDark ? 0 : 0.5,
-      shadowColor: Colors.black26,
       color: isDark ? AppColors.darkSurface : Colors.white,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: enabled ? onTap : null,
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          height: 36,
+          constraints: BoxConstraints(maxWidth: maxChipWidth),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
@@ -527,8 +548,11 @@ class _SuggestionChip extends StatelessWidget {
           ),
           child: Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 13,
+              height: 1,
               fontWeight: FontWeight.w500,
               color: enabled
                   ? (isDark ? AppColors.darkText : AppColors.lightText)

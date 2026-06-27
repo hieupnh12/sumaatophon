@@ -1,4 +1,5 @@
-const pool = require('../db');
+const pool = require('../../db');
+const { parseStoredOrderNote, resolveOrderCustomerAddress } = require('../services/orderNoteParser');
 
 function formatCurrency(amount) {
   if (!amount) return '0đ';
@@ -92,7 +93,7 @@ const getOrders = async (req, res) => {
         items: row.total_items,
         total: formatCurrency(row.total_amount),
         date: formatDate(row.create_datetime),
-        product: row.product_name || 'Sản phẩm',
+        product: row.product_name || '',
         productPrice: formatCurrency(row.product_price),
         hasVat: true,
         otherItemsCount: Math.max(0, row.total_items - 1),
@@ -131,6 +132,7 @@ const getOrderDetails = async (req, res) => {
     }
 
     const order = orders[0];
+    const parsedNote = parseStoredOrderNote(order.note);
 
     const [details] = await pool.query(`
       SELECT 
@@ -153,12 +155,11 @@ const getOrderDetails = async (req, res) => {
     `, [id]);
 
     const formattedId = `#ORD${String(order.order_id).padStart(6, '0')}`;
-    
-    // Giả lập logic tính timeline
+
     const timeline = [];
-    timeline.push({ title: 'Đặt hàng thành công', date: order.create_datetime, isDone: true });
-    timeline.push({ title: 'Sẵn sàng', date: null, isDone: order.status !== 'PENDING' });
-    timeline.push({ title: 'Đã nhận hàng', date: order.end_datetime, isDone: order.status === 'DELIVERED' || order.status === 'COMPLETED' });
+    timeline.push({ step: 'placed', date: order.create_datetime, isDone: true });
+    timeline.push({ step: 'ready', date: null, isDone: order.status !== 'PENDING' });
+    timeline.push({ step: 'delivered', date: order.end_datetime, isDone: order.status === 'DELIVERED' || order.status === 'COMPLETED' });
 
     res.json({
       id: formattedId,
@@ -168,22 +169,21 @@ const getOrderDetails = async (req, res) => {
       totalAmount: formatCurrency(order.total_amount),
       isPaid: order.is_paid === 1,
       customer: {
-        name: order.customer_name || 'Khách hàng',
+        name: order.customer_name || '',
         phone: order.customer_phone || '',
-        address: order.customer_address || '',
-        note: order.note || '-'
+        address: resolveOrderCustomerAddress(order.customer_address, parsedNote),
+        note: parsedNote.userNote || '-',
       },
       paymentInfo: {
         totalItems: details.length,
-        subtotal: formatCurrency(order.total_amount), 
-        discount: '-0đ', 
-        shippingFee: 'Miễn phí',
+        subtotal: formatCurrency(order.total_amount),
+        discount: '-0đ',
+        shippingFee: 'free',
         totalVat: formatCurrency(order.total_amount),
         amountPaid: order.is_paid === 1 ? formatCurrency(order.total_amount) : '0đ',
         amountRemaining: order.is_paid === 1 ? '0đ' : formatCurrency(order.total_amount),
       },
       items: details.map(d => {
-        // Tự động cộng số tháng bảo hành vào ngày hiện tại (mô phỏng)
         const wDate = new Date();
         wDate.setMonth(wDate.getMonth() + (Number(d.warranty_period) || 12));
 
@@ -207,5 +207,5 @@ const getOrderDetails = async (req, res) => {
 
 module.exports = {
   getOrders,
-  getOrderDetails
+  getOrderDetails,
 };

@@ -6,6 +6,7 @@ const {
 } = require('../services/cartService');
 const { createPaymentTransaction } = require('../services/orderPaymentService');
 const { appendReceiptToNote, sendOrderReceiptEmail } = require('../services/orderEmailService');
+const { getOrders, getOrderDetails } = require('../controllers/ordersController');
 
 const router = express.Router();
 
@@ -169,9 +170,9 @@ router.post('/api/orders', async (req, res) => {
 });
 
 // GET /api/orders
-router.get('/api/orders', require('../../orders/orders.controller').getOrders);
+router.get('/api/orders', getOrders);
 
 // GET /api/orders/:id
-router.get('/api/orders/:id', require('../../orders/orders.controller').getOrderDetails);
+router.get('/api/orders/:id', getOrderDetails);
 
 module.exports = router;

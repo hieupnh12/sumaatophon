@@ -30,6 +30,17 @@ Flutter (ChatBloc)
 
 ## WebSocket events
 
+Client Flutter phai ket noi Socket.IO voi **origin** va **path** tach biet khi API co prefix Nginx:
+
+| Moi truong | Origin | Path |
+|------------|--------|------|
+| Local / USB debug | `http://127.0.0.1:3000` | `/socket.io` |
+| Production VPS | `https://maclenin.io.vn` | `/mobile/socket.io` |
+
+Neu path sai (mac dinh `/socket.io` o root), client nhan HTML static site thay vi handshake Socket.IO.
+
+Nginx can `Upgrade` / `Connection` headers — xem `backend/deploy/nginx-api-mobile.conf.example`.
+
 | Event | Huong | Mo ta |
 |-------|-------|-------|
 | `send_message` | Client → Server | Gui tin `{ threadId, text }` |
