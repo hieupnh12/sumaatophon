@@ -428,4 +428,7 @@ const Map<String, String> viLocalizations = {
   'chatbot_suggestions_more': 'Xem thêm',
   'chatbot_input_hint': 'Hỏi về điện thoại, giá, tồn kho...',
   'chatbot_transfer_staff': 'Chuyển sang nhân viên',
+  'chatbot_view_product': 'Xem sản phẩm',
+  'chatbot_product_in_stock': 'Còn hàng',
+  'chatbot_product_out_of_stock': 'Hết hàng',
 };

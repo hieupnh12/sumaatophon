@@ -428,4 +428,7 @@ const Map<String, String> enLocalizations = {
   'chatbot_suggestions_more': 'See more',
   'chatbot_input_hint': 'Ask about phones, prices, stock...',
   'chatbot_transfer_staff': 'Talk to staff',
+  'chatbot_view_product': 'View product',
+  'chatbot_product_in_stock': 'In stock',
+  'chatbot_product_out_of_stock': 'Out of stock',
 };

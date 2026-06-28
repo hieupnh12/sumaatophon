@@ -29,10 +29,12 @@ function mapProductRow(row) {
     name: row.product_name,
     brand: row.brand_name ?? 'Unknown',
     price: minPrice,
+    imageUrl: String(row.cover_image || row.picture || '').trim(),
     ramRom: splitPipe(row.ram_rom_options),
     colors: splitPipe(row.color_names),
     stockQuantity: Number(row.stock_quantity ?? 0),
     rating: Number(row.avg_rating ?? 0),
+    rearCamera: String(row.rear_camera ?? '').trim(),
     specsText: specs.join(' · '),
   };
 }
@@ -42,6 +44,7 @@ async function loadProducts(pool) {
     SELECT
       p.product_id,
       p.product_name,
+      p.picture,
       p.battery,
       p.screen_size,
       p.chipset,
@@ -57,7 +60,16 @@ async function loadProducts(pool) {
       COALESCE(AVG(f.rate), 0) AS avg_rating,
       COUNT(DISTINCT CASE
         WHEN pi.status = 'IN_STOCK' AND pi.order_detail_id IS NULL THEN pi.imei
-      END) AS stock_quantity
+      END) AS stock_quantity,
+      (
+        SELECT vi.image
+        FROM version_image vi
+        INNER JOIN product_versions pv_img ON vi.product_version_id = pv_img.product_version_id
+        WHERE pv_img.product_id = p.product_id
+          AND vi.image IS NOT NULL AND vi.image != ''
+        ORDER BY vi.image_id
+        LIMIT 1
+      ) AS cover_image
     FROM products p
     LEFT JOIN brands b ON p.brand_id = b.brand_id
     LEFT JOIN operating_systems os ON p.operating_system_id = os.operating_system_id
@@ -69,7 +81,7 @@ async function loadProducts(pool) {
     LEFT JOIN product_items pi ON pi.product_version_id = pv.product_version_id
     WHERE p.status = 1
     GROUP BY
-      p.product_id, p.product_name, p.battery, p.screen_size, p.chipset,
+      p.product_id, p.product_name, p.picture, p.battery, p.screen_size, p.chipset,
       p.rear_camera, os.operating_system_name, b.brand_name
     ORDER BY p.product_id DESC
   `);
@@ -178,6 +190,85 @@ function tightenSearchResults(scored) {
   return close.map((item) => item.p);
 }
 
+function parseMegapixels(text) {
+  const match = String(text ?? '').match(/(\d+(?:\.\d+)?)\s*mp/i);
+  return match ? Number(match[1]) : 0;
+}
+
+function parseBatteryMah(text) {
+  const match = String(text ?? '').match(/(\d{3,5})\s*mah/i);
+  if (match) return Number(match[1]);
+  const plain = String(text ?? '').match(/\b(\d{4})\b/);
+  return plain ? Number(plain[1]) : 0;
+}
+
+function detectUseCase(q) {
+  if (/chup anh|camera|selfie|quay phim|nen phim|anh dep|portrait|zoom|chup dep/.test(q)) return 'camera';
+  if (/pin trau|pin tot|pin ben|thoi luong pin|sac pin|pin lau/.test(q)) return 'battery';
+  if (/choi game|gaming|game|fps|hieu nang cao|man hinh lon/.test(q)) return 'gaming';
+  if (/re nhat|gia re|tiet kiem|duoi \d+\s*(trieu|tr)|budget|sinh vien/.test(q)) return 'budget';
+  if (/muon.*dien thoai|can.*dien thoai|tim.*dien thoai|dien thoai.*(dep|tot)/.test(q)) return 'recommend';
+  return null;
+}
+
+function scoreCameraProduct(p) {
+  let score = parseMegapixels(p.rearCamera) * 3 + parseMegapixels(p.specsText) * 2;
+  const nameNorm = normalize(p.name);
+  if (/pro max|ultra|\bpro\b/.test(nameNorm)) score += 12;
+  if (/iphone|galaxy s|pixel/.test(nameNorm)) score += 8;
+  score += p.rating * 3;
+  if (p.stockQuantity > 0) score += 10;
+  return score;
+}
+
+function scoreBatteryProduct(p) {
+  let score = parseBatteryMah(p.specsText);
+  if (/pin|battery/.test(normalize(p.specsText))) score += 500;
+  if (p.stockQuantity > 0) score += 10;
+  return score;
+}
+
+function scoreGamingProduct(p) {
+  let score = 0;
+  const haystack = `${normalize(p.name)} ${normalize(p.specsText)}`;
+  if (/snapdragon|dimensity|apple a|bionic/.test(haystack)) score += 20;
+  if (/gaming|rog|red magic|black shark/.test(haystack)) score += 25;
+  if (/pro max|ultra|\bpro\b/.test(haystack)) score += 10;
+  if (p.stockQuantity > 0) score += 10;
+  return score;
+}
+
+function recommendByUseCase(products, useCase, limit = 3) {
+  const inStock = products.filter((p) => p.stockQuantity > 0);
+  const pool = inStock.length ? inStock : products;
+  if (!pool.length) return [];
+
+  switch (useCase) {
+    case 'camera':
+      return [...pool].sort((a, b) => scoreCameraProduct(b) - scoreCameraProduct(a)).slice(0, limit);
+    case 'battery':
+      return [...pool].sort((a, b) => scoreBatteryProduct(b) - scoreBatteryProduct(a)).slice(0, limit);
+    case 'gaming':
+      return [...pool].sort((a, b) => scoreGamingProduct(b) - scoreGamingProduct(a)).slice(0, limit);
+    case 'budget':
+      return [...pool].sort((a, b) => a.price - b.price).slice(0, limit);
+    case 'recommend':
+      return [...pool]
+        .sort((a, b) => b.rating - a.rating || a.price - b.price)
+        .slice(0, limit);
+    default:
+      return pool.slice(0, limit);
+  }
+}
+
+const USE_CASE_TITLES = {
+  camera: 'Gợi ý điện thoại chụp ảnh tốt',
+  battery: 'Gợi ý điện thoại pin trâu',
+  gaming: 'Gợi ý điện thoại chơi game mượt',
+  budget: 'Gợi ý điện thoại giá tốt',
+  recommend: 'Gợi ý điện thoại phù hợp',
+};
+
 function searchProducts(products, message, minScore = 6) {
   const q = expandSearchQuery(message);
   const requestedBrands = detectRequestedBrands(q);
@@ -211,17 +302,18 @@ function classifyIntentRule(message, products) {
   if (offTopicRe.some((re) => re.test(q))) return 'off_topic';
 
   const phoneRe =
-    /dien thoai|smartphone|iphone|\bip\b|ip\d|ipad|samsung|xiaomi|oppo|vivo|realme|huawei|nokia|sony|pin|man hinh|chip|camera|ram|rom|android|ios|con hang|het hang|ton kho|thong so/;
+    /dien thoai|smartphone|iphone|\bip\b|ip\d|ipad|samsung|xiaomi|oppo|vivo|realme|huawei|nokia|sony|pin|man hinh|chip|camera|chup anh|quay phim|selfie|ram|rom|android|ios|con hang|het hang|ton kho|thong so|muon mua|can mua|tim mua/;
   const listRe = /co nhung|danh sach|shop co|nhung may|san pham nao|may nao/;
+  const wantPhoneRe = /muon.*dien thoai|can.*dien thoai|tim.*dien thoai|dien thoai.*(dep|tot|re|pin|camera|game)/;
   const matches = searchProducts(products, message, 6);
   const brands = [...new Set(products.map((p) => normalize(p.brand)).filter(Boolean))];
   const hasBrand = brands.some((b) => q.includes(b));
 
-  if (phoneRe.test(q) || listRe.test(q) || hasBrand || matches.length > 0) {
+  if (phoneRe.test(q) || listRe.test(q) || wantPhoneRe.test(q) || hasBrand || matches.length > 0) {
     return 'phone_product';
   }
 
-  if (/goi y|nen mua|re nhat|tot nhat|recommend/.test(q)) return 'phone_product';
+  if (/goi y|nen mua|re nhat|tot nhat|recommend|chup anh dep|camera dep|pin trau|choi game/.test(q)) return 'phone_product';
   if (/mua|ban|gia|shop|san pham|hang hoa/.test(q)) return 'unclear';
 
   return 'off_topic';
@@ -262,6 +354,9 @@ async function resolveIntent(message, products, provider) {
   try {
     const aiIntent = await classifyIntentAi(message, provider);
     if (ruleIntent === 'greeting' || ruleIntent === 'staff' || ruleIntent === 'store_policy') {
+      return ruleIntent;
+    }
+    if (ruleIntent === 'phone_product' && (aiIntent === 'off_topic' || aiIntent === 'unclear')) {
       return ruleIntent;
     }
     return aiIntent;
@@ -397,6 +492,18 @@ function answerFromProducts(message, products) {
     };
   }
 
+  const useCase = detectUseCase(q);
+  if (useCase) {
+    const pick = recommendByUseCase(products, useCase);
+    if (pick.length) {
+      return {
+        reply: `${USE_CASE_TITLES[useCase] || 'Gợi ý cho bạn'}:\n\n${pick.map(productSummary).join('\n\n')}`,
+        suggestStaff: false,
+        productIds: pick.map((p) => p.id),
+      };
+    }
+  }
+
   const matches = searchProducts(products, message);
   const top = matches.slice(0, 3);
 
@@ -419,7 +526,7 @@ function answerFromProducts(message, products) {
     return formatProductReply('Giá tham khảo:', top);
   }
 
-  if (/pin|battery|man hinh|chip|camera|thong so|spec/.test(q)) {
+  if (/pin|battery|man hinh|chip|camera|chup anh|thong so|spec/.test(q)) {
     return formatProductReply('Thông số liên quan:', top);
   }
 
@@ -844,6 +951,22 @@ async function answerHybrid(message, products, history) {
   };
 }
 
+function buildProductCards(allProducts, productIds, limit = 4) {
+  if (!Array.isArray(productIds) || !productIds.length) return [];
+  const byId = new Map(allProducts.map((p) => [String(p.id), p]));
+  return productIds
+    .slice(0, limit)
+    .map((id) => byId.get(String(id)))
+    .filter(Boolean)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      imageUrl: p.imageUrl || '',
+      stockQuantity: p.stockQuantity,
+    }));
+}
+
 function setupChatbot(app, pool) {
   const provider = resolveAiProvider();
   const chatMode = resolveChatbotMode();
@@ -909,10 +1032,13 @@ function setupChatbot(app, pool) {
         aiWarning = aiErrorHint(code);
       }
 
+      const productCards = buildProductCards(products, result.productIds ?? []);
+
       res.json({
         reply: result.reply.replace(/\*\*/g, ''),
         suggestStaff: Boolean(result.suggestStaff),
         productIds: result.productIds ?? [],
+        products: productCards,
         mode,
         intent: result.intent ?? classifyIntentRule(message, products),
         ...(aiWarning ? { aiWarning } : {}),
