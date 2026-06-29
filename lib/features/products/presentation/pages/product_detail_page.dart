@@ -773,6 +773,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     width: 56,
                     height: 56,
                     child: OutlinedButton(
+                      key: const Key('product_detail_add_to_cart_button'),
                       onPressed: canPurchase
                           ? () async {
                               HapticFeedback.lightImpact();
