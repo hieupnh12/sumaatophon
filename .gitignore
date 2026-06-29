@@ -40,4 +40,7 @@ backend/node_modules/
 
 .dart_tool/
 
+# CodeGraph local daemon (machine-specific, avoid merge conflicts)
+.codegraph/
+
 .flutter-plugins-dependencies
