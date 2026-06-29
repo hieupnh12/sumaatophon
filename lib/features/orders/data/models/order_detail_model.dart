@@ -45,6 +45,7 @@ class OrderPaymentInfoModel extends OrderPaymentInfo {
 class OrderProductItemModel extends OrderProductItem {
   const OrderProductItemModel({
     required super.id,
+    required super.productId,
     required super.name,
     required super.price,
     required super.warrantyUntil,
@@ -55,6 +56,7 @@ class OrderProductItemModel extends OrderProductItem {
   factory OrderProductItemModel.fromJson(Map<String, dynamic> json) {
     return OrderProductItemModel(
       id: json['id'] as int? ?? 0,
+      productId: json['productId']?.toString() ?? '',
       name: json['name'] as String? ?? '',
       price: json['price'] as String? ?? '0đ',
       warrantyUntil: json['warrantyUntil'] as String? ?? '',

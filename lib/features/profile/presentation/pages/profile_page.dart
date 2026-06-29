@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'help_center_page.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_confirm_dialog.dart';
 import '../../../../core/theme/theme_cubit.dart';
@@ -11,9 +13,12 @@ import '../../../auth/presentation/pages/login_page.dart';
 import 'account_info_page.dart';
 import '../../../orders/presentation/pages/order_list_page.dart';
 import '../../../address/presentation/pages/address_list_page.dart';
+import '../../../../features/warranty/presentation/pages/warranty_page.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final VoidCallback? onLoginSuccess;
+
+  const ProfilePage({super.key, this.onLoginSuccess});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -238,27 +243,17 @@ class _ProfilePageState extends State<ProfilePage> {
                           },
                         ),
                         _buildDivider(isDark),
-                        _buildListItem(
-                          Icons.access_time_rounded, 
-                          context.tr('profile_transaction_history'), 
-                          isDark,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const OrderListPage(
-                                  titleKey: 'profile_transaction_history',
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        _buildDivider(isDark),
+
                         _buildListItem(
                           Icons.shield_outlined, 
                           context.tr('profile_warranty_info'), 
                           isDark,
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const WarrantyPage()),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -391,7 +386,17 @@ class _ProfilePageState extends State<ProfilePage> {
                         onTap: _showLanguageSelector,
                       ),
                       _buildDivider(isDark),
-                      _buildListItem(Icons.help_outline_rounded, context.tr('help_center'), isDark),
+                      _buildListItem(
+                        Icons.help_outline_rounded, 
+                        context.tr('help_center'), 
+                        isDark,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const HelpCenterPage()),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -411,7 +416,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       side: const BorderSide(color: AppColors.error),
                       foregroundColor: AppColors.error,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(24),
                       ),
                     ),
                     child: Text(context.tr('logout'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -484,11 +489,14 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 // Login Button
                 ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
+                  onPressed: () async {
+                    final loggedIn = await Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      MaterialPageRoute(builder: (_) => const LoginScreen(returnAfterAuth: true)),
                     );
+                    if (loggedIn == true && context.mounted && widget.onLoginSuccess != null) {
+                      widget.onLoginSuccess!();
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,

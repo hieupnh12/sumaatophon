@@ -6,4 +6,8 @@ if ($conn) {
   Start-Sleep -Seconds 1
 }
 Set-Location $PSScriptRoot
+$adb = Join-Path $env:LOCALAPPDATA "Android\sdk\platform-tools\adb.exe"
+if (Test-Path $adb) {
+  & $adb reverse tcp:3000 tcp:3000 2>$null
+}
 npm start

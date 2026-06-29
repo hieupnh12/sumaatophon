@@ -1,23 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../../../../core/theme/language_cubit.dart';
 import '../../../../core/utils/date_time_utils.dart';
+import '../../../../core/widgets/vietnamese_ime_text_field.dart';
+import '../../../products/presentation/pages/product_detail_page.dart';
 import '../../data/datasources/chatbot_remote_datasource.dart';
 
 class ChatbotMessage {
   final String text;
   final bool isUser;
   final bool suggestStaff;
+  final List<ChatbotProductSuggestion> products;
   final DateTime createdAt;
 
   ChatbotMessage({
     required this.text,
     required this.isUser,
     this.suggestStaff = false,
+    this.products = const [],
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 }
@@ -32,10 +37,9 @@ class ChatbotPage extends StatefulWidget {
 }
 
 class _ChatbotPageState extends State<ChatbotPage> with AutomaticKeepAliveClientMixin {
-  final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  final _messages = <ChatbotMessage>[];
-  bool _isSending = false;
+  final _messages = ValueNotifier<List<ChatbotMessage>>([]);
+  final _isSending = ValueNotifier<bool>(false);
   bool _welcomeAdded = false;
   List<String> _suggestions = [];
 
@@ -64,7 +68,7 @@ class _ChatbotPageState extends State<ChatbotPage> with AutomaticKeepAliveClient
     _loadSuggestions();
   }
 
-  bool get _showSuggestionBar => !_messages.any((m) => m.isUser);
+  bool get _showSuggestionBar => !_messages.value.any((m) => m.isUser);
 
   List<String> get _stripSuggestions => _suggestions.take(_stripSuggestionCount).toList();
 
@@ -92,16 +96,19 @@ class _ChatbotPageState extends State<ChatbotPage> with AutomaticKeepAliveClient
     super.didChangeDependencies();
     if (!_welcomeAdded) {
       _welcomeAdded = true;
-      _messages.add(ChatbotMessage(
-        text: _tr('chatbot_welcome'),
-        isUser: false,
-      ));
+      _messages.value = [
+        ChatbotMessage(
+          text: _tr('chatbot_welcome'),
+          isUser: false,
+        ),
+      ];
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _messages.dispose();
+    _isSending.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -226,7 +233,7 @@ class _ChatbotPageState extends State<ChatbotPage> with AutomaticKeepAliveClient
     );
   }
 
-  Widget _buildSuggestionStrip(ThemeData theme, bool isDark) {
+  Widget _buildSuggestionStrip(ThemeData theme, bool isDark, {required bool isSending}) {
     if (!_showSuggestionBar || _suggestions.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -264,7 +271,7 @@ class _ChatbotPageState extends State<ChatbotPage> with AutomaticKeepAliveClient
                 ),
                 if (hasMore)
                   InkWell(
-                    onTap: _isSending ? null : _openAllSuggestions,
+                    onTap: isSending ? null : _openAllSuggestions,
                     borderRadius: BorderRadius.circular(20),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -293,7 +300,7 @@ class _ChatbotPageState extends State<ChatbotPage> with AutomaticKeepAliveClient
                 final q = _stripSuggestions[index];
                 return _SuggestionChip(
                   label: q,
-                  enabled: !_isSending,
+                  enabled: !isSending,
                   isDark: isDark,
                   onTap: () => _send(q),
                 );
@@ -305,48 +312,47 @@ class _ChatbotPageState extends State<ChatbotPage> with AutomaticKeepAliveClient
     );
   }
 
-  Future<void> _send([String? preset]) async {
-    final text = (preset ?? _controller.text).trim();
-    if (text.isEmpty || _isSending) return;
+  Future<void> _send(String text) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty || _isSending.value) return;
 
-    if (preset == null) _controller.clear();
-
-    setState(() {
-      _messages.add(ChatbotMessage(text: text, isUser: true));
-      _isSending = true;
-    });
+    final current = List<ChatbotMessage>.from(_messages.value);
+    current.add(ChatbotMessage(text: trimmed, isUser: true));
+    _messages.value = current;
+    _isSending.value = true;
     Future.delayed(const Duration(milliseconds: 80), _scrollToBottom);
 
     try {
       final ds = GetIt.I<ChatbotRemoteDataSource>();
-      final history = _messages
-          .where((m) => m != _messages.last)
+      final history = current
+          .where((m) => m != current.last)
           .map((m) => {
                 'role': m.isUser ? 'user' : 'assistant',
                 'text': m.text,
               })
           .toList();
-      final result = await ds.ask(text, history: history);
+      final result = await ds.ask(trimmed, history: history);
       if (!mounted) return;
-      setState(() {
-        _messages.add(ChatbotMessage(
-          text: result.reply,
-          isUser: false,
-          suggestStaff: result.suggestStaff,
-        ));
-        _isSending = false;
-      });
+      final updated = List<ChatbotMessage>.from(_messages.value);
+      updated.add(ChatbotMessage(
+        text: result.reply,
+        isUser: false,
+        suggestStaff: result.suggestStaff,
+        products: result.products,
+      ));
+      _messages.value = updated;
+      _isSending.value = false;
       Future.delayed(const Duration(milliseconds: 80), _scrollToBottom);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _messages.add(ChatbotMessage(
-          text: _tr('chatbot_error'),
-          isUser: false,
-          suggestStaff: true,
-        ));
-        _isSending = false;
-      });
+      final updated = List<ChatbotMessage>.from(_messages.value);
+      updated.add(ChatbotMessage(
+        text: _tr('chatbot_error'),
+        isUser: false,
+        suggestStaff: true,
+      ));
+      _messages.value = updated;
+      _isSending.value = false;
     }
   }
 
@@ -356,26 +362,36 @@ class _ChatbotPageState extends State<ChatbotPage> with AutomaticKeepAliveClient
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final chatBg = isDark ? AppColors.darkBackground : AppColors.lightSurface;
-    final itemCount = _messages.length + (_isSending ? 1 : 0);
 
     return ColoredBox(
       color: chatBg,
       child: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              itemCount: itemCount,
-              itemBuilder: (context, index) {
-                if (index == _messages.length) {
-                  return _TypingBubble(isDark: isDark);
-                }
-                return _Bubble(
-                  message: _messages[index],
-                  isDark: isDark,
-                  isFirstBotMessage: index == 0 && !_messages[index].isUser,
-                  onTransferToStaff: widget.onTransferToStaff,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _isSending,
+              builder: (context, isSending, _) {
+                return ValueListenableBuilder<List<ChatbotMessage>>(
+                  valueListenable: _messages,
+                  builder: (context, messages, __) {
+                    final itemCount = messages.length + (isSending ? 1 : 0);
+                    return ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      itemCount: itemCount,
+                      itemBuilder: (context, index) {
+                        if (index == messages.length) {
+                          return _TypingBubble(isDark: isDark);
+                        }
+                        return _Bubble(
+                          message: messages[index],
+                          isDark: isDark,
+                          isFirstBotMessage: index == 0 && !messages[index].isUser,
+                          onTransferToStaff: widget.onTransferToStaff,
+                        );
+                      },
+                    );
+                  },
                 );
               },
             ),
@@ -395,110 +411,25 @@ class _ChatbotPageState extends State<ChatbotPage> with AutomaticKeepAliveClient
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildSuggestionStrip(theme, isDark),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    12,
-                    4,
-                    12,
-                    MediaQuery.of(context).padding.bottom > 0
-                        ? MediaQuery.of(context).padding.bottom + 8
-                        : 14,
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          minLines: 1,
-                          maxLines: 4,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: isDark ? AppColors.darkText : AppColors.lightText,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: context.tr('chatbot_input_hint'),
-                            hintStyle: TextStyle(
-                              color: isDark
-                                  ? AppColors.darkTextSecondary
-                                  : AppColors.lightTextSecondary,
-                            ),
-                            filled: true,
-                            fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 12,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(22),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(22),
-                              borderSide: BorderSide(
-                                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(22),
-                              borderSide: BorderSide(
-                                color: theme.colorScheme.primary.withValues(alpha: 0.5),
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => _send(),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: _isSending
-                              ? null
-                              : LinearGradient(
-                                  colors: [
-                                    theme.colorScheme.primary,
-                                    AppColors.primaryDark,
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                          color: _isSending
-                              ? (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-                              : null,
-                          boxShadow: _isSending
-                              ? null
-                              : [
-                                  BoxShadow(
-                                    color: theme.colorScheme.primary.withValues(alpha: 0.35),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: _isSending ? null : () => _send(),
-                            customBorder: const CircleBorder(),
-                            child: const SizedBox(
-                              width: 46,
-                              height: 46,
-                              child: Icon(
-                                Icons.send_rounded,
-                                color: Colors.white,
-                                size: 22,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                ValueListenableBuilder<List<ChatbotMessage>>(
+                  valueListenable: _messages,
+                  builder: (context, messages, _) {
+                    final showBar = !messages.any((m) => m.isUser);
+                    if (!showBar || _suggestions.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return ValueListenableBuilder<bool>(
+                      valueListenable: _isSending,
+                      builder: (context, isSending, _) {
+                        return _buildSuggestionStrip(theme, isDark, isSending: isSending);
+                      },
+                    );
+                  },
+                ),
+                _ChatbotComposer(
+                  key: const ValueKey('chatbot_composer_stable'),
+                  isDark: isDark,
+                  onSend: _send,
                 ),
               ],
             ),
@@ -729,15 +660,24 @@ class _Bubble extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Text(
-                    message.text,
-                    style: TextStyle(
-                      color: isUser
-                          ? Colors.white
-                          : (isDark ? AppColors.darkText : AppColors.lightText),
-                      fontSize: 15,
-                      height: 1.45,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        message.text,
+                        style: TextStyle(
+                          color: isUser
+                              ? Colors.white
+                              : (isDark ? AppColors.darkText : AppColors.lightText),
+                          fontSize: 15,
+                          height: 1.45,
+                        ),
+                      ),
+                      if (!isUser && message.products.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _ProductSuggestionsRow(products: message.products, isDark: isDark),
+                      ],
+                    ],
                   ),
                 ),
                 Padding(
@@ -766,6 +706,262 @@ class _Bubble extends StatelessWidget {
             ),
           ),
           if (isUser) const SizedBox(width: 4),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductSuggestionsRow extends StatelessWidget {
+  final List<ChatbotProductSuggestion> products;
+  final bool isDark;
+
+  const _ProductSuggestionsRow({
+    required this.products,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final priceFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
+
+    return SizedBox(
+      height: 196,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: products.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final product = products[index];
+          final inStock = product.stockQuantity > 0;
+
+          return Material(
+            color: isDark ? AppColors.darkSurface : const Color(0xFFF8F8FA),
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProductDetailPage(
+                      productId: product.id,
+                      heroImageUrl: product.imageUrl.isNotEmpty ? product.imageUrl : null,
+                    ),
+                  ),
+                );
+              },
+              child: SizedBox(
+                width: 132,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        color: isDark ? const Color(0xFF2A2A2C) : const Color(0xFFF0F0F2),
+                        padding: const EdgeInsets.all(8),
+                        child: product.imageUrl.isNotEmpty
+                            ? Image.network(
+                                product.imageUrl,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  Icons.smartphone_rounded,
+                                  size: 36,
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                                ),
+                              )
+                            : Icon(
+                                Icons.smartphone_rounded,
+                                size: 36,
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                              ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            product.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, height: 1.25),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            priceFormat.format(product.price),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            inStock
+                                ? context.tr('chatbot_product_in_stock')
+                                : context.tr('chatbot_product_out_of_stock'),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: inStock ? const Color(0xFF229E54) : AppColors.error,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ChatbotComposer extends StatefulWidget {
+  final bool isDark;
+  final Future<void> Function(String text) onSend;
+
+  const _ChatbotComposer({
+    super.key,
+    required this.isDark,
+    required this.onSend,
+  });
+
+  @override
+  State<_ChatbotComposer> createState() => _ChatbotComposerState();
+}
+
+class _ChatbotComposerState extends State<_ChatbotComposer> {
+  final TextEditingController _controller = TextEditingController();
+  bool _isSending = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final text = readComposedText(_controller);
+    if (text == null || _isSending) return;
+    clearComposedText(_controller);
+    setState(() => _isSending = true);
+    try {
+      await widget.onSend(text);
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        12,
+        4,
+        12,
+        MediaQuery.of(context).padding.bottom > 0
+            ? MediaQuery.of(context).padding.bottom + 8
+            : 14,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: VietnameseImeTextField(
+              fieldKey: 'chatbot_ime_input',
+              controller: _controller,
+              style: TextStyle(
+                fontSize: 15,
+                color: widget.isDark ? AppColors.darkText : AppColors.lightText,
+              ),
+              decoration: InputDecoration(
+                hintText: context.tr('chatbot_input_hint'),
+                hintStyle: TextStyle(
+                  color: widget.isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.lightTextSecondary,
+                ),
+                filled: true,
+                fillColor: widget.isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide(
+                    color: widget.isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: _isSending
+                  ? null
+                  : LinearGradient(
+                      colors: [
+                        theme.colorScheme.primary,
+                        AppColors.primaryDark,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              color: _isSending
+                  ? (widget.isDark ? AppColors.darkBorder : AppColors.lightBorder)
+                  : null,
+              boxShadow: _isSending
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _isSending ? null : _submit,
+                customBorder: const CircleBorder(),
+                child: const SizedBox(
+                  width: 46,
+                  height: 46,
+                  child: Icon(
+                    Icons.send_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

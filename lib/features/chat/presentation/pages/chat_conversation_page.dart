@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/utils/date_time_utils.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../../../../core/widgets/vietnamese_ime_text_field.dart';
 import '../../domain/entities/chat_message_entity.dart';
 import '../bloc/chat_bloc.dart';
 
@@ -38,12 +39,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   void _sendMessage() {
-    final text = _messageController.text.trim();
-    if (text.isNotEmpty) {
-      context.read<ChatBloc>().add(SendMessageEvent(text: text));
-      _messageController.clear();
-      Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
-    }
+    final text = readComposedText(_messageController);
+    if (text == null) return;
+
+    context.read<ChatBloc>().add(SendMessageEvent(text: text));
+    clearComposedText(_messageController);
+    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
   }
 
   @override
@@ -51,216 +52,172 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return BlocConsumer<ChatBloc, ChatState>(
+    return BlocListener<ChatBloc, ChatState>(
       listenWhen: (prev, curr) => prev.messages.length != curr.messages.length,
       listener: (_, __) => Future.delayed(const Duration(milliseconds: 100), _scrollToBottom),
-      builder: (context, state) {
-        final user = state.user;
-        final thread = state.activeThread;
-        final isSupportStaff = user?.canSupportChat ?? false;
-        final title = isSupportStaff
-            ? (thread?.userName ?? context.tr('chat_support'))
-            : context.tr('chat_support');
-        final subtitle = isSupportStaff ? thread?.userEmail : context.tr('chat_online');
+      child: Scaffold(
+        appBar: widget.embedded
+            ? null
+            : AppBar(
+                leading: BlocSelector<ChatBloc, ChatState, bool>(
+                  selector: (s) => s.user?.canSupportChat ?? false,
+                  builder: (context, isSupportStaff) {
+                    if (!isSupportStaff) return const SizedBox.shrink();
+                    return IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      onPressed: () => context.read<ChatBloc>().add(const BackToInboxEvent()),
+                    );
+                  },
+                ),
+                title: BlocBuilder<ChatBloc, ChatState>(
+                  buildWhen: (p, c) => p.user != c.user || p.activeThread != c.activeThread,
+                  builder: (context, state) {
+                    final user = state.user;
+                    final thread = state.activeThread;
+                    final isSupportStaff = user?.canSupportChat ?? false;
+                    final title = isSupportStaff
+                        ? (thread?.userName ?? context.tr('chat_support'))
+                        : context.tr('chat_support');
+                    final subtitle =
+                        isSupportStaff ? thread?.userEmail : context.tr('chat_online');
 
-        return Scaffold(
-          appBar: widget.embedded ? null : AppBar(
-            leading: isSupportStaff
-                ? IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    onPressed: () => context.read<ChatBloc>().add(const BackToInboxEvent()),
-                  )
-                : null,
-            title: Row(
-              children: [
-                Stack(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      backgroundImage: isSupportStaff && thread?.userAvatar != null
-                          ? NetworkImage(thread!.userAvatar!)
-                          : null,
-                      child: isSupportStaff && thread?.userAvatar != null
-                          ? null
-                          : Icon(Icons.support_agent_rounded, color: theme.colorScheme.primary),
-                    ),
-                    if (!isSupportStaff)
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: AppColors.success,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
-                              width: 2,
+                    return Row(
+                      children: [
+                        Stack(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                              backgroundImage: isSupportStaff && thread?.userAvatar != null
+                                  ? NetworkImage(thread!.userAvatar!)
+                                  : null,
+                              child: isSupportStaff && thread?.userAvatar != null
+                                  ? null
+                                  : Icon(Icons.support_agent_rounded,
+                                      color: theme.colorScheme.primary),
                             ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      Text(
-                        subtitle ?? '',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isSupportStaff
-                              ? (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)
-                              : AppColors.success,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          body: Column(
-            children: [
-              if (widget.embedded)
-                _EmbeddedChatHeader(
-                  isSupportStaff: isSupportStaff,
-                  title: title,
-                  subtitle: subtitle ?? '',
-                  isDark: isDark,
-                ),
-              if (state.isLoading)
-                const LinearProgressIndicator(minHeight: 2),
-              Expanded(
-                child: state.messages.isEmpty
-                    ? Center(
-                        child: Text(
-                          context.tr('chat_empty'),
-                          style: TextStyle(
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: state.messages.length,
-                        itemBuilder: (context, index) {
-                          final message = state.messages[index];
-                          final isMine = message.isMine(
-                            userId: user?.id ?? '',
-                            isSupportStaff: isSupportStaff,
-                          );
-                          return _buildChatBubble(message, isMine, theme, isDark);
-                        },
-                      ),
-              ),
-              Container(
-                padding: EdgeInsets.fromLTRB(
-                  12,
-                  12,
-                  12,
-                  MediaQuery.of(context).padding.bottom > 0
-                      ? MediaQuery.of(context).padding.bottom + 8
-                      : 14,
-                ),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkCard : AppColors.lightCard,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-                      blurRadius: 20,
-                      offset: const Offset(0, -4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _messageController,
-                        minLines: 1,
-                        maxLines: 4,
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: isDark ? AppColors.darkText : AppColors.lightText,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: context.tr('chat_input_hint'),
-                          hintStyle: TextStyle(
-                            color: isDark
-                                ? AppColors.darkTextSecondary
-                                : AppColors.lightTextSecondary,
-                          ),
-                          filled: true,
-                          fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 12,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(22),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(22),
-                            borderSide: BorderSide(
-                              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(22),
-                            borderSide: BorderSide(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.5),
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _sendMessage(),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Material(
-                      color: state.isSending
-                          ? (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-                          : theme.colorScheme.primary,
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        onTap: state.isSending ? null : _sendMessage,
-                        customBorder: const CircleBorder(),
-                        child: SizedBox(
-                          width: 46,
-                          height: 46,
-                          child: Center(
-                            child: state.isSending
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
+                            if (!isSupportStaff)
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.success,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isDark
+                                          ? AppColors.darkBackground
+                                          : AppColors.lightBackground,
+                                      width: 2,
                                     ),
-                                  )
-                                : const Icon(Icons.send_rounded, color: Colors.white, size: 22),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(title,
+                                  style: const TextStyle(
+                                      fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text(
+                                subtitle ?? '',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isSupportStaff
+                                      ? (isDark
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.lightTextSecondary)
+                                      : AppColors.success,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
               ),
-            ],
-          ),
-        );
-      },
+        body: Column(
+          children: [
+            if (widget.embedded)
+              BlocBuilder<ChatBloc, ChatState>(
+                buildWhen: (p, c) => p.user != c.user || p.activeThread != c.activeThread,
+                builder: (context, state) {
+                  final user = state.user;
+                  final isSupportStaff = user?.canSupportChat ?? false;
+                  final title = isSupportStaff
+                      ? (state.activeThread?.userName ?? context.tr('chat_support'))
+                      : context.tr('chat_support');
+                  final subtitle =
+                      isSupportStaff ? state.activeThread?.userEmail : context.tr('chat_online');
+                  return _EmbeddedChatHeader(
+                    isSupportStaff: isSupportStaff,
+                    title: title,
+                    subtitle: subtitle ?? '',
+                    isDark: isDark,
+                  );
+                },
+              ),
+            BlocBuilder<ChatBloc, ChatState>(
+              buildWhen: (p, c) => p.isLoading != c.isLoading,
+              builder: (context, state) {
+                return state.isLoading
+                    ? const LinearProgressIndicator(minHeight: 2)
+                    : const SizedBox.shrink();
+              },
+            ),
+            Expanded(
+              child: BlocBuilder<ChatBloc, ChatState>(
+                buildWhen: (p, c) => p.messages != c.messages,
+                builder: (context, state) {
+                  final user = state.user;
+                  final isSupportStaff = user?.canSupportChat ?? false;
+
+                  if (state.messages.isEmpty) {
+                    return Center(
+                      child: Text(
+                        context.tr('chat_empty'),
+                        style: TextStyle(
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.lightTextSecondary,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: state.messages.length,
+                    itemBuilder: (context, index) {
+                      final message = state.messages[index];
+                      final isMine = message.isMine(
+                        userId: user?.id ?? '',
+                        isSupportStaff: isSupportStaff,
+                      );
+                      return _buildChatBubble(message, isMine, theme, isDark);
+                    },
+                  );
+                },
+              ),
+            ),
+            _ChatComposerBar(
+              key: const ValueKey('staff_chat_composer'),
+              controller: _messageController,
+              isDark: isDark,
+              onSend: _sendMessage,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -377,6 +334,124 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             ),
           ),
           if (!isMine) const SizedBox(width: sideInset),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChatComposerBar extends StatelessWidget {
+  final TextEditingController controller;
+  final bool isDark;
+  final VoidCallback onSend;
+
+  const _ChatComposerBar({
+    super.key,
+    required this.controller,
+    required this.isDark,
+    required this.onSend,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        12,
+        12,
+        12,
+        MediaQuery.of(context).padding.bottom > 0
+            ? MediaQuery.of(context).padding.bottom + 8
+            : 14,
+      ),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: VietnameseImeTextField(
+              fieldKey: 'staff_chat_input',
+              controller: controller,
+              style: TextStyle(
+                fontSize: 15,
+                color: isDark ? AppColors.darkText : AppColors.lightText,
+              ),
+              decoration: InputDecoration(
+                hintText: context.tr('chat_input_hint'),
+                hintStyle: TextStyle(
+                  color: isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.lightTextSecondary,
+                ),
+                filled: true,
+                fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide(
+                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          BlocSelector<ChatBloc, ChatState, bool>(
+            selector: (state) => state.isSending,
+            builder: (context, isSending) {
+              return Material(
+                color: isSending
+                    ? (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+                    : theme.colorScheme.primary,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  onTap: isSending ? null : onSend,
+                  customBorder: const CircleBorder(),
+                  child: SizedBox(
+                    width: 46,
+                    height: 46,
+                    child: Center(
+                      child: isSending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.send_rounded, color: Colors.white, size: 22),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );

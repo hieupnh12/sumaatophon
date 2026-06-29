@@ -37,6 +37,11 @@ class _ChatHubPageState extends State<ChatHubPage> with SingleTickerProviderStat
     final authState = context.read<AuthBloc>().state;
     final chatBloc = context.read<ChatBloc>();
     if (authState is AuthenticatedState && authState.user.canUseStaffChat) {
+      final chatState = chatBloc.state;
+      if (chatState.user?.id == authState.user.id &&
+          (chatState.isLoading || chatState.activeThread != null || chatState.showInbox)) {
+        return;
+      }
       chatBloc.add(InitChatEvent(authState.user));
     } else if (authState is! AuthenticatedState) {
       chatBloc.add(const DisconnectChatEvent());

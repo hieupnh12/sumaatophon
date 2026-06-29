@@ -50,6 +50,7 @@ class OrderPaymentInfo extends Equatable {
 
 class OrderProductItem extends Equatable {
   final int id;
+  final String productId;
   final String name;
   final String price;
   final String warrantyUntil;
@@ -58,6 +59,7 @@ class OrderProductItem extends Equatable {
 
   const OrderProductItem({
     required this.id,
+    required this.productId,
     required this.name,
     required this.price,
     required this.warrantyUntil,
@@ -66,7 +68,7 @@ class OrderProductItem extends Equatable {
   });
 
   @override
-  List<Object?> get props => [id, name, price, warrantyUntil, quantity, image];
+  List<Object?> get props => [id, productId, name, price, warrantyUntil, quantity, image];
 }
 
 class OrderTimelineItem extends Equatable {

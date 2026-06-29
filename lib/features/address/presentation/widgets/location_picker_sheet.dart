@@ -49,7 +49,7 @@ class _LocationPickerSheetState<T> extends State<LocationPickerSheet<T>> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: MediaQuery.of(context).size.height * 0.9,
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
