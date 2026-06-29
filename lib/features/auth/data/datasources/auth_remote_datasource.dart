@@ -1,8 +1,7 @@
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
-import '../../domain/entities/user_entity.dart';
 import '../models/user_model.dart';
-import 'auth_mock_datasource.dart';
+
 
 class AuthException implements Exception {
   final String code;
@@ -21,9 +20,8 @@ class PhoneConflictException implements Exception {
 /// DataSource gọi các API xác thực từ xa (qua Backend Node.js).
 class AuthRemoteDataSource {
   final ApiClient apiClient;
-  final AuthMockDataSource mockDataSource;
 
-  AuthRemoteDataSource(this.apiClient, this.mockDataSource);
+  AuthRemoteDataSource(this.apiClient);
 
   Future<UserModel> syncAuth(String idToken) async {
     try {
@@ -116,11 +114,4 @@ class AuthRemoteDataSource {
     }
   }
 
-  Future<UserEntity> login(String email, String password) {
-    return mockDataSource.login(email, password);
-  }
-
-  Future<UserEntity> register(String name, String email, String password) {
-    return mockDataSource.register(name, email, password);
-  }
 }
