@@ -59,6 +59,7 @@ import 'features/notifications/data/repositories/notification_repository_impl.da
 import 'features/notifications/domain/repositories/notification_repository.dart';
 import 'features/profile/presentation/pages/profile_page.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/date_symbol_data_local.dart';
 import 'features/address/data/datasources/address_remote_datasource.dart';
 import 'features/address/data/datasources/location_remote_datasource.dart';
 import 'features/address/data/repositories/address_repository_impl.dart';
@@ -77,6 +78,11 @@ void main() async {
     await PushNotificationService.init();
   }
   await ApiConfig.init();
+  await Future.wait([
+    initializeDateFormatting('vi'),
+    initializeDateFormatting('en'),
+    initializeDateFormatting('ja'),
+  ]);
   await setupDependencyInjection();
   if (!kIsWeb) {
     // Gọi sớm; plugin sẽ áp lại khi Activity/Surface sẵn sàng (xem _PhoneShopAppState).

@@ -299,27 +299,105 @@ function setupChat(app, io, pool) {
     }
   });
 
-  io.on('connection', async (socket) => {
+  /** Gửi tin qua REST (web admin + app fallback khi Socket.IO lỗi) */
+  app.post('/chat/threads/:threadId/messages', async (req, res) => {
+    try {
+      const threadId = req.params.threadId;
+      const text = String(req.body?.text ?? '').trim();
+      const imageUrl = req.body?.imageUrl ?? null;
+
+      if (!threadId || !text) {
+        return res.status(400).json({ message: 'threadId and text are required', code: 'CHAT_BAD_REQUEST' });
+      }
+
+      const isStaff = isStaffQuery(req.query);
+      const customerId = parseCustomerId(req.body?.customerId ?? req.query.customerId);
+
+      let message;
+      if (isStaff) {
+        const staffId = String(req.body?.staffId ?? req.query.userId ?? '').trim();
+        const staffName = String(req.body?.staffName ?? req.query.userName ?? 'Nhân viên').trim();
+        if (!staffId) {
+          return res.status(400).json({ message: 'staffId is required', code: 'CHAT_BAD_REQUEST' });
+        }
+        message = await insertMessage(pool, {
+          threadId,
+          senderId: staffId,
+          senderRole: 'admin',
+          text,
+          imageUrl,
+        });
+        try {
+          const [threadRows] = await pool.query(
+            'SELECT customer_id FROM chat_threads WHERE id = ?',
+            [threadId],
+          );
+          if (threadRows[0]?.customer_id) {
+            const { notifyStaffChatReply } = require('./src/services/notificationService');
+            await notifyStaffChatReply(pool, {
+              threadId,
+              customerId: threadRows[0].customer_id,
+              messageText: text,
+              staffName,
+            });
+          }
+        } catch (notifyErr) {
+          console.error('[notifications] staff chat reply (REST):', notifyErr.message);
+        }
+      } else if (customerId) {
+        const [threadRows] = await pool.query(
+          'SELECT customer_id FROM chat_threads WHERE id = ?',
+          [threadId],
+        );
+        if (!threadRows.length || Number(threadRows[0].customer_id) !== customerId) {
+          return res.status(403).json({ message: 'Thread access denied', code: 'CHAT_FORBIDDEN' });
+        }
+        message = await insertMessage(pool, {
+          threadId,
+          senderId: String(customerId),
+          senderRole: 'user',
+          text,
+          imageUrl,
+        });
+      } else {
+        return res.status(403).json({ message: 'Staff or customer auth required', code: 'CHAT_FORBIDDEN' });
+      }
+
+      io.to(`thread:${threadId}`).emit('new_message', message);
+      const threads = await listThreadsForAdmin(pool);
+      io.to('admin:inbox').emit('threads_updated', threads);
+
+      res.status(201).json(message);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: err.message, code: 'CHAT_SEND_ERROR' });
+    }
+  });
+
+  io.on('connection', (socket) => {
     const user = parseUserFromQuery(socket.handshake.query);
     if (!user) {
+      console.warn('[chat] socket rejected: missing/invalid query', socket.handshake.query);
       socket.disconnect(true);
       return;
     }
 
     socket.data.user = user;
+    console.log(`[chat] socket connected userId=${user.userId} role=${user.role} accountType=${user.accountType}`);
 
     if (isSupportStaff(user)) {
       socket.join('admin:inbox');
     } else if (user.accountType === 'customer') {
-      try {
-        const threadRow = await getOrCreateThreadForCustomer(pool, Number(user.userId));
-        socket.data.threadId = threadRow.id;
-        socket.join(`thread:${threadRow.id}`);
-      } catch (err) {
-        console.error('Chat join error:', err.message);
-        socket.disconnect(true);
-        return;
-      }
+      void (async () => {
+        try {
+          const threadRow = await getOrCreateThreadForCustomer(pool, Number(user.userId));
+          socket.data.threadId = threadRow.id;
+          socket.join(`thread:${threadRow.id}`);
+        } catch (err) {
+          console.error('[chat] customer join error:', err.message);
+          socket.disconnect(true);
+        }
+      })();
     }
 
     socket.on('join_thread', async (payload, ack) => {
