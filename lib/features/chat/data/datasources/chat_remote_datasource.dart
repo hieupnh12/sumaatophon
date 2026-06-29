@@ -45,14 +45,14 @@ class ChatRemoteDataSource {
 
     await _preflightSocketHandshake(socketConfig);
 
+    // Polling trước — ổn định qua nginx /mobile/ (websocket upgrade hay lỗi trên một số proxy).
     _socket = io.io(
       socketConfig.origin,
       io.OptionBuilder()
           .setPath(socketConfig.path)
           .setTransports(['polling', 'websocket'])
-          .setTimeout(12000)
+          .setTimeout(20000)
           .disableAutoConnect()
-          .enableForceNew()
           .enableReconnection()
           .setQuery({
             'userId': user.id,
@@ -75,18 +75,11 @@ class ChatRemoteDataSource {
       ..on('connect_error', (error) {
         if (kDebugMode) debugPrint('[Chat] connect_error: $error');
         if (!connected.isCompleted) {
-          connected.completeError(Exception('Socket connect failed: $error'));
-        }
-      })
-      ..on('error', (error) {
-        if (!connected.isCompleted) {
-          connected.completeError(Exception('Socket error: $error'));
-        }
-      })
-      ..on('disconnect', (reason) {
-        if (!connected.isCompleted) {
           connected.completeError(
-            Exception('Socket disconnected before ready: $reason'),
+            ChatSocketException(
+              code: ChatSocketErrorCode.timeout,
+              socketUrl: '${socketConfig.origin}${socketConfig.path}',
+            ),
           );
         }
       })
@@ -112,8 +105,14 @@ class ChatRemoteDataSource {
     _socket!.connect();
 
     try {
-      await connected.future.timeout(const Duration(seconds: 12));
+      await connected.future.timeout(const Duration(seconds: 20));
     } on TimeoutException {
+      throw ChatSocketException(
+        code: ChatSocketErrorCode.timeout,
+        socketUrl: '${socketConfig.origin}${socketConfig.path}',
+      );
+    } catch (e) {
+      if (e is ChatSocketException) rethrow;
       throw ChatSocketException(
         code: ChatSocketErrorCode.timeout,
         socketUrl: '${socketConfig.origin}${socketConfig.path}',

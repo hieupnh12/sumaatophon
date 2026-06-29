@@ -414,7 +414,7 @@ const Map<String, String> enLocalizations = {
   'chat_error_socket_timeout': 'Could not connect to staff chat (timeout).',
   'chat_error_socket_handshake': 'Chat server is not reachable at this address.',
   'chat_error_socket_debug_hint': 'USB debug: run `npm start` in backend, then `adb reverse tcp:3000 tcp:3000`, and hot restart the app.',
-  'chat_error_socket_production_hint': 'Production API may not expose Socket.IO under /mobile yet. Use local backend while testing.',
+  'chat_error_socket_production_hint': 'Nginx /mobile/ needs `gzip off` for Socket.IO polling. See backend/deploy/nginx-maclenin.docker.conf.',
   'chatbot_suggestions_label': 'Suggested questions',
   'chatbot_suggestions_more': 'See more',
   'chatbot_input_hint': 'Ask about phones, prices, stock...',
