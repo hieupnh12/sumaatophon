@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../../domain/entities/warranty_item.dart';
+import '../bloc/warranty_bloc.dart';
 import '../pages/warranty_request_form_page.dart';
 
 class WarrantyItemCard extends StatelessWidget {
@@ -67,12 +69,16 @@ class WarrantyItemCard extends StatelessWidget {
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: () {
+                        final bloc = context.read<WarrantyBloc>();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => WarrantyRequestFormPage(
-                              item: item,
-                              customerId: customerId,
+                            builder: (_) => BlocProvider.value(
+                              value: bloc,
+                              child: WarrantyRequestFormPage(
+                                item: item,
+                                customerId: customerId,
+                              ),
                             ),
                           ),
                         );
