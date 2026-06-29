@@ -41,4 +41,8 @@ class ApiEndpoints {
   // Orders
   static String orderById(String id) => '/api/orders/$id';
   static String cartItemByVersionId(String productVersionId) => '/api/cart/items/$productVersionId';
+
+  // Warranty
+  static const String warrantiesEligible = '/api/warranties/eligible-items';
+  static const String warranties = '/api/warranties';
 }

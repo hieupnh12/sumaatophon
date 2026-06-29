@@ -69,6 +69,10 @@ import 'features/orders/domain/repositories/order_repository.dart';
 import 'features/orders/data/datasources/order_remote_datasource.dart';
 import 'features/orders/data/repositories/order_repository_impl.dart';
 import 'features/orders/presentation/bloc/order_bloc.dart';
+import 'features/warranty/data/datasources/warranty_remote_datasource.dart';
+import 'features/warranty/data/repositories/warranty_repository_impl.dart';
+import 'features/warranty/domain/repositories/warranty_repository.dart';
+import 'features/warranty/presentation/bloc/warranty_bloc.dart';
 final sl = GetIt.instance;
 
 void main() async {
@@ -109,12 +113,14 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton(() => ChatbotRemoteDataSource(sl()));
   sl.registerLazySingleton(() => ChatRemoteDataSource(sl()));
   sl.registerLazySingleton(() => CartRemoteDatasource(sl()));
+  sl.registerLazySingleton<WarrantyRemoteDataSource>(() => WarrantyRemoteDataSourceImpl(apiClient: sl()));
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl<AuthRemoteDataSource>(), sl<AuthLocalDataSource>()));
   sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(sl(), sl()));
   sl.registerLazySingleton<ChatRepository>(() => ChatRepositoryImpl(sl()));
   sl.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(sl()));
+  sl.registerLazySingleton<WarrantyRepository>(() => WarrantyRepositoryImpl(remoteDataSource: sl()));
   
   // Address
   sl.registerLazySingleton(() => http.Client());
@@ -142,6 +148,7 @@ Future<void> setupDependencyInjection() async {
   sl.registerFactory(() => NotificationBloc(repository: sl()));
   sl.registerFactory(() => AddressBloc(repository: sl(), authBloc: sl()));
   sl.registerFactory(() => OrderBloc(repository: sl()));
+  sl.registerFactory(() => WarrantyBloc(repository: sl()));
   
   // Theme & Language
   final storage = sl<FlutterSecureStorage>();
