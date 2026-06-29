@@ -7,6 +7,7 @@ const ordersRouter = require('./orders');
 const paymentsRouter = require('./payments');
 const healthRouter = require('./health');
 const notificationsRouter = require('./notifications');
+const warrantiesRouter = require('./warranties');
 
 function registerRoutes(app) {
   app.use(productsRouter);
@@ -17,6 +18,7 @@ function registerRoutes(app) {
   app.use(ordersRouter);
   app.use(paymentsRouter);
   app.use(notificationsRouter);
+  app.use(warrantiesRouter);
   app.use(healthRouter);
 }
 

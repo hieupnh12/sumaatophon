@@ -13,6 +13,7 @@ import '../../../auth/presentation/pages/login_page.dart';
 import 'account_info_page.dart';
 import '../../../orders/presentation/pages/order_list_page.dart';
 import '../../../address/presentation/pages/address_list_page.dart';
+import '../../../../features/warranty/presentation/pages/warranty_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final VoidCallback? onLoginSuccess;
@@ -247,7 +248,12 @@ class _ProfilePageState extends State<ProfilePage> {
                           Icons.shield_outlined, 
                           context.tr('profile_warranty_info'), 
                           isDark,
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const WarrantyPage()),
+                            );
+                          },
                         ),
                       ],
                     ),
