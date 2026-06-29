@@ -84,15 +84,15 @@ class ChatRemoteDataSource {
 
     await _preflightSocketHandshake(socketConfig);
 
+    // Polling trước — ổn định qua nginx /mobile/ (websocket upgrade hay lỗi trên một số proxy).
     _socket = io.io(
       socketConfig.origin,
       io.OptionBuilder()
           .setPath(socketConfig.path)
-          .setTransports(['polling'])
-          .setTimeout(8000)
+          .setTransports(['polling', 'websocket'])
+          .setTimeout(20000)
           .disableAutoConnect()
-          .enableForceNew()
-          .disableReconnection()
+          .enableReconnection()
           .setQuery({
             'userId': user.id,
             'role': user.canSupportChat ? 'staff' : 'user',
@@ -165,9 +165,15 @@ class ChatRemoteDataSource {
     socket.connect();
 
     try {
-      await connected.future.timeout(const Duration(seconds: 8));
+      await connected.future.timeout(const Duration(seconds: 20));
     } on TimeoutException {
       await _disconnectSocket();
+      throw ChatSocketException(
+        code: ChatSocketErrorCode.timeout,
+        socketUrl: '${socketConfig.origin}${socketConfig.path}',
+      );
+    } catch (e) {
+      if (e is ChatSocketException) rethrow;
       throw ChatSocketException(
         code: ChatSocketErrorCode.timeout,
         socketUrl: '${socketConfig.origin}${socketConfig.path}',

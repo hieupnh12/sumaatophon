@@ -41,6 +41,8 @@ Neu path sai (mac dinh `/socket.io` o root), client nhan HTML static site thay v
 
 Nginx can `Upgrade` / `Connection` headers — xem `backend/deploy/nginx-api-mobile.conf.example`.
 
+**Quan trong:** bat `gzip off` trong block `/mobile/` — nginx gzip `text/plain` (handshake Socket.IO polling) lam `socket_io_client` treo timeout du preflight HttpClient van pass.
+
 | Event | Huong | Mo ta |
 |-------|-------|-------|
 | `send_message` | Client → Server | Gui tin `{ threadId, text }` |

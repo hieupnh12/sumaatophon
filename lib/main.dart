@@ -15,7 +15,7 @@ import 'core/theme/theme_cubit.dart';
 import 'core/theme/language_cubit.dart';
 import 'core/l10n/app_localizations.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
-import 'features/auth/data/datasources/auth_mock_datasource.dart';
+
 import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/datasources/auth_local_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
@@ -106,8 +106,7 @@ Future<void> setupDependencyInjection() async {
   // Datasources
   sl.registerLazySingleton(() => const FlutterSecureStorage());
   sl.registerLazySingleton(() => AuthLocalDataSource(sl()));
-  sl.registerLazySingleton(() => AuthMockDataSource());
-  sl.registerLazySingleton(() => AuthRemoteDataSource(sl(), sl()));
+  sl.registerLazySingleton(() => AuthRemoteDataSource(sl()));
   sl.registerLazySingleton(() => ProductRemoteDataSource(sl()));
   sl.registerLazySingleton(() => ProductLocalDataSource(sl()));
   sl.registerLazySingleton(() => ChatbotRemoteDataSource(sl()));

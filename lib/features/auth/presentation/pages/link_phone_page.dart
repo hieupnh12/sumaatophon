@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinput/pinput.dart';
 import '../../../../core/design_system/app_colors.dart';
-import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../phone_utils.dart';
 import '../auth_navigation.dart';
@@ -255,6 +254,12 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
         listener: (context, state) {
           if (state is AuthError) {
             String errorMsg = state.message;
+            if (errorMsg.contains('|')) {
+              final parts = errorMsg.split('|');
+              errorMsg = context.trRead(parts[0]) + parts[1];
+            } else if (errorMsg.startsWith('login_')) {
+              errorMsg = context.trRead(errorMsg);
+            }
             if ((errorMsg.toLowerCase().contains('otp') || errorMsg.toLowerCase().contains('code')) && _showOtpStep) {
               // Handle OTP error specifically
               setState(() {
