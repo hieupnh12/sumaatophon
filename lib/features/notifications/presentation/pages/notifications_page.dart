@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../../../../core/theme/language_cubit.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../chat/presentation/pages/chat_hub_page.dart';
@@ -366,15 +367,17 @@ class _NotificationTile extends StatelessWidget {
     }
   }
 
-  String _formatTime(DateTime? dt) {
+  String _formatTime(BuildContext context, DateTime? dt) {
     if (dt == null) return '';
     final local = dt.toLocal();
     final now = DateTime.now();
     if (now.difference(local).inDays == 0) {
       return DateFormat('HH:mm').format(local);
     }
+    final lang = context.read<LanguageCubit>().state;
+    final dateLocale = lang == 'ja' ? 'ja' : (lang == 'en' ? 'en' : 'vi');
     if (now.difference(local).inDays < 7) {
-      return DateFormat('EEE, HH:mm', 'vi').format(local);
+      return DateFormat('EEE, HH:mm', dateLocale).format(local);
     }
     return DateFormat('dd/MM/yyyy HH:mm').format(local);
   }
@@ -466,7 +469,7 @@ class _NotificationTile extends StatelessWidget {
                     if (item.createdAt != null) ...[
                       const SizedBox(height: 6),
                       Text(
-                        _formatTime(item.createdAt),
+                        _formatTime(context, item.createdAt),
                         style: TextStyle(
                           fontSize: 12,
                           color: (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary).withValues(alpha: 0.7),

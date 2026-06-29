@@ -480,9 +480,12 @@ const Map<String, String> viLocalizations = {
   'chat_error_socket_timeout': 'Không kết nối được chat nhân viên (hết thời gian chờ).',
   'chat_error_socket_handshake': 'Máy chủ chat không phản hồi đúng tại địa chỉ này.',
   'chat_error_socket_debug_hint': 'USB debug: chạy `npm start` trong backend, rồi `adb reverse tcp:3000 tcp:3000`, sau đó hot restart app.',
-  'chat_error_socket_production_hint': 'API production có thể chưa bật Socket.IO tại /mobile. Hãy dùng backend local khi test.',
+  'chat_error_socket_production_hint': 'Nginx /mobile/ cần `gzip off` (Socket.IO polling). Xem backend/deploy/nginx-maclenin.docker.conf.',
   'chatbot_suggestions_label': 'Gợi ý câu hỏi',
   'chatbot_suggestions_more': 'Xem thêm',
   'chatbot_input_hint': 'Hỏi về điện thoại, giá, tồn kho...',
   'chatbot_transfer_staff': 'Chuyển sang nhân viên',
+  'chatbot_view_product': 'Xem sản phẩm',
+  'chatbot_product_in_stock': 'Còn hàng',
+  'chatbot_product_out_of_stock': 'Hết hàng',
 };

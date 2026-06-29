@@ -478,9 +478,12 @@ const Map<String, String> jaLocalizations = {
   'chat_error_socket_timeout': 'スタッフチャットに接続できませんでした（タイムアウト）。',
   'chat_error_socket_handshake': 'このアドレスでチャットサーバーが正しく応答しません。',
   'chat_error_socket_debug_hint': 'USBデバッグ: backendで `npm start`、続けて `adb reverse tcp:3000 tcp:3000`、アプリをホット再起動してください。',
-  'chat_error_socket_production_hint': '本番APIでは /mobile のSocket.IOが未設定の可能性があります。テスト時はローカルbackendを使ってください。',
+  'chat_error_socket_production_hint': 'Nginx の /mobile/ では Socket.IO 用に `gzip off` が必要です。backend/deploy/nginx-maclenin.docker.conf を参照。',
   'chatbot_suggestions_label': 'おすすめの質問',
   'chatbot_suggestions_more': 'もっと見る',
   'chatbot_input_hint': 'スマホ、価格、在庫について質問...',
   'chatbot_transfer_staff': 'スタッフに相談',
+  'chatbot_view_product': '商品を見る',
+  'chatbot_product_in_stock': '在庫あり',
+  'chatbot_product_out_of_stock': '在庫なし',
 };

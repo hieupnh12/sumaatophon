@@ -32,8 +32,19 @@ class ApiClient {
     throw ApiException(response.statusCode, response.body);
   }
 
-  Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
-    final uri = Uri.parse('${ApiEndpoints.baseUrl}$path');
+  Future<dynamic> post(
+    String path, {
+    Map<String, dynamic>? body,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    var uri = Uri.parse('${ApiEndpoints.baseUrl}$path');
+    if (queryParameters != null) {
+      final stringParams = <String, String>{};
+      queryParameters.forEach((key, value) {
+        stringParams[key] = value.toString();
+      });
+      uri = uri.replace(queryParameters: stringParams);
+    }
     final response = await _client.post(
       uri,
       headers: _headers,

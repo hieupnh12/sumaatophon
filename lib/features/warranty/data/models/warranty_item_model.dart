@@ -12,7 +12,7 @@ class WarrantyItemModel extends WarrantyItem {
 
   factory WarrantyItemModel.fromJson(Map<String, dynamic> json) {
     return WarrantyItemModel(
-      orderId: json['orderId'] ?? 0,
+      orderId: (json['orderId'] as num?)?.toInt() ?? 0,
       productVersionId: json['productVersionId'] ?? '',
       name: json['name'] ?? '',
       image: json['image'] ?? '',

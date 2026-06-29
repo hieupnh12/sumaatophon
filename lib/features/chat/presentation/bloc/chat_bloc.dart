@@ -161,6 +161,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         ));
       } else {
         final thread = await repository.getOrCreateMyThread(event.user);
+        await repository.joinThread(thread.id);
         final messages = await repository.getMessages(
           threadId: thread.id,
           user: event.user,

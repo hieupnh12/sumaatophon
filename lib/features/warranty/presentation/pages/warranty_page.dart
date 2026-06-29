@@ -110,7 +110,7 @@ class _WarrantyPageState extends State<WarrantyPage> with SingleTickerProviderSt
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () => context.read<WarrantyBloc>().add(LoadWarrantyData(customerId)),
-                      child: Text(context.tr('retry')),
+                      child: Text(context.tr('chat_retry')),
                     ),
                   ],
                 ),
