@@ -303,6 +303,18 @@ class ChatRemoteDataSource {
     }
   }
 
+  Future<String> uploadChatImage(String filePath) async {
+    final data = await apiClient.postMultipart(
+      ApiEndpoints.chatUploadImage,
+      filePath: filePath,
+    );
+    final rawUrl = data is Map ? data['imageUrl'] as String? : null;
+    if (rawUrl == null || rawUrl.isEmpty) {
+      throw Exception('Upload failed');
+    }
+    return rawUrl;
+  }
+
   Future<ChatMessageEntity> sendMessage({
     required String threadId,
     required String text,

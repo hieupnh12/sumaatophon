@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:local_auth/local_auth.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -14,17 +14,8 @@ abstract class AuthEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoginSubmitted extends AuthEvent {
-  final String email;
-  final String password;
-  const LoginSubmitted({required this.email, required this.password});
-  @override
-  List<Object?> get props => [email, password];
-}
-
 class CheckAuthStatusEvent extends AuthEvent {}
 
-class BiometricLoginRequested extends AuthEvent {}
 
 class GuestLoginRequested extends AuthEvent {}
 
@@ -53,15 +44,6 @@ class VerifyOtpForLinkSubmitted extends AuthEvent {
   List<Object?> get props => [otp, force];
 }
 
-class RegisterSubmitted extends AuthEvent {
-  final String name;
-  final String email;
-  final String password;
-  const RegisterSubmitted({required this.name, required this.email, required this.password});
-  @override
-  List<Object?> get props => [name, email, password];
-}
-
 class UpdateProfileRequested extends AuthEvent {
   final String name;
   final String? gender;
@@ -77,13 +59,6 @@ class UpdateProfileRequested extends AuthEvent {
 
   @override
   List<Object?> get props => [name, gender, dob, address];
-}
-
-class ForgotPasswordSubmitted extends AuthEvent {
-  final String email;
-  const ForgotPasswordSubmitted({required this.email});
-  @override
-  List<Object?> get props => [email];
 }
 
 class LogoutRequested extends AuthEvent {}
@@ -156,24 +131,18 @@ class AuthRequirePhoneConflictResolution extends AuthState {
 // --- BLOC ---
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository authRepository;
-  final LocalAuthentication _localAuth = LocalAuthentication();
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  FirebaseAuth get _firebaseAuth => FirebaseAuth.instance;
   
-  String? _verificationId;
   String? _pendingPhone;
 
   AuthBloc({required this.authRepository}) : super(AuthInitial()) {
     on<CheckAuthStatusEvent>(_onCheckAuthStatusRequested);
-    on<LoginSubmitted>(_onLoginSubmitted);
-    on<BiometricLoginRequested>(_onBiometricLoginRequested);
     on<GuestLoginRequested>(_onGuestLoginRequested);
     on<GoogleLoginRequested>(_onGoogleLoginRequested);
     on<OtpRequested>(_onOtpRequested);
     on<OtpLoginSubmitted>(_onOtpLoginSubmitted);
     on<VerifyOtpForLinkSubmitted>(_onVerifyOtpForLinkSubmitted);
-    on<RegisterSubmitted>(_onRegisterSubmitted);
     on<UpdateProfileRequested>(_onUpdateProfileRequested);
-    on<ForgotPasswordSubmitted>(_onForgotPasswordSubmitted);
     on<LogoutRequested>(_onLogoutRequested);
     on<AuthCodeSentInternal>(_onAuthCodeSentInternal);
     on<AuthInternalErrorOccurred>(_onAuthInternalErrorOccurred);
@@ -200,11 +169,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await authRepository.requestOtp(event.phone);
       
       emit(const AuthOtpSent(
-        message: "Đã gửi mã OTP qua SMS!",
+        message: "login_otp_sent_success",
       ));
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
-      emit(AuthError(message: "Gửi OTP lỗi: $message"));
+      emit(AuthError(message: "login_otp_send_error|$message"));
     }
   }
 
@@ -223,7 +192,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthenticatedState(user));
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
-      emit(AuthError(message: "Xác thực OTP lỗi: $message"));
+      emit(AuthError(message: "login_otp_verify_error|$message"));
     }
   }
   
@@ -231,7 +200,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     try {
       if (_pendingPhone == null) {
-        emit(const AuthError(message: "Vui lòng yêu cầu lại mã OTP."));
+        emit(const AuthError(message: "login_otp_request_again"));
         return;
       }
       final user = await authRepository.linkPhone(_pendingPhone!, event.otp, force: event.force);
@@ -240,7 +209,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthRequirePhoneConflictResolution(phone: _pendingPhone!, otp: event.otp));
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
-      emit(AuthError(message: "Liên kết số điện thoại lỗi: $message"));
+      emit(AuthError(message: "login_phone_link_error|$message"));
     }
   }
 
@@ -252,7 +221,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
-        emit(const AuthError(message: "Đăng nhập bằng Google bị hủy."));
+        emit(const AuthError(message: "login_google_cancel"));
         return;
       }
 
@@ -266,7 +235,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final String? idToken = await userCredential.user?.getIdToken();
 
       if (idToken == null) {
-        emit(const AuthError(message: "Không lấy được Firebase ID Token."));
+        emit(const AuthError(message: "login_firebase_token_error"));
         return;
       }
 
@@ -282,18 +251,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
-      emit(AuthError(message: "Lỗi Google Sign-In: $message"));
-    }
-  }
-
-  Future<void> _onLoginSubmitted(LoginSubmitted event, Emitter<AuthState> emit) async {
-    emit(AuthLoading());
-    try {
-      final user = await authRepository.login(event.email, event.password);
-      emit(AuthenticatedState(user));
-    } catch (e) {
-      final message = e.toString().replaceFirst('Exception: ', '');
-      emit(AuthError(message: message));
+      emit(AuthError(message: "login_google_error|$message"));
     }
   }
 
@@ -318,31 +276,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  Future<void> _onBiometricLoginRequested(BiometricLoginRequested event, Emitter<AuthState> emit) async {
-    emit(AuthLoading());
-    try {
-      final bool canAuthenticateWithBiometrics = await _localAuth.canCheckBiometrics;
-      final bool canAuthenticate = canAuthenticateWithBiometrics || await _localAuth.isDeviceSupported();
-
-      if (canAuthenticate) {
-        final bool didAuthenticate = await _localAuth.authenticate(
-          localizedReason: 'Please authenticate to login to phoneShop Premium',
-          options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
-        );
-        if (didAuthenticate) {
-          emit(const AuthenticatedState(UserEntity(
-            id: 'bio_user', name: 'Biometric User', email: 'bio@phoneshop.com',
-          )));
-        } else {
-          emit(const AuthError(message: "Biometric authentication failed or was canceled."));
-        }
-      } else {
-        emit(const AuthError(message: "Biometric authentication is not supported on this device."));
-      }
-    } catch (e) {
-      emit(AuthError(message: "Biometric error: ${e.toString()}"));
-    }
-  }
 
   void _onGuestLoginRequested(GuestLoginRequested event, Emitter<AuthState> emit) {
     emit(const AuthenticatedState(UserEntity(
@@ -353,27 +286,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     )));
   }
 
-  Future<void> _onRegisterSubmitted(RegisterSubmitted event, Emitter<AuthState> emit) async {
-    emit(AuthLoading());
-    try {
-      await authRepository.register(event.name, event.email, event.password);
-      emit(const AuthActionSuccess(message: "Registration successful! You can now log in."));
-    } catch (e) {
-      final message = e.toString().replaceFirst('Exception: ', '');
-      emit(AuthError(message: message));
-    }
-  }
 
-  Future<void> _onForgotPasswordSubmitted(ForgotPasswordSubmitted event, Emitter<AuthState> emit) async {
-    emit(AuthLoading());
-    try {
-      await Future.delayed(const Duration(seconds: 2));
-      emit(AuthActionSuccess(message: "Password reset link sent to ${event.email}."));
-    } catch (e) {
-      emit(AuthError(message: "Failed to send reset link: ${e.toString()}"));
-    }
-  }
-  
   Future<void> _onLogoutRequested(LogoutRequested event, Emitter<AuthState> emit) async {
     await authRepository.logout();
     await _firebaseAuth.signOut();

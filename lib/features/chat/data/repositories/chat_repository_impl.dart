@@ -39,6 +39,10 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> joinThread(String threadId) => dataSource.joinThread(threadId);
 
   @override
+  Future<String> uploadChatImage(String filePath) =>
+      dataSource.uploadChatImage(filePath);
+
+  @override
   Future<ChatMessageEntity> sendMessage({
     required String threadId,
     required String text,

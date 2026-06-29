@@ -1,4 +1,41 @@
 const { randomUUID } = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+
+const CHAT_IMAGE_ONLY_TEXT = '📷';
+
+const chatUploadDir = path.join(__dirname, 'uploads', 'chat');
+fs.mkdirSync(chatUploadDir, { recursive: true });
+
+const chatImageUpload = multer({
+  storage: multer.diskStorage({
+    destination: chatUploadDir,
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
+      const safeExt = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext) ? ext : '.jpg';
+      cb(null, `${Date.now()}-${randomUUID()}${safeExt}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype || !file.mimetype.startsWith('image/')) {
+      cb(new Error('Only image files are allowed'));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+function normalizeChatMessagePayload(text, imageUrl) {
+  const trimmed = String(text ?? '').trim();
+  const url = imageUrl ? String(imageUrl).trim() : null;
+  if (!trimmed && !url) return null;
+  return {
+    text: trimmed || CHAT_IMAGE_ONLY_TEXT,
+    imageUrl: url,
+  };
+}
 
 function toUtcIso(value) {
   if (!value) return null;
@@ -285,6 +322,21 @@ function setupChat(app, io, pool) {
     }
   });
 
+  app.post('/chat/upload-image', (req, res) => {
+    chatImageUpload.single('image')(req, res, (err) => {
+      if (err) {
+        const message = err.code === 'LIMIT_FILE_SIZE'
+          ? 'Image must be 5MB or smaller'
+          : err.message;
+        return res.status(400).json({ message, code: 'CHAT_UPLOAD_ERROR' });
+      }
+      if (!req.file) {
+        return res.status(400).json({ message: 'No image file', code: 'CHAT_UPLOAD_ERROR' });
+      }
+      res.json({ imageUrl: `/uploads/chat/${req.file.filename}` });
+    });
+  });
+
   app.get('/chat/threads/:threadId/messages', async (req, res) => {
     try {
       const messages = await getMessages(pool, req.params.threadId);
@@ -303,12 +355,16 @@ function setupChat(app, io, pool) {
   app.post('/chat/threads/:threadId/messages', async (req, res) => {
     try {
       const threadId = req.params.threadId;
-      const text = String(req.body?.text ?? '').trim();
-      const imageUrl = req.body?.imageUrl ?? null;
+      const normalized = normalizeChatMessagePayload(req.body?.text, req.body?.imageUrl);
 
-      if (!threadId || !text) {
-        return res.status(400).json({ message: 'threadId and text are required', code: 'CHAT_BAD_REQUEST' });
+      if (!threadId || !normalized) {
+        return res.status(400).json({
+          message: 'threadId and text or imageUrl are required',
+          code: 'CHAT_BAD_REQUEST',
+        });
       }
+
+      const { text, imageUrl } = normalized;
 
       const isStaff = isStaffQuery(req.query);
       const customerId = parseCustomerId(req.body?.customerId ?? req.query.customerId);
@@ -426,18 +482,20 @@ function setupChat(app, io, pool) {
           socket.join(`thread:${threadId}`);
         }
 
-        const text = String(payload?.text ?? '').trim();
-        if (!threadId || !text) {
+        const normalized = normalizeChatMessagePayload(payload?.text, payload?.imageUrl);
+        if (!threadId || !normalized) {
           if (typeof ack === 'function') ack({ ok: false, message: 'Invalid message' });
           return;
         }
+
+        const { text, imageUrl } = normalized;
 
         const message = await insertMessage(pool, {
           threadId,
           senderId: user.userId,
           senderRole: isSupportStaff(user) ? 'admin' : 'user',
           text,
-          imageUrl: payload?.imageUrl ?? null,
+          imageUrl,
         });
 
         if (isSupportStaff(user)) {

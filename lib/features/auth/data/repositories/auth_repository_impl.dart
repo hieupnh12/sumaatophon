@@ -10,19 +10,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   AuthRepositoryImpl(this.remoteDataSource, this.localDataSource);
 
-  @override
-  Future<UserEntity> login(String email, String password) async {
-    final userEntity = await remoteDataSource.login(email, password);
-    await saveSession(userEntity);
-    return userEntity;
-  }
 
-  @override
-  Future<UserEntity> register(String name, String email, String password) async {
-    final userEntity = await remoteDataSource.register(name, email, password);
-    await saveSession(userEntity);
-    return userEntity;
-  }
 
   @override
   Future<UserEntity> syncAuth(String idToken) async {

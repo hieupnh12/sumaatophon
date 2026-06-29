@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/utils/date_time_utils.dart';
 import '../../../../core/design_system/app_colors.dart';
@@ -47,14 +48,50 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
   }
 
+  Future<void> _pickAndSendImage() async {
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+
+      final caption = readComposedText(_messageController);
+      if (caption != null) clearComposedText(_messageController);
+
+      context.read<ChatBloc>().add(
+            SendImageMessageEvent(
+              filePath: picked.path,
+              caption: caption,
+            ),
+          );
+      Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.trRead('chat_image_picker_failed'))),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return BlocListener<ChatBloc, ChatState>(
-      listenWhen: (prev, curr) => prev.messages.length != curr.messages.length,
-      listener: (_, __) => Future.delayed(const Duration(milliseconds: 100), _scrollToBottom),
+      listenWhen: (prev, curr) =>
+          prev.messages.length != curr.messages.length ||
+          (prev.error != curr.error && curr.error != null),
+      listener: (context, state) {
+        if (state.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.error!)),
+          );
+        }
+        Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+      },
       child: Scaffold(
         appBar: widget.embedded
             ? null
@@ -214,6 +251,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               controller: _messageController,
               isDark: isDark,
               onSend: _sendMessage,
+              onAttachImage: _pickAndSendImage,
             ),
           ],
         ),
@@ -249,7 +287,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               children: [
                 if (message.imageUrl != null)
                   Container(
-                    margin: const EdgeInsets.only(bottom: 4),
+                    margin: EdgeInsets.only(bottom: message.hasVisibleText ? 4 : 0),
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
                     child: Image.network(
@@ -257,9 +295,36 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                       width: 200,
                       height: 200,
                       fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return SizedBox(
+                          width: 200,
+                          height: 200,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              value: progress.expectedTotalBytes != null
+                                  ? progress.cumulativeBytesLoaded /
+                                      progress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 200,
+                        height: 120,
+                        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.lightTextSecondary,
+                        ),
+                      ),
                     ),
                   ),
-                Container(
+                if (message.hasVisibleText)
+                  Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     gradient: isMine
@@ -344,12 +409,14 @@ class _ChatComposerBar extends StatelessWidget {
   final TextEditingController controller;
   final bool isDark;
   final VoidCallback onSend;
+  final VoidCallback onAttachImage;
 
   const _ChatComposerBar({
     super.key,
     required this.controller,
     required this.isDark,
     required this.onSend,
+    required this.onAttachImage,
   });
 
   @override
@@ -379,6 +446,33 @@ class _ChatComposerBar extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          BlocSelector<ChatBloc, ChatState, bool>(
+            selector: (state) => state.isSending,
+            builder: (context, isSending) {
+              return Material(
+                color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  onTap: isSending ? null : onAttachImage,
+                  customBorder: const CircleBorder(),
+                  child: SizedBox(
+                    width: 46,
+                    height: 46,
+                    child: Icon(
+                      Icons.add_photo_alternate_outlined,
+                      color: isSending
+                          ? (isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.lightTextSecondary)
+                          : theme.colorScheme.primary,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: VietnameseImeTextField(
               fieldKey: 'staff_chat_input',
