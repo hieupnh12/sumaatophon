@@ -37,6 +37,7 @@ dependencies:
   webview_flutter: ^4.13.0
   qr_flutter: ^4.1.0
   refresh_rate: ^1.0.2
+  image_picker: ^1.1.2
 
 
 

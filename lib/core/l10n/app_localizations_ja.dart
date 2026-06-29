@@ -456,6 +456,8 @@ const Map<String, String> jaLocalizations = {
   'chat_online': 'オンライン',
   'chat_empty': 'メッセージはまだありません。挨拶してみましょう！',
   'chat_input_hint': 'メッセージを入力...',
+  'chat_attach_image': '画像を送信',
+  'chat_image_picker_failed': '画像を選択できませんでした。もう一度お試しください。',
   'chat_error_socket_timeout': 'スタッフチャットに接続できませんでした（タイムアウト）。',
   'chat_error_socket_handshake': 'このアドレスでチャットサーバーが正しく応答しません。',
   'chat_error_socket_debug_hint': 'USBデバッグ: backendで `npm start`、続けて `adb reverse tcp:3000 tcp:3000`、アプリをホット再起動してください。',

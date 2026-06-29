@@ -457,6 +457,8 @@ const Map<String, String> enLocalizations = {
   'chat_online': 'Online',
   'chat_empty': 'No messages yet. Say hello!',
   'chat_input_hint': 'Type a message...',
+  'chat_attach_image': 'Send image',
+  'chat_image_picker_failed': 'Could not pick an image. Please try again.',
   'chat_error_socket_timeout': 'Could not connect to staff chat (timeout).',
   'chat_error_socket_handshake': 'Chat server is not reachable at this address.',
   'chat_error_socket_debug_hint': 'USB debug: run `npm start` in backend, then `adb reverse tcp:3000 tcp:3000`, and hot restart the app.',

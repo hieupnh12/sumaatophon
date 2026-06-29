@@ -227,6 +227,15 @@ class ApiConfig {
       );
     }
   }
+
+  /// Ghép path tương đối từ API (vd. `/uploads/chat/...`) thành URL đầy đủ.
+  static String resolveMediaUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    final baseUri = Uri.parse(_baseUrl.endsWith('/') ? _baseUrl : '$_baseUrl/');
+    final relative = url.startsWith('/') ? url.substring(1) : url;
+    return baseUri.resolve(relative).toString();
+  }
 }
 
 class ApiSocketConfig {

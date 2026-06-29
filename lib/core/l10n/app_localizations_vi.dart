@@ -458,6 +458,8 @@ const Map<String, String> viLocalizations = {
   'chat_online': 'Đang trực tuyến',
   'chat_empty': 'Chưa có tin nhắn. Hãy gửi lời chào!',
   'chat_input_hint': 'Nhập tin nhắn...',
+  'chat_attach_image': 'Gửi ảnh',
+  'chat_image_picker_failed': 'Không chọn được ảnh. Vui lòng thử lại.',
   'chat_error_socket_timeout': 'Không kết nối được chat nhân viên (hết thời gian chờ).',
   'chat_error_socket_handshake': 'Máy chủ chat không phản hồi đúng tại địa chỉ này.',
   'chat_error_socket_debug_hint': 'USB debug: chạy `npm start` trong backend, rồi `adb reverse tcp:3000 tcp:3000`, sau đó hot restart app.',
