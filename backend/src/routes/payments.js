@@ -77,7 +77,7 @@ router.post('/api/payments/payos/create', async (req, res) => {
 
     if (!isPayOsConfigured()) {
       return res.status(503).json({
-        message: 'PayOS chưa được cấu hình trên server (PAYOS_CLIENT_ID/API_KEY/CHECKSUM_KEY)',
+        message: 'PayOS chưa được cấu hình trên server (PHONESHOP_PAYOS_CLIENT_ID/API_KEY/CHECKSUM_KEY)',
         code: 'PAYOS_NOT_CONFIGURED',
       });
     }
