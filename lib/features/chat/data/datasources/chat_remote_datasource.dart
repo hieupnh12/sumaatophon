@@ -17,6 +17,11 @@ class ChatRemoteDataSource {
   final ApiClient apiClient;
   io.Socket? _socket;
   UserEntity? _user;
+  Future<void>? _connecting;
+  bool _useRestFallback = false;
+  Timer? _pollTimer;
+  String? _pollingThreadId;
+  final Set<String> _knownMessageIds = {};
 
   final _messageController = StreamController<ChatMessageEntity>.broadcast();
   final _threadsController = StreamController<List<ChatThreadEntity>>.broadcast();
@@ -25,34 +30,68 @@ class ChatRemoteDataSource {
 
   Stream<ChatMessageEntity> get messageStream => _messageController.stream;
   Stream<List<ChatThreadEntity>> get threadsStream => _threadsController.stream;
+  bool get usesRestFallback => _useRestFallback;
 
   Future<void> connect(UserEntity user) async {
-    if (_socket?.connected == true && _user?.id == user.id) return;
+    if (!_useRestFallback && _socket?.connected == true && _user?.id == user.id) {
+      return;
+    }
+    if (_connecting != null) {
+      await _connecting;
+      if ((!_useRestFallback && _socket?.connected == true || _useRestFallback) &&
+          _user?.id == user.id) {
+        return;
+      }
+    }
 
-    await disconnect();
+    _connecting = _connectInternal(user);
+    try {
+      await _connecting;
+    } finally {
+      _connecting = null;
+    }
+  }
+
+  Future<void> _connectInternal(UserEntity user) async {
+    await _disconnectSocket();
+    _stopPolling();
+    _useRestFallback = false;
+    _pollingThreadId = null;
+    _knownMessageIds.clear();
     _user = user;
 
     if (kDebugMode) {
       await ApiConfig.recheckBaseUrl();
     }
 
+    try {
+      await _connectSocket(user);
+      if (kDebugMode) debugPrint('[Chat] Socket connected');
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[Chat] Socket failed → REST polling fallback: $e');
+      }
+      _useRestFallback = true;
+      _startPolling();
+    }
+  }
+
+  Future<void> _connectSocket(UserEntity user) async {
     final socketConfig = ApiConfig.socketConfig;
     if (kDebugMode) {
-      debugPrint(
-        '[Chat] Socket.IO → ${socketConfig.origin}${socketConfig.path}',
-      );
+      debugPrint('[Chat] Socket.IO → ${socketConfig.origin}${socketConfig.path}');
     }
 
     await _preflightSocketHandshake(socketConfig);
 
+    // Polling trước — ổn định qua nginx /mobile/ (websocket upgrade hay lỗi trên một số proxy).
     _socket = io.io(
       socketConfig.origin,
       io.OptionBuilder()
           .setPath(socketConfig.path)
           .setTransports(['polling', 'websocket'])
-          .setTimeout(12000)
+          .setTimeout(20000)
           .disableAutoConnect()
-          .enableForceNew()
           .enableReconnection()
           .setQuery({
             'userId': user.id,
@@ -67,26 +106,39 @@ class ChatRemoteDataSource {
     );
 
     final connected = Completer<void>();
-    _socket!
+    final socket = _socket!;
+    socket
       ..on('connect', (_) {
-        if (kDebugMode) debugPrint('[Chat] Socket connected');
         if (!connected.isCompleted) connected.complete();
       })
       ..on('connect_error', (error) {
         if (kDebugMode) debugPrint('[Chat] connect_error: $error');
         if (!connected.isCompleted) {
-          connected.completeError(Exception('Socket connect failed: $error'));
+          connected.completeError(
+            ChatSocketException(
+              code: ChatSocketErrorCode.timeout,
+              socketUrl: '${socketConfig.origin}${socketConfig.path}',
+            ),
+          );
         }
       })
       ..on('error', (error) {
         if (!connected.isCompleted) {
-          connected.completeError(Exception('Socket error: $error'));
+          connected.completeError(
+            ChatSocketException(
+              code: ChatSocketErrorCode.timeout,
+              socketUrl: '${socketConfig.origin}${socketConfig.path}',
+            ),
+          );
         }
       })
       ..on('disconnect', (reason) {
         if (!connected.isCompleted) {
           connected.completeError(
-            Exception('Socket disconnected before ready: $reason'),
+            ChatSocketException(
+              code: ChatSocketErrorCode.notConnected,
+              socketUrl: '${socketConfig.origin}${socketConfig.path}',
+            ),
           );
         }
       })
@@ -95,6 +147,7 @@ class ChatRemoteDataSource {
           final message = ChatMessageModel.fromJson(
             Map<String, dynamic>.from(data),
           ).toEntity();
+          _knownMessageIds.add(message.id);
           _messageController.add(message);
         }
       })
@@ -109,11 +162,18 @@ class ChatRemoteDataSource {
         }
       });
 
-    _socket!.connect();
+    socket.connect();
 
     try {
-      await connected.future.timeout(const Duration(seconds: 12));
+      await connected.future.timeout(const Duration(seconds: 20));
     } on TimeoutException {
+      await _disconnectSocket();
+      throw ChatSocketException(
+        code: ChatSocketErrorCode.timeout,
+        socketUrl: '${socketConfig.origin}${socketConfig.path}',
+      );
+    } catch (e) {
+      if (e is ChatSocketException) rethrow;
       throw ChatSocketException(
         code: ChatSocketErrorCode.timeout,
         socketUrl: '${socketConfig.origin}${socketConfig.path}',
@@ -121,10 +181,53 @@ class ChatRemoteDataSource {
     }
   }
 
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _pollRest());
+    unawaited(_pollRest());
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  Future<void> _pollRest() async {
+    final user = _user;
+    if (user == null || !_useRestFallback) return;
+
+    try {
+      if (user.canSupportChat) {
+        final threads = await getThreads();
+        _threadsController.add(threads);
+      }
+
+      final threadId = _pollingThreadId;
+      if (threadId == null) return;
+
+      final messages = await getMessages(threadId: threadId, user: user);
+      for (final message in messages) {
+        if (_knownMessageIds.add(message.id)) {
+          _messageController.add(message);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Chat] REST poll error: $e');
+    }
+  }
+
   Future<void> disconnect() async {
+    _stopPolling();
+    _useRestFallback = false;
+    _pollingThreadId = null;
+    _knownMessageIds.clear();
+    _user = null;
+    await _disconnectSocket();
+  }
+
+  Future<void> _disconnectSocket() async {
     final socket = _socket;
     _socket = null;
-    _user = null;
     if (socket == null) return;
     try {
       if (socket.connected) socket.disconnect();
@@ -172,6 +275,18 @@ class ChatRemoteDataSource {
   }
 
   Future<void> joinThread(String threadId) async {
+    _pollingThreadId = threadId;
+    if (_useRestFallback) {
+      final user = _user;
+      if (user != null) {
+        final messages = await getMessages(threadId: threadId, user: user);
+        _knownMessageIds
+          ..clear()
+          ..addAll(messages.map((m) => m.id));
+      }
+      return;
+    }
+
     _ensureSocketConnected();
     final completer = Completer<void>();
     _socket!.emitWithAck('join_thread', {'threadId': threadId}, ack: (response) {
@@ -188,11 +303,31 @@ class ChatRemoteDataSource {
     }
   }
 
+  Future<String> uploadChatImage(String filePath) async {
+    final data = await apiClient.postMultipart(
+      ApiEndpoints.chatUploadImage,
+      filePath: filePath,
+    );
+    final rawUrl = data is Map ? data['imageUrl'] as String? : null;
+    if (rawUrl == null || rawUrl.isEmpty) {
+      throw Exception('Upload failed');
+    }
+    return rawUrl;
+  }
+
   Future<ChatMessageEntity> sendMessage({
     required String threadId,
     required String text,
     String? imageUrl,
   }) async {
+    if (_useRestFallback) {
+      return _sendMessageRest(
+        threadId: threadId,
+        text: text,
+        imageUrl: imageUrl,
+      );
+    }
+
     _ensureSocketConnected();
     final completer = Completer<ChatMessageEntity>();
     _socket!.emitWithAck(
@@ -217,10 +352,58 @@ class ChatRemoteDataSource {
       },
     );
     try {
-      return await completer.future.timeout(const Duration(seconds: 10));
+      final message = await completer.future.timeout(const Duration(seconds: 10));
+      _knownMessageIds.add(message.id);
+      return message;
     } on TimeoutException {
       throw ChatSocketException(code: ChatSocketErrorCode.ackTimeout);
     }
+  }
+
+  Future<ChatMessageEntity> _sendMessageRest({
+    required String threadId,
+    required String text,
+    String? imageUrl,
+  }) async {
+    final user = _user;
+    if (user == null) {
+      throw ChatSocketException(code: ChatSocketErrorCode.notConnected);
+    }
+
+    final isStaff = user.canSupportChat;
+    final data = await apiClient.post(
+      ApiEndpoints.chatThreadMessages(threadId),
+      queryParameters: isStaff
+          ? {
+              'role': 'staff',
+              'accountType': 'employee',
+              'userId': user.id,
+              'userName': user.name,
+            }
+          : {
+              'role': 'user',
+              'customerId': user.id,
+            },
+      body: {
+        'text': text,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (isStaff) ...{
+          'staffId': user.id,
+          'staffName': user.name,
+        } else ...{
+          'customerId': user.id,
+        },
+      },
+    );
+
+    final message =
+        ChatMessageModel.fromJson(data as Map<String, dynamic>).toEntity();
+    _knownMessageIds.add(message.id);
+    _messageController.add(message);
+    if (isStaff) {
+      unawaited(_pollRest());
+    }
+    return message;
   }
 
   void _ensureSocketConnected() {

@@ -23,6 +23,8 @@
 # Thêm vào server block HTTPS của maclenin.io.vn — TRƯỚC location / { try_files ... }:
 
     location ^~ /mobile/ {
+        # Socket.IO polling trả text/plain — gzip làm socket_io_client treo (timeout).
+        gzip off;
         rewrite ^/mobile/?(.*)$ /$1 break;
         proxy_pass http://127.0.0.1:3001;
         proxy_http_version 1.1;

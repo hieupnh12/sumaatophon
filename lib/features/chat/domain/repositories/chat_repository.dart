@@ -17,6 +17,7 @@ abstract class ChatRepository {
   });
 
   Future<void> joinThread(String threadId);
+  Future<String> uploadChatImage(String filePath);
   Future<ChatMessageEntity> sendMessage({
     required String threadId,
     required String text,

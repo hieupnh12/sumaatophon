@@ -1,3 +1,4 @@
+import '../../../../core/network/api_config.dart';
 import '../../../../core/utils/date_time_utils.dart';
 import '../../domain/entities/chat_message_entity.dart';
 import '../../domain/entities/chat_thread_entity.dart';
@@ -30,10 +31,15 @@ class ChatMessageModel {
       senderId: json['senderId'] as String,
       senderRole: json['senderRole'] as String,
       text: json['text'] as String,
-      imageUrl: json['imageUrl'] as String?,
+      imageUrl: _resolveImageUrl(json['imageUrl'] as String?),
       isSeen: json['isSeen'] as bool? ?? false,
       createdAt: json['createdAt'] as String,
     );
+  }
+
+  static String? _resolveImageUrl(String? url) {
+    if (url == null || url.isEmpty) return null;
+    return ApiConfig.resolveMediaUrl(url);
   }
 
   ChatMessageEntity toEntity() {

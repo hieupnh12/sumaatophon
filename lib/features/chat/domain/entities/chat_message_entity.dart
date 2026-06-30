@@ -3,6 +3,8 @@ import 'package:equatable/equatable.dart';
 enum MessageSenderRole { user, admin }
 
 class ChatMessageEntity extends Equatable {
+  static const imageOnlyText = '📷';
+
   final String id;
   final String threadId;
   final String senderId;
@@ -27,6 +29,8 @@ class ChatMessageEntity extends Equatable {
     if (isSupportStaff) return senderRole == MessageSenderRole.admin;
     return senderId == userId;
   }
+
+  bool get hasVisibleText => text.isNotEmpty && text != imageOnlyText;
 
   @override
   List<Object?> get props =>

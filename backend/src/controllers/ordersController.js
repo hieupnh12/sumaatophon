@@ -18,7 +18,7 @@ function formatDate(dateString) {
 function mapStatus(status) {
   switch (status) {
     case 'PENDING': return 'pending';
-    case 'PAID': return 'pending';
+    case 'PAID': return 'paid';
     case 'SHIPPED': return 'shipping';
     case 'DELIVERED': return 'completed';
     case 'COMPLETED': return 'completed';
@@ -72,9 +72,11 @@ const getOrders = async (req, res) => {
           LIMIT 1
         ) as product_price,
         (
-          SELECT vi.image 
+          SELECT COALESCE(vi.image, pv.picture, p.picture)
           FROM order_details od
-          JOIN version_image vi ON od.product_version_id = vi.product_version_id
+          JOIN product_versions pv ON od.product_version_id = pv.product_version_id
+          JOIN products p ON pv.product_id = p.product_id
+          LEFT JOIN version_image vi ON od.product_version_id = vi.product_version_id
           WHERE od.order_id = o.order_id 
           LIMIT 1
         ) as product_image
@@ -136,18 +138,18 @@ const getOrderDetails = async (req, res) => {
 
     const [details] = await pool.query(`
       SELECT 
-        od.order_detail_id,
-        od.product_version_id,
+        od.order_detail_id, 
+        od.quantity, 
         od.unit_price_after,
-        od.quantity,
+        p.product_id,
         p.product_name,
         p.warranty_period,
-        (
+        COALESCE((
           SELECT vi.image 
           FROM version_image vi 
           WHERE vi.product_version_id = od.product_version_id 
           LIMIT 1
-        ) as image
+        ), pv.picture, p.picture) as image
       FROM order_details od
       JOIN product_versions pv ON od.product_version_id = pv.product_version_id
       JOIN products p ON pv.product_id = p.product_id
@@ -189,6 +191,7 @@ const getOrderDetails = async (req, res) => {
 
         return {
           id: d.order_detail_id,
+          productId: d.product_id,
           name: d.product_name,
           price: formatCurrency(d.unit_price_after),
           warrantyUntil: formatDate(wDate),

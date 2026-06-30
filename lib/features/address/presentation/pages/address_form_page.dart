@@ -246,6 +246,7 @@ class _AddressFormPageState extends State<AddressFormPage> {
                     isDark: isDark,
                     onTap: _selectWard,
                     isSelected: _selectedWard != null,
+                    isEnabled: _selectedProvince != null && _selectedProvince!.code != -1,
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
@@ -389,14 +390,17 @@ class _AddressFormPageState extends State<AddressFormPage> {
     required bool isDark,
     required VoidCallback onTap,
     required bool isSelected,
+    bool isEnabled = true,
   }) {
     return InkWell(
-      onTap: onTap,
+      onTap: isEnabled ? onTap : null,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCard : AppColors.lightCard,
+          color: !isEnabled 
+              ? (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05))
+              : (isDark ? AppColors.darkCard : AppColors.lightCard),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
         ),

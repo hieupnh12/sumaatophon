@@ -45,6 +45,16 @@ class SendMessageEvent extends ChatEvent {
   List<Object?> get props => [text, imageUrl];
 }
 
+class SendImageMessageEvent extends ChatEvent {
+  final String filePath;
+  final String? caption;
+
+  const SendImageMessageEvent({required this.filePath, this.caption});
+
+  @override
+  List<Object?> get props => [filePath, caption];
+}
+
 class _NewMessageEvent extends ChatEvent {
   final ChatMessageEntity message;
   const _NewMessageEvent(this.message);
@@ -125,6 +135,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<SelectThreadEvent>(_onSelectThread);
     on<BackToInboxEvent>(_onBackToInbox);
     on<SendMessageEvent>(_onSendMessage);
+    on<SendImageMessageEvent>(_onSendImageMessage);
     on<_NewMessageEvent>(_onNewMessage);
     on<_ThreadsUpdatedEvent>(_onThreadsUpdated);
     on<DisconnectChatEvent>(_onDisconnect);
@@ -161,6 +172,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         ));
       } else {
         final thread = await repository.getOrCreateMyThread(event.user);
+        await repository.joinThread(thread.id);
         final messages = await repository.getMessages(
           threadId: thread.id,
           user: event.user,
@@ -209,14 +221,48 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
     final thread = state.activeThread;
-    if (thread == null || event.text.trim().isEmpty) return;
+    final text = event.text.trim();
+    if (thread == null || (text.isEmpty && event.imageUrl == null)) return;
 
     emit(state.copyWith(isSending: true, clearError: true));
     try {
+      final messageText = text.isNotEmpty
+          ? text
+          : (event.imageUrl != null ? ChatMessageEntity.imageOnlyText : '');
       final message = await repository.sendMessage(
         threadId: thread.id,
-        text: event.text.trim(),
+        text: messageText,
         imageUrl: event.imageUrl,
+      );
+      final exists = state.messages.any((m) => m.id == message.id);
+      if (!exists) {
+        emit(state.copyWith(
+          isSending: false,
+          messages: [...state.messages, message],
+        ));
+      } else {
+        emit(state.copyWith(isSending: false));
+      }
+    } catch (e) {
+      emit(state.copyWith(isSending: false, error: e.toString()));
+    }
+  }
+
+  Future<void> _onSendImageMessage(
+    SendImageMessageEvent event,
+    Emitter<ChatState> emit,
+  ) async {
+    final thread = state.activeThread;
+    if (thread == null) return;
+
+    emit(state.copyWith(isSending: true, clearError: true));
+    try {
+      final imagePath = await repository.uploadChatImage(event.filePath);
+      final caption = event.caption?.trim() ?? '';
+      final message = await repository.sendMessage(
+        threadId: thread.id,
+        text: caption.isNotEmpty ? caption : ChatMessageEntity.imageOnlyText,
+        imageUrl: imagePath,
       );
       final exists = state.messages.any((m) => m.id == message.id);
       if (!exists) {

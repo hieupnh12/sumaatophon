@@ -4,9 +4,9 @@ import 'package:sumaatophon/main.dart';
 
 void main() {
   testWidgets('App starts without crashing', (WidgetTester tester) async {
-    setupDependencyInjection();
+    await setupDependencyInjection();
     await tester.pumpWidget(const PhoneShopApp());
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
     expect(find.byType(MaterialApp), findsOneWidget);
   });
 }

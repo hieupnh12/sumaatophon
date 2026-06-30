@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/l10n/app_localizations.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../domain/entities/order.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -31,29 +32,19 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
     return DateFormat('dd/MM/yyyy').format(date);
   }
 
-  String _statusLabel(BuildContext context, String status) {
-    switch (status) {
-      case 'pending':
-        return context.tr('order_status_pending');
-      case 'shipping':
-        return context.tr('order_status_shipping');
-      case 'completed':
-        return context.tr('order_status_completed');
-      case 'cancelled':
-        return context.tr('order_status_cancelled');
-      case 'return':
-        return context.tr('order_status_return');
-      default:
-        return status;
-    }
-  }
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
-    // TODO: get real customer id from AuthBloc. Using 33 for testing.
-    context.read<OrderBloc>().add(const LoadOrdersEvent(33));
+    final authState = context.read<AuthBloc>().state;
+    int customerId = 0;
+    if (authState is AuthenticatedState) {
+      customerId = int.tryParse(authState.user.id) ?? 0;
+    }
+    if (customerId > 0) {
+      context.read<OrderBloc>().add(LoadOrdersEvent(customerId));
+    }
   }
 
   @override
@@ -119,7 +110,12 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
   }
 
   Widget _buildOrderList(bool isDark, BuildContext context, String filter, List<Order> allOrders) {
-    var filteredOrders = filter == 'all' ? allOrders : allOrders.where((o) => o.status == filter).toList();
+    var filteredOrders = filter == 'all' ? allOrders : allOrders.where((o) {
+      if (filter == 'pending') {
+        return o.status == 'pending' || o.status == 'paid';
+      }
+      return o.status == filter;
+    }).toList();
 
     if (_startDate != null && _endDate != null) {
       final formatter = DateFormat('dd/MM/yyyy');
@@ -190,7 +186,7 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
                   itemCount: filteredOrders.length,
                   itemBuilder: (context, index) {
                     final order = filteredOrders[index];
-                    final statusColor = _getStatusColor(order.status);
+                    final statusColor = orderStatusColor(order.status);
 
                     return GestureDetector(
                       onTap: () {
@@ -265,7 +261,7 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    _statusLabel(context, order.status),
+                                    orderStatusLabel(context, order.status),
                                     style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
                                   ),
                                 ),
@@ -286,7 +282,11 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
                                   child: order.productImage.isNotEmpty
                                       ? ClipRRect(
                                           borderRadius: BorderRadius.circular(8),
-                                          child: Image.network(order.productImage, fit: BoxFit.cover),
+                                          child: Image.network(
+                                            order.productImage, 
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image_outlined, color: Colors.grey),
+                                          ),
                                         )
                                       : const Icon(Icons.inventory_2_outlined, color: Colors.grey),
                                 ),
@@ -361,18 +361,4 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
     );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'pending':
-        return AppColors.warning;
-      case 'shipping':
-        return Colors.blue;
-      case 'completed':
-        return const Color(0xFF229E54); // Green matches mockup
-      case 'cancelled':
-        return const Color(0xFFD32F2F); // Red matches mockup
-      default:
-        return Colors.grey;
-    }
-  }
 }

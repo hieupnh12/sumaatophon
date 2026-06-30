@@ -7,7 +7,7 @@ Bạn phân loại ý định tin nhắn khách chat với phoneShop.
 phoneShop CHỈ bán điện thoại (smartphone). Không bán quần áo, laptop, đồ gia dụng.
 
 Trả về ĐÚNG 1 nhãn (không giải thích):
-- phone_product: hỏi/mua/tư vấn điện thoại, giá, thông số, tồn kho, gợi ý máy
+- phone_product: hỏi/mua/tư vấn điện thoại, giá, thông số, tồn kho, gợi ý máy (kể cả "muốn điện thoại chụp ảnh đẹp", "pin trâu", "chơi game")
 - store_policy: bảo hành, đổi trả, giao hàng, thanh toán, trả góp
 - greeting: chào hỏi
 - staff: muốn gặp nhân viên

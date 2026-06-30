@@ -13,6 +13,8 @@ import '../phone_utils.dart';
 import '../auth_navigation.dart';
 import 'link_phone_page.dart';
 
+enum LoginAction { none, phone, google }
+
 class LoginScreen extends StatefulWidget {
   final bool returnAfterAuth;
 
@@ -30,8 +32,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
 
+  LoginAction _loadingAction = LoginAction.none;
   bool _showOtpStep = false;
   String? _otpError;
+  final FocusNode _phoneFocusNode = FocusNode();
   final FocusNode _otpFocusNode = FocusNode();
   Timer? _validityTimer;
   Timer? _resendTimer;
@@ -122,6 +126,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   void _onContinuePressed() {
+    setState(() => _loadingAction = LoginAction.phone);
     final phoneDisplay = _phoneController.text.trim();
     if (phoneDisplay.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -130,6 +135,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           backgroundColor: AppColors.error,
         ),
       );
+      setState(() => _loadingAction = LoginAction.none);
       return;
     }
 
@@ -142,10 +148,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           backgroundColor: AppColors.error,
         ),
       );
+      setState(() => _loadingAction = LoginAction.none);
       return;
     }
 
     context.read<AuthBloc>().add(OtpRequested(phone: phone));
+  }
+
+  void _onGoogleLoginPressed() {
+    setState(() => _loadingAction = LoginAction.google);
+    context.read<AuthBloc>().add(GoogleLoginRequested());
   }
 
   void _onOtpCompleted(String otp) {
@@ -169,9 +181,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
   }
 
-  void _onGoogleLoginPressed() {
-    context.read<AuthBloc>().add(GoogleLoginRequested());
-  }
+
 
 
   @override
@@ -197,10 +207,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     return Scaffold(
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
+          if (state is! AuthLoading) {
+            if (_loadingAction != LoginAction.none) {
+              setState(() => _loadingAction = LoginAction.none);
+            }
+          }
           if (state is AuthError) {
             String errorMsg = state.message;
+            if (errorMsg.contains('|')) {
+              final parts = errorMsg.split('|');
+              errorMsg = context.trRead(parts[0]) + parts[1];
+            } else if (errorMsg.startsWith('login_')) {
+              errorMsg = context.trRead(errorMsg);
+            }
             if (errorMsg.contains('Connection refused') || errorMsg.contains('SocketException') || errorMsg.contains('TimeoutException')) {
-              errorMsg = "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.";
+              errorMsg = context.trRead('login_server_error');
               if (_showOtpStep) {
                 setState(() {
                   _otpError = errorMsg;
@@ -249,7 +270,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             _startTimers();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(context.trRead(state.message)),
                 backgroundColor: AppColors.success,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -345,10 +366,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Text('Bỏ qua'),
-                            SizedBox(width: 4),
-                            Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                          children: [
+                            Text(context.tr('login_skip')),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                           ],
                         ),
                       ),
@@ -430,6 +451,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   Widget _buildPhoneStep(BuildContext context, ThemeData theme, bool isDark, bool isLoading) {
+    final isPhoneLoading = isLoading && _loadingAction == LoginAction.phone;
+    final isGoogleLoading = isLoading && _loadingAction == LoginAction.google;
+
     return Column(
       key: const ValueKey('PhoneStep'),
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,28 +477,30 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
         TextFormField(
           controller: _phoneController,
+          focusNode: _phoneFocusNode,
           keyboardType: TextInputType.phone,
+          enabled: !isLoading,
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
             _PhoneNumberFormatter(),
           ],
           style: TextStyle(
-            color: isDark ? Colors.white : Colors.black87,
             fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.white : Colors.black87,
           ),
           decoration: InputDecoration(
             hintText: context.tr('login_phone_hint'),
             hintStyle: TextStyle(
-              color: isDark ? Colors.white54 : Colors.black45,
+              color: isDark ? Colors.white30 : Colors.black38,
+            ),
+            prefixIcon: Icon(
+              Icons.phone_android_rounded,
+              color: isDark ? Colors.white54 : Colors.black54,
             ),
             filled: true,
-            fillColor: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.03),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
+            fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+            contentPadding: const EdgeInsets.symmetric(vertical: 18),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
@@ -505,7 +531,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            child: isLoading
+            child: isPhoneLoading
                 ? SizedBox(
                     width: 24,
                     height: 24,
@@ -526,7 +552,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         
         const SizedBox(height: 24),
 
-        // Social Login Section
         Row(
           children: [
             Expanded(
@@ -538,7 +563,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
-                'Hoặc',
+                context.tr('login_or'),
                 style: TextStyle(
                   color: isDark ? Colors.white54 : Colors.black45,
                   fontSize: 14,
@@ -556,7 +581,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         ),
         const SizedBox(height: 24),
 
-        // Google Sign-In Button
         SizedBox(
           height: 56,
           width: double.infinity,
@@ -575,21 +599,30 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 ),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const GoogleLogo(size: 24),
-                const SizedBox(width: 12),
-                Text(
-                  context.tr('login_google_btn'),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+            child: isGoogleLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.black54,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const GoogleLogo(size: 24),
+                      const SizedBox(width: 12),
+                      Text(
+                        context.tr('login_google_btn'),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
           ),
         ),
       ],

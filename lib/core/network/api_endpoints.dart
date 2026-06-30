@@ -28,6 +28,8 @@ class ApiEndpoints {
   static String chatThreadMessages(String threadId) =>
       '/chat/threads/$threadId/messages';
 
+  static const String chatUploadImage = '/chat/upload-image';
+
   static const String notifications = '/notifications';
   static const String notificationsReadAll = '/notifications/read-all';
   static const String notificationsRegisterToken = '/notifications/register-token';
@@ -41,4 +43,8 @@ class ApiEndpoints {
   // Orders
   static String orderById(String id) => '/api/orders/$id';
   static String cartItemByVersionId(String productVersionId) => '/api/cart/items/$productVersionId';
+
+  // Warranty
+  static const String warrantiesEligible = '/api/warranties/eligible-items';
+  static const String warranties = '/api/warranties';
 }
