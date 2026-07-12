@@ -98,9 +98,11 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
 
   @override
   Future<PayOsPaymentStatus> getPayOsStatus(String orderId) async {
-    final response = await client.get(
-      Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.payOsStatus(orderId)}'),
-    );
+    final response = await client
+        .get(
+          Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.payOsStatus(orderId)}'),
+        )
+        .timeout(const Duration(seconds: 20));
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return PayOsPaymentStatus.fromJson(json.decode(response.body) as Map<String, dynamic>);
@@ -111,11 +113,13 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
 
   @override
   Future<PayOsPaymentStatus> confirmPayOsPayment(String orderId) async {
-    final response = await client.post(
-      Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.payOsConfirm}'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'orderId': orderId}),
-    );
+    final response = await client
+        .post(
+          Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.payOsConfirm}'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'orderId': orderId}),
+        )
+        .timeout(const Duration(seconds: 20));
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return PayOsPaymentStatus.fromJson(json.decode(response.body) as Map<String, dynamic>);
