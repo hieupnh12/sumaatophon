@@ -241,7 +241,7 @@ Response mau:
     "id": "1",
     "name": "FShop",
     "address": "X6WQ+R5M, Khu đô thị FPT City, Ngũ Hành Sơn, Đà Nẵng 550000, Việt Nam",
-    "phone": "02363797979",
+    "phone": "0982481094",
     "latitude": 15.981042,
     "longitude": 108.254771,
     "openTime": "08:00 - 22:00",

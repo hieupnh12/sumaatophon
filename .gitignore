@@ -43,4 +43,16 @@ backend/node_modules/
 # CodeGraph local daemon (machine-specific, avoid merge conflicts)
 .codegraph/
 
+# Scratch / debug artifacts (không commit)
+tmp*.js
+test_img.png
+remove_bg.py
+bugreport-*.zip
+backend/check.js
+backend/check-*.js
+backend/test-push.js
+backend/test-order-*.js
+backend/dump-schema.js
+backend/schema.txt
+
 .flutter-plugins-dependencies
