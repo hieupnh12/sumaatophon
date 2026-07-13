@@ -16,14 +16,15 @@ class PayOsQrPaymentPage extends StatefulWidget {
     required this.amount,
     required this.checkoutUrl,
     this.qrCode,
-    required this.onPollPaymentStatus,
+    required this.onCheckPaymentStatus,
   });
 
   final String orderId;
   final int amount;
   final String checkoutUrl;
   final String? qrCode;
-  final Future<PayOsPaymentStatus> Function() onPollPaymentStatus;
+  /// Gọi API confirm — đồng bộ trạng thái từ PayOS, không chỉ đọc DB.
+  final Future<PayOsPaymentStatus> Function() onCheckPaymentStatus;
 
   @override
   State<PayOsQrPaymentPage> createState() => _PayOsQrPaymentPageState();
@@ -31,7 +32,8 @@ class PayOsQrPaymentPage extends StatefulWidget {
 
 class _PayOsQrPaymentPageState extends State<PayOsQrPaymentPage> with WidgetsBindingObserver {
   Timer? _pollTimer;
-  bool _isChecking = false;
+  bool _isAutoPolling = false;
+  bool _isManualChecking = false;
   bool _isOpeningBank = false;
 
   String get _formattedAmount {
@@ -43,7 +45,10 @@ class _PayOsQrPaymentPageState extends State<PayOsQrPaymentPage> with WidgetsBin
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _pollPaymentStatus());
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _checkPaymentStatus(manual: false),
+    );
   }
 
   @override
@@ -56,7 +61,7 @@ class _PayOsQrPaymentPageState extends State<PayOsQrPaymentPage> with WidgetsBin
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _pollPaymentStatus();
+      _checkPaymentStatus(manual: false);
     }
   }
 
@@ -65,18 +70,55 @@ class _PayOsQrPaymentPageState extends State<PayOsQrPaymentPage> with WidgetsBin
     Navigator.of(context).pop(success);
   }
 
-  Future<void> _pollPaymentStatus() async {
-    if (_isChecking || !mounted) return;
-    _isChecking = true;
+  Future<void> _checkPaymentStatus({required bool manual}) async {
+    if (!mounted) return;
+    if (manual) {
+      if (_isManualChecking) return;
+      setState(() => _isManualChecking = true);
+    } else if (_isAutoPolling) {
+      return;
+    } else {
+      _isAutoPolling = true;
+    }
+
     try {
-      final status = await widget.onPollPaymentStatus();
-      if (status.isPaid && mounted) {
+      final status = await widget
+          .onCheckPaymentStatus()
+          .timeout(const Duration(seconds: 20));
+      if (!mounted) return;
+      if (status.isPaid) {
         await _finish(true);
+        return;
+      }
+      if (manual) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.trRead('checkout_payos_pending'))),
+        );
+      }
+    } on TimeoutException {
+      if (mounted && manual) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.trRead('checkout_payos_pending')),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     } catch (_) {
-      // Ignore transient poll errors.
+      if (mounted && manual) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.trRead('checkout_submit_error')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     } finally {
-      _isChecking = false;
+      if (manual) {
+        if (mounted) setState(() => _isManualChecking = false);
+      } else {
+        _isAutoPolling = false;
+      }
     }
   }
 
@@ -130,7 +172,7 @@ class _PayOsQrPaymentPageState extends State<PayOsQrPaymentPage> with WidgetsBin
     if (success == true) {
       await _finish(true);
     } else {
-      await _pollPaymentStatus();
+      await _checkPaymentStatus(manual: false);
     }
   }
 
@@ -275,12 +317,14 @@ class _PayOsQrPaymentPageState extends State<PayOsQrPaymentPage> with WidgetsBin
               ),
               const SizedBox(height: 20),
               OutlinedButton(
-                onPressed: _isChecking ? null : _pollPaymentStatus,
+                onPressed: _isManualChecking
+                    ? null
+                    : () => _checkPaymentStatus(manual: true),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                child: _isChecking
+                child: _isManualChecking
                     ? const SizedBox(
                         height: 22,
                         width: 22,

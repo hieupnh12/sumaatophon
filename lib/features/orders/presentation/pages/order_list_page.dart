@@ -12,11 +12,20 @@ import 'order_detail_page.dart';
 
 class OrderListPage extends StatefulWidget {
   final String titleKey;
+  final int initialTabIndex;
 
   const OrderListPage({
     super.key,
     this.titleKey = 'profile_orders_title',
+    this.initialTabIndex = 0,
   });
+
+  static const int tabAll = 0;
+  static const int tabPending = 1;
+  static const int tabShipping = 2;
+  static const int tabCompleted = 3;
+  static const int tabCancelled = 4;
+  static const int tabReturn = 5;
 
   @override
   State<OrderListPage> createState() => _OrderListPageState();
@@ -36,7 +45,11 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(
+      length: 6,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, 5),
+    );
     final authState = context.read<AuthBloc>().state;
     int customerId = 0;
     if (authState is AuthenticatedState) {
@@ -112,7 +125,7 @@ class _OrderListPageState extends State<OrderListPage> with SingleTickerProvider
   Widget _buildOrderList(bool isDark, BuildContext context, String filter, List<Order> allOrders) {
     var filteredOrders = filter == 'all' ? allOrders : allOrders.where((o) {
       if (filter == 'pending') {
-        return o.status == 'pending' || o.status == 'paid';
+        return o.status == 'pending';
       }
       return o.status == filter;
     }).toList();

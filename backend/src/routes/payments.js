@@ -124,23 +124,47 @@ router.post('/api/payments/payos/create', async (req, res) => {
   }
 });
 
-// GET /api/payments/payos/status/:orderId — kiểm tra trạng thái thanh toán trong DB
+// GET /api/payments/payos/status/:orderId — kiểm tra + đồng bộ PayOS nếu DB chưa PAID
 router.get('/api/payments/payos/status/:orderId', async (req, res) => {
+  const conn = await pool.getConnection();
   try {
     const orderId = Number(req.params.orderId);
-    const context = await fetchOrderContext(orderId);
+    const context = await fetchOrderContext(orderId, conn);
     if (!context) {
       return res.status(404).json({ message: 'Order not found', code: 'ORDER_NOT_FOUND' });
     }
 
+    if (context.order.is_paid !== 1 && isPayOsConfigured()) {
+      const payosPayment = await fetchPaymentRequest(orderId);
+      const isPaid = payosPayment?.status === 'PAID' || payosPayment?.status === 'COMPLETED';
+      if (isPaid) {
+        await conn.beginTransaction();
+        await markPaymentSuccess(
+          orderId,
+          `Thanh toán thành công qua PayOS. Order Code: ${orderId}`,
+          conn,
+        );
+        await removeCartItemsByVersionIds(
+          context.order.customer_id,
+          context.productVersionIds,
+          conn,
+        );
+        await conn.commit();
+      }
+    }
+
+    const updated = await fetchOrderContext(orderId, conn);
     res.json({
       orderId: String(orderId),
-      orderStatus: context.order.status,
-      isPaid: context.order.is_paid === 1,
-      paymentStatus: context.transaction?.payment_status ?? 'PENDING',
+      orderStatus: updated?.order.status,
+      isPaid: updated?.order.is_paid === 1,
+      paymentStatus: updated?.transaction?.payment_status ?? 'PENDING',
     });
   } catch (err) {
+    await conn.rollback();
     res.status(500).json({ message: err.message, code: 'PAYOS_STATUS_ERROR' });
+  } finally {
+    conn.release();
   }
 });
 

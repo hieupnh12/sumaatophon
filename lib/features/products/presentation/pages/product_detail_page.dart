@@ -12,18 +12,22 @@ import '../../../cart/presentation/bloc/cart_bloc.dart';
 import '../../../../core/auth/auth_guard.dart';
 import '../../../cart/presentation/cart_auth_helper.dart';
 import '../../../checkout/presentation/pages/checkout_page.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../presentation/bloc/product_bloc.dart';
+import '../widgets/product_review_sheet.dart';
 import '../widgets/product_review_tile.dart';
 import '../widgets/product_color_option_tile.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final String productId;
   final String? heroImageUrl;
+  final bool autoOpenReview;
 
   const ProductDetailPage({
     super.key,
     required this.productId,
     this.heroImageUrl,
+    this.autoOpenReview = false,
   });
 
   @override
@@ -34,13 +38,45 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   String _selectedColor = '';
   String _selectedRamRom = '';
   String? _selectionInitializedForProductId;
+  bool _didAutoOpenReview = false;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _specsKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    context.read<ProductBloc>().add(LoadProductByIdEvent(widget.productId));
+    final auth = context.read<AuthBloc>().state;
+    final customerId = auth is AuthenticatedState ? int.tryParse(auth.user.id) : null;
+    context.read<ProductBloc>().add(
+          LoadProductByIdEvent(widget.productId, customerId: customerId),
+        );
+  }
+
+  int? _customerId(BuildContext context) {
+    final auth = context.read<AuthBloc>().state;
+    if (auth is! AuthenticatedState) return null;
+    return int.tryParse(auth.user.id);
+  }
+
+  Future<void> _openReviewSheet(BuildContext context, Product product) async {
+    final customerId = _customerId(context);
+    if (customerId == null || customerId <= 0) return;
+
+    final submitted = await showProductReviewSheet(
+      context: context,
+      productId: widget.productId,
+      customerId: customerId,
+      productName: product.name,
+    );
+
+    if (submitted == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.trRead('product_review_success')),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
   }
 
   @override
@@ -211,26 +247,39 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ProductBloc, ProductState>(
-      builder: (context, state) {
-        if (state is ProductDetailLoading) {
-          return _buildLoadingScaffold(context);
-        }
-        if (state is ProductDetailError) {
-          return Scaffold(
-            appBar: AppBar(),
-            body: Center(child: Text(state.message)),
-          );
-        }
-        if (state is ProductDetailLoaded) {
-          return _buildDetailContent(context, state.product);
-        }
-        return _buildLoadingScaffold(context);
+    return BlocListener<ProductBloc, ProductState>(
+      listenWhen: (prev, curr) => curr is ProductDetailLoaded,
+      listener: (context, state) {
+        if (state is! ProductDetailLoaded) return;
+        if (!widget.autoOpenReview || _didAutoOpenReview) return;
+        if (!state.canReview || state.hasReviewed) return;
+        _didAutoOpenReview = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _openReviewSheet(context, state.product);
+        });
       },
+      child: BlocBuilder<ProductBloc, ProductState>(
+        builder: (context, state) {
+          if (state is ProductDetailLoading) {
+            return _buildLoadingScaffold(context);
+          }
+          if (state is ProductDetailError) {
+            return Scaffold(
+              appBar: AppBar(),
+              body: Center(child: Text(state.message)),
+            );
+          }
+          if (state is ProductDetailLoaded) {
+            return _buildDetailContent(context, state);
+          }
+          return _buildLoadingScaffold(context);
+        },
+      ),
     );
   }
 
-  Widget _buildDetailContent(BuildContext context, Product product) {
+  Widget _buildDetailContent(BuildContext context, ProductDetailLoaded detailState) {
+    final product = detailState.product;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
@@ -669,9 +718,28 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ),
                       ),
                       const SizedBox(height: 32),
-                      Text(
-                        context.tr('reviews'),
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            context.tr('reviews'),
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
+                          ),
+                          if (detailState.canReview)
+                            TextButton.icon(
+                              onPressed: () => _openReviewSheet(context, product),
+                              icon: const Icon(Icons.rate_review_outlined, size: 18),
+                              label: Text(context.tr('product_review_write')),
+                            )
+                          else if (detailState.hasReviewed)
+                            Text(
+                              context.tr('product_review_done'),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       Container(

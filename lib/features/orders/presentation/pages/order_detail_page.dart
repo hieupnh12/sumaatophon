@@ -7,6 +7,7 @@ import '../../domain/entities/order_detail.dart';
 import '../bloc/order_bloc.dart';
 import '../utils/order_display_helpers.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import '../../../products/presentation/widgets/product_review_sheet.dart';
 import '../../../products/presentation/pages/product_detail_page.dart';
 import '../../../../main.dart';
 import '../../../products/presentation/bloc/product_bloc.dart';
@@ -30,6 +31,45 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         ? int.tryParse(auth.user.id) ?? 0
         : 0;
     context.read<OrderBloc>().add(LoadOrderDetailEvent(widget.orderId, customerId));
+  }
+
+  void _reloadOrderDetail() {
+    final auth = context.read<AuthBloc>().state;
+    final customerId = auth is AuthenticatedState
+        ? int.tryParse(auth.user.id) ?? 0
+        : 0;
+    context.read<OrderBloc>().add(LoadOrderDetailEvent(widget.orderId, customerId));
+  }
+
+  Future<void> _openProductReview(
+    BuildContext context, {
+    required String productId,
+    required String productName,
+  }) async {
+    final auth = context.read<AuthBloc>().state;
+    if (auth is! AuthenticatedState) return;
+
+    final customerId = int.tryParse(auth.user.id);
+    if (customerId == null || customerId <= 0) return;
+
+    final submitted = await showProductReviewSheet(
+      context: context,
+      productId: productId,
+      customerId: customerId,
+      productName: productName,
+    );
+
+    if (!context.mounted) return;
+
+    if (submitted == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.trRead('product_review_success')),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      _reloadOrderDetail();
+    }
   }
 
   @override
@@ -184,6 +224,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               quantity: item.quantity,
               image: item.image,
               showDivider: !isLast,
+              canReview: detail.status == 'completed',
             );
           }),
         ],
@@ -201,6 +242,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     required int quantity,
     required String image,
     required bool showDivider,
+    bool canReview = false,
   }) {
     return Column(
       children: [
@@ -245,26 +287,63 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerRight,
-          child: OutlinedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => BlocProvider(
-                    create: (_) => sl<ProductBloc>(),
-                    child: ProductDetailPage(productId: productId),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.end,
+            children: [
+              if (canReview)
+                OutlinedButton(
+                  onPressed: () => _openProductReview(
+                    context,
+                    productId: productId,
+                    productName: name,
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    context.tr('order_review_product'),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              );
-            },
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.error),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(context.tr('order_buy_again'), style: const TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.bold)),
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider(
+                        create: (_) => sl<ProductBloc>(),
+                        child: ProductDetailPage(productId: productId),
+                      ),
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.error),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  context.tr('order_buy_again'),
+                  style: const TextStyle(
+                    color: AppColors.error,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         if (showDivider) Divider(color: isDark ? AppColors.darkBorder : AppColors.lightBorder, height: 24),

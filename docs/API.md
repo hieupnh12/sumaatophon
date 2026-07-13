@@ -65,6 +65,57 @@ GET /products/{id}
 
 Response: mot object product nhu tren.
 
+### Product feedback status
+
+```text
+GET /products/{id}/feedback-status?customerId={customerId}
+```
+
+Response:
+
+```json
+{
+  "canReview": true,
+  "hasReviewed": false
+}
+```
+
+- `canReview`: khach da mua san pham trong don `DELIVERED`/`COMPLETED` va chua danh gia.
+- `hasReviewed`: khach da co feedback hop le cho san pham nay.
+
+### Submit product feedback
+
+```text
+POST /products/{id}/feedbacks
+```
+
+Request:
+
+```json
+{
+  "customerId": 12,
+  "rate": 5,
+  "content": "San pham rat tot, giao hang nhanh."
+}
+```
+
+Response `201`: feedback vua tao (id, rate, content, date, customerName).
+
+Loi thuong gap:
+
+- `FEEDBACK_NOT_ELIGIBLE` — chua mua hoac don chua hoan tat.
+- `FEEDBACK_ALREADY_EXISTS` — da danh gia san pham nay.
+- `FEEDBACK_INVALID_RATE` — rate ngoai 1-5.
+- `FEEDBACK_INVALID_CONTENT` — noi dung qua ngan (< 3 ky tu).
+
+### List product feedbacks
+
+```text
+GET /products/{id}/feedbacks
+```
+
+Response: mang feedback (rate, content, date, customerName).
+
 ## Auth
 
 Neu auth van dung SQLite local thi cac endpoint nay chua bat buoc.
@@ -165,6 +216,41 @@ GET /orders?userId={userId}
 ```text
 GET /orders/{id}
 ```
+
+## Stores
+
+### List stores
+
+```text
+GET /stores
+GET /stores?lat=10.7769&lng=106.7008
+```
+
+Query optional:
+
+```text
+lat
+lng
+```
+
+Response mau:
+
+```json
+[
+  {
+    "id": "1",
+    "name": "FShop",
+    "address": "X6WQ+R5M, Khu đô thị FPT City, Ngũ Hành Sơn, Đà Nẵng 550000, Việt Nam",
+    "phone": "0982481094",
+    "latitude": 15.981042,
+    "longitude": 108.254771,
+    "openTime": "08:00 - 22:00",
+    "distanceKm": 1.2
+  }
+]
+```
+
+`distanceKm` chi co khi truyen `lat` va `lng`.
 
 ## Error Format
 
