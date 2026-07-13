@@ -1,96 +1,165 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:geolocator/geolocator.dart';
 
-class Store {
-  final int id;
-  final String name;
-  final String address;
-  final String distance;
-  final String openTime;
-  final double topPos;
-  final double leftPos;
-  final String phone;
+import '../../domain/entities/store_entity.dart';
+import '../../domain/repositories/store_repository.dart';
 
-  Store({
-    required this.id,
-    required this.name,
-    required this.address,
-    required this.distance,
-    required this.openTime,
-    required this.topPos,
-    required this.leftPos,
-    required this.phone,
-  });
+abstract class StoreLocatorEvent extends Equatable {
+  const StoreLocatorEvent();
+
+  @override
+  List<Object?> get props => [];
 }
 
-abstract class StoreLocatorBlocEvent {}
-
-class LoadStoresEvent extends StoreLocatorBlocEvent {}
-
-class SelectStoreEvent extends StoreLocatorBlocEvent {
-  final int storeId;
-  SelectStoreEvent(this.storeId);
+class LoadStoresEvent extends StoreLocatorEvent {
+  const LoadStoresEvent();
 }
 
-class StoreLocatorBlocState {
-  final List<Store> stores;
-  final int selectedStoreId;
+class SelectStoreEvent extends StoreLocatorEvent {
+  final String storeId;
 
-  StoreLocatorBlocState({
-    this.stores = const [],
-    this.selectedStoreId = 1,
+  const SelectStoreEvent(this.storeId);
+
+  @override
+  List<Object?> get props => [storeId];
+}
+
+abstract class StoreLocatorState extends Equatable {
+  const StoreLocatorState();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class StoreLocatorInitial extends StoreLocatorState {}
+
+class StoreLocatorLoading extends StoreLocatorState {}
+
+class StoreLocatorLoaded extends StoreLocatorState {
+  final List<StoreEntity> stores;
+  final String? selectedStoreId;
+  final double? userLatitude;
+  final double? userLongitude;
+  final bool locationDenied;
+
+  const StoreLocatorLoaded({
+    required this.stores,
+    this.selectedStoreId,
+    this.userLatitude,
+    this.userLongitude,
+    this.locationDenied = false,
   });
 
-  StoreLocatorBlocState copyWith({
-    List<Store>? stores,
-    int? selectedStoreId,
+  StoreLocatorLoaded copyWith({
+    List<StoreEntity>? stores,
+    String? selectedStoreId,
+    double? userLatitude,
+    double? userLongitude,
+    bool? locationDenied,
   }) {
-    return StoreLocatorBlocState(
+    return StoreLocatorLoaded(
       stores: stores ?? this.stores,
       selectedStoreId: selectedStoreId ?? this.selectedStoreId,
+      userLatitude: userLatitude ?? this.userLatitude,
+      userLongitude: userLongitude ?? this.userLongitude,
+      locationDenied: locationDenied ?? this.locationDenied,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        stores,
+        selectedStoreId,
+        userLatitude,
+        userLongitude,
+        locationDenied,
+      ];
 }
 
-class StoreLocatorBloc extends Bloc<StoreLocatorBlocEvent, StoreLocatorBlocState> {
-  StoreLocatorBloc() : super(StoreLocatorBlocState()) {
-    on<LoadStoresEvent>((event, emit) {
-      final stores = [
-        Store(
-          id: 1,
-          name: 'phoneShop Premium Q1',
-          address: '68 Lê Lợi, P. Bến Nghé, Quận 1, TP.HCM',
-          distance: '1.2 km',
-          openTime: '08:00 - 22:00',
-          phone: '028 1234 5678',
-          topPos: 0.3,
-          leftPos: 0.4,
-        ),
-        Store(
-          id: 2,
-          name: 'phoneShop Mega Mall Q2',
-          address: '159 Xa lộ Hà Nội, Thảo Điền, Quận 2, TP.HCM',
-          distance: '5.5 km',
-          openTime: '09:00 - 21:30',
-          phone: '028 2345 6789',
-          topPos: 0.25,
-          leftPos: 0.7,
-        ),
-        Store(
-          id: 3,
-          name: 'phoneShop Hub Q7',
-          address: '1058 Nguyễn Văn Linh, Tân Phong, Quận 7, TP.HCM',
-          distance: '8.1 km',
-          openTime: '08:00 - 22:00',
-          phone: '028 3456 7890',
-          topPos: 0.7,
-          leftPos: 0.5,
-        ),
-      ];
-      emit(state.copyWith(stores: stores, selectedStoreId: 1));
-    });
+class StoreLocatorEmpty extends StoreLocatorState {}
 
-    on<SelectStoreEvent>((event, emit) {
-      emit(state.copyWith(selectedStoreId: event.storeId));
-    });
+class StoreLocatorError extends StoreLocatorState {
+  final String message;
+
+  const StoreLocatorError(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
+class StoreLocatorBloc extends Bloc<StoreLocatorEvent, StoreLocatorState> {
+  final StoreRepository repository;
+
+  StoreLocatorBloc({required this.repository}) : super(StoreLocatorInitial()) {
+    on<LoadStoresEvent>(_onLoadStores);
+    on<SelectStoreEvent>(_onSelectStore);
+  }
+
+  Future<void> _onLoadStores(
+    LoadStoresEvent event,
+    Emitter<StoreLocatorState> emit,
+  ) async {
+    emit(StoreLocatorLoading());
+
+    try {
+      double? userLat;
+      double? userLng;
+      var locationDenied = false;
+
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        final requested = await Geolocator.requestPermission();
+        if (requested == LocationPermission.denied ||
+            requested == LocationPermission.deniedForever) {
+          locationDenied = true;
+        }
+      } else if (permission == LocationPermission.deniedForever) {
+        locationDenied = true;
+      }
+
+      if (!locationDenied) {
+        try {
+          final position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+              timeLimit: Duration(seconds: 8),
+            ),
+          );
+          userLat = position.latitude;
+          userLng = position.longitude;
+        } catch (_) {
+          locationDenied = true;
+        }
+      }
+
+      final stores = await repository.getStores(
+        latitude: userLat,
+        longitude: userLng,
+      );
+
+      if (stores.isEmpty) {
+        emit(StoreLocatorEmpty());
+        return;
+      }
+
+      emit(
+        StoreLocatorLoaded(
+          stores: stores,
+          selectedStoreId: stores.first.id,
+          userLatitude: userLat,
+          userLongitude: userLng,
+          locationDenied: locationDenied,
+        ),
+      );
+    } catch (e) {
+      emit(StoreLocatorError(e.toString()));
+    }
+  }
+
+  void _onSelectStore(SelectStoreEvent event, Emitter<StoreLocatorState> emit) {
+    final current = state;
+    if (current is! StoreLocatorLoaded) return;
+    emit(current.copyWith(selectedStoreId: event.storeId));
   }
 }

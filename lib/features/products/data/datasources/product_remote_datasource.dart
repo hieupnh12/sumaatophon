@@ -2,6 +2,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_feedback.dart';
+import '../../domain/entities/product_feedback_eligibility.dart';
 import '../models/product_feedback_model.dart';
 import '../models/product_model.dart';
 
@@ -57,5 +58,43 @@ class ProductRemoteDataSource {
     }
 
     return product;
+  }
+
+  Future<ProductFeedbackEligibility> getFeedbackStatus(
+    String productId,
+    int customerId,
+  ) async {
+    final data = await apiClient.get(
+      ApiEndpoints.productFeedbackStatus(productId),
+      queryParameters: {'customerId': customerId},
+    );
+
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Expected map from feedback-status');
+    }
+
+    return ProductFeedbackEligibility.fromJson(data);
+  }
+
+  Future<ProductFeedback> submitFeedback({
+    required String productId,
+    required int customerId,
+    required int rate,
+    required String content,
+  }) async {
+    final data = await apiClient.post(
+      ApiEndpoints.productFeedbacks(productId),
+      body: {
+        'customerId': customerId,
+        'rate': rate,
+        'content': content,
+      },
+    );
+
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Expected map from POST feedback');
+    }
+
+    return ProductFeedbackModel.fromJson(data).toEntity();
   }
 }

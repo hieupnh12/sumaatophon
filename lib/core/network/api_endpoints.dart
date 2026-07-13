@@ -11,6 +11,7 @@ class ApiEndpoints {
   static const String linkPhone = '/auth/link-phone';
   static const String profile = '/profile';
   static const String health = '/health';
+  static const String stores = '/stores';
   static const String cart = '/api/cart';
   static const String cartItems = '/api/cart/items';
   static const String orders = '/api/orders';
@@ -39,6 +40,7 @@ class ApiEndpoints {
 
   static String productById(String id) => '/products/$id';
   static String productFeedbacks(String id) => '/products/$id/feedbacks';
+  static String productFeedbackStatus(String id) => '/products/$id/feedback-status';
 
   // Orders
   static String orderById(String id) => '/api/orders/$id';

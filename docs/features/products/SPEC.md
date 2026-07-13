@@ -103,8 +103,26 @@ storage
 specifications
 reviews
 reviews_based_on
+product_review_write
+product_review_submit
+product_review_rate_label
+product_review_content_hint
+product_review_content_min
+product_review_success
+product_review_error
+product_review_already
+product_review_not_eligible
+product_review_done
 description
 ```
+
+## 7.1. Danh gia san pham (sau don hoan tat)
+
+- API `GET /products/{id}/feedback-status?customerId=` tra `canReview`, `hasReviewed`.
+- API `POST /products/{id}/feedbacks` body `{ customerId, rate, content }`.
+- Chi duoc danh gia neu da mua trong don `DELIVERED`/`COMPLETED` va chua danh gia.
+- UI: nut "Viết đánh giá" tren product detail; bottom sheet nhap sao + noi dung.
+- Tu order detail (don `completed`): nut "Đánh giá" mo truc tiep bottom sheet danh gia (khong qua product detail).
 
 Neu them UI text moi trong product list/detail, bat buoc them key cho `vi`, `en`, `ja`.
 
