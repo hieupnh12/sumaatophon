@@ -45,11 +45,12 @@ class FilterProductsEvent extends ProductEvent {
 
 class LoadProductByIdEvent extends ProductEvent {
   final String productId;
-  const LoadProductByIdEvent(this.productId);
-   
-   // dòng này gọi từ product_bloc và trả về Product có chứa id đó , dùng để hiển thị chi tiết sản phẩm
+  final int? customerId;
+
+  const LoadProductByIdEvent(this.productId, {this.customerId});
+
   @override
-  List<Object?> get props => [productId];
+  List<Object?> get props => [productId, customerId];
 }
 
 
@@ -126,9 +127,29 @@ class ProductDetailError extends ProductState {
 
 class ProductDetailLoaded extends ProductState {
   final Product product;
-  const ProductDetailLoaded(this.product);
+  final bool canReview;
+  final bool hasReviewed;
+
+  const ProductDetailLoaded(
+    this.product, {
+    this.canReview = false,
+    this.hasReviewed = false,
+  });
+
+  ProductDetailLoaded copyWith({
+    Product? product,
+    bool? canReview,
+    bool? hasReviewed,
+  }) {
+    return ProductDetailLoaded(
+      product ?? this.product,
+      canReview: canReview ?? this.canReview,
+      hasReviewed: hasReviewed ?? this.hasReviewed,
+    );
+  }
+
   @override
-  List<Object?> get props => [product];
+  List<Object?> get props => [product, canReview, hasReviewed];
 }
 
 
@@ -321,11 +342,29 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     emit(ProductDetailLoading());
     try {
       final product = await repository.getProductById(event.productId);
-      emit(ProductDetailLoaded(product));
+      var canReview = false;
+      var hasReviewed = false;
+
+      final customerId = event.customerId;
+      if (customerId != null && customerId > 0) {
+        try {
+          final status = await repository.getFeedbackStatus(event.productId, customerId);
+          canReview = status.canReview;
+          hasReviewed = status.hasReviewed;
+        } catch (_) {
+          // Bỏ qua nếu API chưa deploy — vẫn hiển thị sản phẩm.
+        }
+      }
+
+      emit(
+        ProductDetailLoaded(
+          product,
+          canReview: canReview,
+          hasReviewed: hasReviewed,
+        ),
+      );
     } catch (e) {
       emit(ProductDetailError(e.toString()));
     }
   }
-
-
 }

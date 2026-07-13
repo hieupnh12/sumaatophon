@@ -1,5 +1,6 @@
 import Darwin
 import Flutter
+import GoogleMaps
 import UIKit
 
 @main
@@ -8,6 +9,7 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    GMSServices.provideAPIKey("AIzaSyDzaQZlvMUsKRM4T9It9Jrw9gMBKkNedWk")
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

@@ -1,4 +1,6 @@
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_feedback.dart';
+import '../../domain/entities/product_feedback_eligibility.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../datasources/product_local_datasource.dart';
 import '../datasources/product_remote_datasource.dart';
@@ -37,5 +39,28 @@ class ProductRepositoryImpl implements ProductRepository {
       }
       rethrow;
     }
+  }
+
+  @override
+  Future<ProductFeedbackEligibility> getFeedbackStatus(
+    String productId,
+    int customerId,
+  ) {
+    return remoteDataSource.getFeedbackStatus(productId, customerId);
+  }
+
+  @override
+  Future<ProductFeedback> submitFeedback({
+    required String productId,
+    required int customerId,
+    required int rate,
+    required String content,
+  }) {
+    return remoteDataSource.submitFeedback(
+      productId: productId,
+      customerId: customerId,
+      rate: rate,
+      content: content,
+    );
   }
 }

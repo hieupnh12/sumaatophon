@@ -6,6 +6,10 @@ const {
   fetchProductFeedbacks,
   fetchProductVersions,
 } = require('../services/productService');
+const {
+  getFeedbackStatus,
+  createProductFeedback,
+} = require('../services/feedbackService');
 
 const router = express.Router();
 
@@ -73,6 +77,53 @@ router.get('/products', async (_req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message, code: 'PRODUCTS_LIST_ERROR' });
+  }
+});
+
+// GET /products/:id/feedback-status?customerId= — đủ điều kiện đánh giá?
+router.get('/products/:id/feedback-status', async (req, res) => {
+  try {
+    const productId = Number(req.params.id);
+    const customerId = Number(req.query.customerId);
+    if (!productId || !customerId) {
+      return res.status(400).json({
+        message: 'productId and customerId are required',
+        code: 'FEEDBACK_STATUS_BAD_REQUEST',
+      });
+    }
+
+    const status = await getFeedbackStatus(customerId, productId);
+    res.json(status);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message, code: 'FEEDBACK_STATUS_ERROR' });
+  }
+});
+
+// POST /products/:id/feedbacks — gửi đánh giá sau khi nhận hàng
+router.post('/products/:id/feedbacks', async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const { customerId, rate, content } = req.body;
+    if (!productId || !customerId) {
+      return res.status(400).json({
+        message: 'productId and customerId are required',
+        code: 'FEEDBACK_BAD_REQUEST',
+      });
+    }
+
+    const feedback = await createProductFeedback({
+      customerId,
+      productId,
+      rate,
+      content,
+    });
+    res.status(201).json(feedback);
+  } catch (err) {
+    const code = err.code || 'FEEDBACK_CREATE_ERROR';
+    const status =
+      code === 'FEEDBACK_NOT_ELIGIBLE' || code === 'FEEDBACK_ALREADY_EXISTS' ? 403 : 400;
+    res.status(status).json({ message: err.message, code });
   }
 });
 

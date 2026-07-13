@@ -44,6 +44,9 @@ import 'features/checkout/data/datasources/checkout_remote_datasource.dart';
 import 'features/checkout/data/datasources/payment_remote_datasource.dart';
 import 'features/store_locator/presentation/bloc/store_locator_bloc.dart';
 import 'features/store_locator/presentation/pages/store_location_page.dart';
+import 'features/store_locator/data/datasources/store_remote_datasource.dart';
+import 'features/store_locator/data/repositories/store_repository_impl.dart';
+import 'features/store_locator/domain/repositories/store_repository.dart';
 import 'features/chatbot/data/datasources/chatbot_remote_datasource.dart';
 import 'features/chat/data/datasources/chat_remote_datasource.dart';
 import 'features/chat/data/repositories/chat_repository_impl.dart';
@@ -109,6 +112,7 @@ Future<void> setupDependencyInjection() async {
   sl.registerLazySingleton(() => AuthRemoteDataSource(sl()));
   sl.registerLazySingleton(() => ProductRemoteDataSource(sl()));
   sl.registerLazySingleton(() => ProductLocalDataSource(sl()));
+  sl.registerLazySingleton(() => StoreRemoteDataSource(sl()));
   sl.registerLazySingleton(() => ChatbotRemoteDataSource(sl()));
   sl.registerLazySingleton(() => ChatRemoteDataSource(sl()));
   sl.registerLazySingleton(() => CartRemoteDatasource(sl()));
@@ -117,6 +121,7 @@ Future<void> setupDependencyInjection() async {
   // Repositories
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl<AuthRemoteDataSource>(), sl<AuthLocalDataSource>()));
   sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(sl(), sl()));
+  sl.registerLazySingleton<StoreRepository>(() => StoreRepositoryImpl(sl()));
   sl.registerLazySingleton<ChatRepository>(() => ChatRepositoryImpl(sl()));
   sl.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(sl()));
   sl.registerLazySingleton<WarrantyRepository>(() => WarrantyRepositoryImpl(remoteDataSource: sl()));
@@ -142,7 +147,7 @@ Future<void> setupDependencyInjection() async {
   sl.registerFactory(() => ProductBloc(repository: sl()));
   sl.registerFactory(() => CartBloc(repository: sl()));
   sl.registerFactory(() => CheckoutBloc(checkoutDataSource: sl(), paymentDataSource: sl()));
-  sl.registerFactory(() => StoreLocatorBloc());
+  sl.registerFactory(() => StoreLocatorBloc(repository: sl()));
   sl.registerFactory(() => ChatBloc(repository: sl()));
   sl.registerFactory(() => NotificationBloc(repository: sl()));
   sl.registerFactory(() => AddressBloc(repository: sl(), authBloc: sl()));
@@ -400,7 +405,7 @@ class _ApiLifecycleHandlerState extends State<_ApiLifecycleHandler>
 
   void _reloadAppData() {
     context.read<ProductBloc>().add(LoadProductsEvent());
-    context.read<StoreLocatorBloc>().add(LoadStoresEvent());
+    context.read<StoreLocatorBloc>().add(const LoadStoresEvent());
     context.read<AddressBloc>().add(LoadAddressesEvent());
     reloadNotifications(context, silent: true);
 

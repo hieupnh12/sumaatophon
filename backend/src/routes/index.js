@@ -8,9 +8,11 @@ const paymentsRouter = require('./payments');
 const healthRouter = require('./health');
 const notificationsRouter = require('./notifications');
 const warrantiesRouter = require('./warranties');
+const storesRouter = require('./stores');
 
 function registerRoutes(app) {
   app.use(productsRouter);
+  app.use(storesRouter);
   app.use(authRouter);
   app.use(profileRouter);
   app.use(addressesRouter);

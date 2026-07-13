@@ -1,7 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
 import '../../../../core/design_system/app_colors.dart';
+import '../../../../core/l10n/app_localizations.dart';
+import '../../domain/entities/store_entity.dart';
 import '../bloc/store_locator_bloc.dart';
+import '../utils/store_locator_actions.dart';
+import '../widgets/store_card.dart';
 
 class StoreLocationPage extends StatefulWidget {
   const StoreLocationPage({super.key});
@@ -11,7 +18,10 @@ class StoreLocationPage extends StatefulWidget {
 }
 
 class _StoreLocationPageState extends State<StoreLocationPage> {
-  late PageController _pageController;
+  GoogleMapController? _mapController;
+  late final PageController _pageController;
+  bool _didRequestLoad = false;
+  bool _locationDeniedShown = false;
 
   @override
   void initState() {
@@ -21,12 +31,93 @@ class _StoreLocationPageState extends State<StoreLocationPage> {
 
   @override
   void dispose() {
+    _mapController?.dispose();
     _pageController.dispose();
     super.dispose();
   }
 
+  void _ensureStoresLoaded() {
+    if (_didRequestLoad) return;
+    _didRequestLoad = true;
+    context.read<StoreLocatorBloc>().add(const LoadStoresEvent());
+  }
+
+  Future<void> _animateToStore(StoreEntity store) async {
+    final controller = _mapController;
+    if (controller == null) return;
+    await controller.animateCamera(
+      CameraUpdate.newLatLngZoom(
+        LatLng(store.latitude, store.longitude),
+        14,
+      ),
+    );
+  }
+
+  Set<Marker> _buildMarkers(StoreLocatorLoaded state) {
+    return state.stores.map((store) {
+      final isSelected = store.id == state.selectedStoreId;
+      return Marker(
+        markerId: MarkerId(store.id),
+        position: LatLng(store.latitude, store.longitude),
+        icon: BitmapDescriptor.defaultMarkerWithHue(
+          isSelected ? BitmapDescriptor.hueAzure : BitmapDescriptor.hueOrange,
+        ),
+        infoWindow: InfoWindow(
+          title: store.name,
+          snippet: store.address,
+        ),
+        onTap: () {
+          context.read<StoreLocatorBloc>().add(SelectStoreEvent(store.id));
+        },
+      );
+    }).toSet();
+  }
+
+  CameraPosition _initialCamera(StoreLocatorLoaded state) {
+    final selected = state.stores.firstWhere(
+      (s) => s.id == state.selectedStoreId,
+      orElse: () => state.stores.first,
+    );
+
+    if (state.userLatitude != null && state.userLongitude != null) {
+      return CameraPosition(
+        target: LatLng(state.userLatitude!, state.userLongitude!),
+        zoom: 12,
+      );
+    }
+
+    return CameraPosition(
+      target: LatLng(selected.latitude, selected.longitude),
+      zoom: 12,
+    );
+  }
+
+  Future<void> _handleCall(StoreEntity store) async {
+    final ok = await callStorePhone(store.phone);
+    if (!mounted || ok) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.trRead('store_locator_call_failed')),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  }
+
+  Future<void> _handleDirections(StoreEntity store) async {
+    final ok = await openStoreDirections(store);
+    if (!mounted || ok) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.trRead('store_locator_directions_failed')),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    _ensureStoresLoaded();
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -35,19 +126,7 @@ class _StoreLocationPageState extends State<StoreLocationPage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-        ),
+        automaticallyImplyLeading: false,
         title: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
@@ -63,11 +142,14 @@ class _StoreLocationPageState extends State<StoreLocationPage> {
           ),
           child: Row(
             children: [
-              Icon(Icons.search, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+              Icon(
+                Icons.search,
+                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Tìm cửa hàng quanh bạn',
+                  context.tr('store_locator_search_hint'),
                   style: TextStyle(
                     fontSize: 14,
                     color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -78,12 +160,26 @@ class _StoreLocationPageState extends State<StoreLocationPage> {
           ),
         ),
       ),
-      body: BlocConsumer<StoreLocatorBloc, StoreLocatorBlocState>(
+      body: BlocConsumer<StoreLocatorBloc, StoreLocatorState>(
+        listenWhen: (prev, curr) {
+          if (curr is! StoreLocatorLoaded) return false;
+          if (prev is! StoreLocatorLoaded) return true;
+          return prev.selectedStoreId != curr.selectedStoreId;
+        },
         listener: (context, state) {
-          // When store is selected via map marker, animate PageView to that store
-          if (_pageController.hasClients) {
-            final index = state.stores.indexWhere((s) => s.id == state.selectedStoreId);
-            if (index != -1 && _pageController.page?.round() != index) {
+          if (state is! StoreLocatorLoaded) return;
+
+          if (state.locationDenied && !_locationDeniedShown) {
+            _locationDeniedShown = true;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(context.trRead('store_locator_location_denied'))),
+            );
+          }
+
+          final index = state.stores.indexWhere((s) => s.id == state.selectedStoreId);
+          if (index != -1 && _pageController.hasClients) {
+            final current = _pageController.page?.round();
+            if (current != index) {
               _pageController.animateToPage(
                 index,
                 duration: const Duration(milliseconds: 300),
@@ -91,98 +187,66 @@ class _StoreLocationPageState extends State<StoreLocationPage> {
               );
             }
           }
+
+          final selected = state.stores.firstWhere(
+            (s) => s.id == state.selectedStoreId,
+            orElse: () => state.stores.first,
+          );
+          _animateToStore(selected);
         },
         builder: (context, state) {
+          if (state is StoreLocatorLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state is StoreLocatorError) {
+            return _buildMessageState(
+              context,
+              icon: Icons.error_outline_rounded,
+              title: context.tr('store_locator_error'),
+              subtitle: state.message,
+              actionLabel: context.tr('store_locator_retry'),
+              onAction: () => context.read<StoreLocatorBloc>().add(const LoadStoresEvent()),
+              isDark: isDark,
+            );
+          }
+
+          if (state is StoreLocatorEmpty) {
+            return _buildMessageState(
+              context,
+              icon: Icons.store_mall_directory_outlined,
+              title: context.tr('store_locator_empty_title'),
+              subtitle: context.tr('store_locator_empty_desc'),
+              actionLabel: context.tr('store_locator_retry'),
+              onAction: () => context.read<StoreLocatorBloc>().add(const LoadStoresEvent()),
+              isDark: isDark,
+            );
+          }
+
+          if (state is! StoreLocatorLoaded) {
+            return const SizedBox.shrink();
+          }
+
           return Stack(
             children: [
-              // Mock Map Background
               Positioned.fill(
-                child: CustomPaint(
-                  painter: _MapGridPainter(
-                    color: isDark ? AppColors.darkBorder.withValues(alpha: 0.3) : AppColors.lightBorder,
-                  ),
+                child: GoogleMap(
+                  initialCameraPosition: _initialCamera(state),
+                  markers: _buildMarkers(state),
+                  myLocationEnabled: !kIsWeb && state.userLatitude != null,
+                  myLocationButtonEnabled: !kIsWeb,
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
+                  onMapCreated: (controller) {
+                    _mapController = controller;
+                    final selected = state.stores.firstWhere(
+                      (s) => s.id == state.selectedStoreId,
+                      orElse: () => state.stores.first,
+                    );
+                    _animateToStore(selected);
+                  },
                 ),
               ),
-              
-              // Decorative map elements (parks, water bodies to make it look like a map)
-              Positioned(
-                top: 150,
-                left: -50,
-                child: Container(
-                  width: 300,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.blue.withValues(alpha: 0.1) : Colors.blue.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 200,
-                right: -100,
-                child: Container(
-                  width: 400,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.green.withValues(alpha: 0.05) : Colors.green.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(150),
-                  ),
-                ),
-              ),
-
-              // Markers
-              ...state.stores.map((store) {
-                final isSelected = store.id == state.selectedStoreId;
-                return Positioned(
-                  top: MediaQuery.of(context).size.height * store.topPos,
-                  left: MediaQuery.of(context).size.width * store.leftPos,
-                  child: GestureDetector(
-                    onTap: () {
-                      context.read<StoreLocatorBloc>().add(SelectStoreEvent(store.id));
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.elasticOut,
-                      transform: Matrix4.identity()..scale(isSelected ? 1.2 : 1.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isSelected ? theme.colorScheme.primary : (isDark ? AppColors.darkCard : AppColors.lightCard),
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              store.name.replaceAll('phoneShop ', ''),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected ? Colors.white : (isDark ? Colors.white : Colors.black87),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Icon(
-                            Icons.location_on,
-                            size: isSelected ? 40 : 32,
-                            color: isSelected ? theme.colorScheme.primary : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
-
-              // Store Cards PageView
               Positioned(
                 bottom: 32,
                 left: 0,
@@ -192,129 +256,17 @@ class _StoreLocationPageState extends State<StoreLocationPage> {
                   controller: _pageController,
                   itemCount: state.stores.length,
                   onPageChanged: (index) {
-                    context.read<StoreLocatorBloc>().add(SelectStoreEvent(state.stores[index].id));
+                    context.read<StoreLocatorBloc>().add(
+                          SelectStoreEvent(state.stores[index].id),
+                        );
                   },
                   itemBuilder: (context, index) {
                     final store = state.stores[index];
-                    final isSelected = store.id == state.selectedStoreId;
-
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      margin: EdgeInsets.only(
-                        left: 8,
-                        right: 8,
-                        top: isSelected ? 0 : 20,
-                        bottom: isSelected ? 0 : 20,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkCard : AppColors.lightCard,
-                        borderRadius: BorderRadius.circular(24),
-                        border: isSelected ? Border.all(color: theme.colorScheme.primary, width: 2) : null,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    store.name,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    store.distance,
-                                    style: TextStyle(
-                                      color: theme.colorScheme.primary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(Icons.location_on_outlined, size: 16, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    store.address,
-                                    style: TextStyle(
-                                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                      fontSize: 13,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Icon(Icons.access_time_rounded, size: 16, color: AppColors.success),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Mở cửa: ${store.openTime}',
-                                  style: const TextStyle(
-                                    color: AppColors.success,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Spacer(),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: () {},
-                                    icon: const Icon(Icons.phone_in_talk_outlined, size: 18),
-                                    label: const Text('Gọi điện'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: theme.colorScheme.primary,
-                                      side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {},
-                                    icon: const Icon(Icons.directions_rounded, size: 18),
-                                    label: const Text('Chỉ đường'),
-                                    style: ElevatedButton.styleFrom(
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
+                    return StoreCard(
+                      store: store,
+                      isSelected: store.id == state.selectedStoreId,
+                      onCall: () => _handleCall(store),
+                      onDirections: () => _handleDirections(store),
                     );
                   },
                 ),
@@ -325,28 +277,45 @@ class _StoreLocationPageState extends State<StoreLocationPage> {
       ),
     );
   }
-}
 
-class _MapGridPainter extends CustomPainter {
-  final Color color;
-
-  _MapGridPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.0;
-
-    const step = 40.0;
-    for (double i = 0; i < size.width; i += step) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
-    }
-    for (double i = 0; i < size.height; i += step) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
-    }
+  Widget _buildMessageState(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String actionLabel,
+    required VoidCallback onAction,
+    required bool isDark,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 64, color: AppColors.primary),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: onAction,
+              child: Text(actionLabel),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

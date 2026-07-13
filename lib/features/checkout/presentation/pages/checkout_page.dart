@@ -68,7 +68,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           amount: amount,
           checkoutUrl: checkoutUrl,
           qrCode: state.payOsQrCode,
-          onPollPaymentStatus: () => paymentDataSource.getPayOsStatus(orderId),
+          onCheckPaymentStatus: () => paymentDataSource.confirmPayOsPayment(orderId),
         ),
       ),
     );

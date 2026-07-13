@@ -24,6 +24,7 @@ Khong bao gom:
 1. User vao profile hoac tab orders neu co.
 2. App load danh sach orders theo user.
 3. User bam mot order de xem chi tiet.
+4. Voi don `completed`, user co the bam "Đánh giá" tren tung san pham → form danh gia (bottom sheet).
 
 ## 4. Hanh vi nghiep vu
 
@@ -35,6 +36,7 @@ Khong bao gom:
 
 - Order card hien ma don, ngay dat, tong tien, trang thai.
 - Detail hien items, dia chi, shipping, payment, tong tien.
+- Don `completed`: moi item co nut "Đánh giá" mo truc tiep form danh gia va "Mua lại".
 - Status chip dung mau trong `AppColors`.
 - Moi text UI dung `context.tr()`.
 

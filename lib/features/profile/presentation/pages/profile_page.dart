@@ -224,9 +224,36 @@ class _ProfilePageState extends State<ProfilePage> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
-                              _buildOrderAction(Icons.pending_actions_rounded, context.tr('profile_order_pending'), isDark),
-                              _buildOrderAction(Icons.local_shipping_outlined, context.tr('profile_order_shipping'), isDark),
-                              _buildOrderAction(Icons.rate_review_outlined, context.tr('profile_order_review'), isDark),
+                              _buildOrderAction(
+                                Icons.pending_actions_rounded,
+                                context.tr('profile_order_pending'),
+                                isDark,
+                                onTap: () => _openOrderList(
+                                  context,
+                                  tabIndex: OrderListPage.tabPending,
+                                  titleKey: 'profile_order_pending',
+                                ),
+                              ),
+                              _buildOrderAction(
+                                Icons.local_shipping_outlined,
+                                context.tr('profile_order_shipping'),
+                                isDark,
+                                onTap: () => _openOrderList(
+                                  context,
+                                  tabIndex: OrderListPage.tabShipping,
+                                  titleKey: 'profile_order_shipping',
+                                ),
+                              ),
+                              _buildOrderAction(
+                                Icons.rate_review_outlined,
+                                context.tr('profile_order_review'),
+                                isDark,
+                                onTap: () => _openOrderList(
+                                  context,
+                                  tabIndex: OrderListPage.tabCompleted,
+                                  titleKey: 'profile_order_review',
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -560,20 +587,48 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildOrderAction(IconData icon, String label, bool isDark) {
-    return Column(
-      children: [
-        Icon(icon, size: 34, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-          ),
+  void _openOrderList(
+    BuildContext context, {
+    required int tabIndex,
+    required String titleKey,
+  }) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OrderListPage(
+          titleKey: titleKey,
+          initialTabIndex: tabIndex,
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildOrderAction(
+    IconData icon,
+    String label,
+    bool isDark, {
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          children: [
+            Icon(icon, size: 34, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
