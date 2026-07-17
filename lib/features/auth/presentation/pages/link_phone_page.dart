@@ -235,17 +235,17 @@ class _LinkPhonePageState extends State<LinkPhonePage> with SingleTickerProvider
     final isDark = theme.brightness == Brightness.dark;
 
     final defaultPinTheme = PinTheme(
-      width: 50,
-      height: 56,
+      width: 42,
+      height: 48,
       textStyle: TextStyle(
-        fontSize: 22,
+        fontSize: 18,
         color: isDark ? Colors.white : Colors.black87,
         fontWeight: FontWeight.w600,
       ),
       decoration: BoxDecoration(
         color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
         border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
     );
 

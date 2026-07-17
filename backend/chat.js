@@ -530,7 +530,7 @@ function setupChat(app, io, pool) {
       }
     });
 
-    socket.on('disconnect', () => {});
+    socket.on('disconnect', () => { });
   });
 }
 
